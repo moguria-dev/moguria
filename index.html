@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <meta name="theme-color" content="#f5dfb8" />
+  <title>Moguria v3.1</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+    <section id="home" class="screen active kv-home">
+      <div class="home-bg kv-world v31-room">
+        <div class="room-night-window"><i></i><b></b><span></span></div>
+        <div class="room-curtain left"></div>
+        <div class="room-curtain right"></div>
+        <div class="room-hanging-stars"><i></i><i></i><i></i></div>
+        <div class="room-shelf"><span>✦</span><span>📖</span><span>🫙</span></div>
+        <div class="room-lamp"><i></i></div>
+        <div class="room-bed"><i></i><b></b></div>
+        <div class="room-rug"></div>
+        <div class="room-table"><i></i><b></b></div>
+        <div class="kv-sky-orb"></div>
+        <div class="kv-floating-island one"></div>
+        <div class="kv-floating-island two"></div>
+        <div class="kv-room-glow"></div>
+        <div id="homeMogu" class="mogu idle"><span class="ear l"></span><span class="ear r"></span><span class="face">•ᴥ•</span><span class="aura"></span></div>
+      </div>
+
+      <div class="kv-topbar">
+        <div class="kv-logo"><span class="spark">✦</span><b>Moguria</b><small>もぐりあ</small></div>
+        <div class="kv-currencies">
+          <span>✦ 12,850</span>
+          <span id="coinText" class="coin-text">MoguCoin 0</span>
+          <span>💎 1,210</span>
+        </div>
+      </div>
+
+      <div class="kv-profile-card glass">
+        <p class="eyebrow">Mogu</p>
+        <h2>もぐ</h2>
+        <div class="belly-wrap">
+          <div class="belly-top"><span>おなか</span><span id="bellyText">3/3</span></div>
+          <div class="bar"><i id="bellyBar"></i></div>
+          <small id="bellyHint">光を食べたら、少し休ませてあげよう。</small>
+        </div>
+        <p id="homeLine" class="kv-home-line">小さな光も、集まれば夜を照らすよ。</p>
+      </div>
+
+      <div class="kv-side-rail">
+        <button id="snackBtn"><span>🍪</span><small>おやつ</small></button>
+        <button id="dexBtn"><span>📖</span><small>図鑑</small></button>
+        <button id="logsBtn"><span>🕯️</span><small>記録</small></button>
+      </div>
+
+      <div class="kv-bottom-dock glass">
+        <button id="gachaBtn"><span>🔮</span><b>ガチャ</b></button>
+        <button id="equipBtn"><span>🎒</span><b>装備</b></button>
+        <button id="startBtn" class="primary kv-start"><span>🚪</span><b>ダンジョンへ</b><small>Wave 12</small></button>
+        <button id="outingBtn"><span>🗺️</span><b>おでかけ</b></button>
+      </div>
+
+      <div class="kv-expedition glass">
+        <span class="mini-mogu">🐹</span>
+        <div><b>探索ボーナス</b><small>02:45:18</small></div>
+        <div class="kv-mogu-chain"><i></i><i></i><i></i><i></i><em>🎁</em></div>
+        <button>受け取る</button>
+      </div>
+    </section>
+
+    <section id="game" class="screen">
+      <canvas id="gameCanvas"></canvas>
+      <div class="hud top">
+        <div><b>Lv.<span id="lv">1</span></b></div>
+        <div>HP <span id="hp">100</span></div>
+        <div>EXP <span id="exp">0</span>/<span id="nextExp">10</span></div>
+        <div>WAVE <span id="wave">1</span>/12</div>
+        <div>⏱ <span id="timer">0:00</span></div>
+      </div>
+      <div class="hud bottom">
+        <div class="joystick" id="stick"><i id="knob"></i></div>
+        <div class="mini-stats" id="miniStats">最大DMG 0<br>撃破 0<br>爆発 0</div>
+      </div>
+      <button id="pauseBtn" class="tiny pause">一時停止</button>
+      <button id="giveupBtn" class="tiny">帰る</button>
+      <div id="levelModal" class="modal hidden">
+        <div class="modal-card">
+          <h2>どれを食べる？</h2>
+          <p>食べた力で、Moguが少し変わります。</p>
+          <div id="skillChoices" class="skill-grid"></div>
+          <button id="rerollBtn" class="reroll-btn" type="button">リロール 残り <span id="rerollCount">3</span></button>
+        </div>
+      </div>
+
+      <div id="artifactModal" class="modal hidden">
+        <div class="modal-card artifact-card">
+          <p class="eyebrow">旅の方針を決める力</p>
+          <h2>アーティファクトを選ぼう</h2>
+          <p>今回のビルドの軸になる、少し特別な力です。</p>
+          <div id="artifactChoices" class="skill-grid artifact-grid"></div>
+        </div>
+      </div>
+      <div id="pauseModal" class="modal hidden">
+        <div class="modal-card pause-card">
+          <h2>少し休憩しよう</h2>
+          <p id="pauseSummary">Mogu、今の力を確認しているみたい。</p>
+          <div id="pauseSkills" class="pause-skills"></div>
+          <button id="resumeBtn" class="primary">冒険に戻る</button>
+          <button id="pauseGiveupBtn">ホームへ帰る</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="result" class="screen">
+      <div class="result-card glass">
+        <p class="eyebrow">今回の冒険</p>
+        <h2 id="resultTitle">もぐもぐの旅</h2>
+        <p id="resultComment" class="comment">今日はよくがんばったね…</p>
+        <div id="resultMogu" class="mogu result-mogu"><span class="ear l"></span><span class="ear r"></span><span class="face">•ᴥ•</span><span class="aura"></span></div>
+        <div id="resultStats" class="stats-grid"></div>
+        <div id="resultBadges" class="badges"></div>
+        <button id="againBtn" class="primary">もう一回潜る</button>
+        <button id="homeBtn">ホームへ</button>
+      </div>
+    </section>
+
+    <section id="overlay" class="overlay hidden">
+      <div class="panel glass">
+        <button id="closeOverlay" class="close">×</button>
+        <h2 id="overlayTitle">Mogu図鑑</h2>
+        <div id="overlayBody"></div>
+      </div>
+    </section>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/debug.js"></script>
+  <script src="js/save.js"></script>
+  <script src="js/meta.js"></script>
+  <script src="js/skills.js"></script>
+  <script src="js/enemies.js"></script>
+  <script src="js/validator.js"></script>
+  <script src="js/player.js"></script>
+  <script src="js/dungeon.js"></script>
+  <script src="js/result.js"></script>
+  <script src="js/home.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/assetManager.js"></script>
+  <script src="js/performance.js"></script>
+  <script src="js/network.js"></script>
+  <script src="js/errorLog.js"></script>
+  <script src="js/saveTools.js"></script>
+  <script src="js/cheatMenu.js"></script>
+  <script src="js/platform.js"></script>
+  <script src="js/security.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
