@@ -1,0 +1,29 @@
+{
+  "version": "1.3.0",
+  "policy": {
+    "criticalBudgetMB": 2,
+    "initialAudio": "metadata-only",
+    "lazyLoad": true,
+    "remoteAssets": false
+  },
+  "critical": [],
+  "lazy": [],
+  "packs": [
+    {
+      "id": "stage-yawaraka-forest",
+      "label": "やわらか森",
+      "assets": []
+    },
+    {
+      "id": "audio-basic",
+      "label": "基本SE/BGM",
+      "assets": []
+    }
+  ],
+  "images": {
+    "home_room_bg": "assets/images/home/home_room_bg.png",
+    "mogu_home": "assets/images/home/mogu_home.png",
+    "glass_panel": "assets/images/home/glass_panel.png",
+    "gold_button": "assets/images/home/gold_button.png"
+  }
+}
