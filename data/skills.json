@@ -1,0 +1,3 @@
+{
+  "note": "Prototype skill data is currently embedded in js/skills.js for zero-fetch local execution. This file is reserved for later balancing."
+}
