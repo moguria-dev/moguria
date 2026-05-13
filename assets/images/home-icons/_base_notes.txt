@@ -1,0 +1,16 @@
+Moguria home button icon set (keyvisual-matched adoption version).
+This package keeps the same filenames/spec scaffold as the previous material set:
+- filenames: snack.svg, dex.svg, logs.svg, gacha.svg, equip.svg, dungeon.svg, outing.svg
+- canvas spec: 128x128 viewBox
+Implementation note:
+- Source images are adopted from the approved keyvisual-style raster icons.
+- Each file is delivered as an SVG wrapper that embeds a transparent 128x128 PNG inside,
+  so existing .svg-oriented integration can stay simple.
+Asset mapping:
+- snack  = keyvisual star icon
+- dex    = keyvisual treasure chest icon
+- logs   = keyvisual coin icon
+- gacha  = keyvisual gacha icon
+- equip  = keyvisual armor icon
+- dungeon= keyvisual dark monster icon
+- outing = keyvisual white creature icon
