@@ -6,6 +6,7 @@
   <meta name="theme-color" content="#f5dfb8" />
   <title>Moguria v3.1</title>
   <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="css/home-icons.css" />
 </head>
 <body>
   <div id="app">
@@ -15,7 +16,7 @@
         <div class="room-curtain left"></div>
         <div class="room-curtain right"></div>
         <div class="room-hanging-stars"><i></i><i></i><i></i></div>
-        <div class="room-shelf"><span>✦</span><span>📖</span><span>🫙</span></div>
+        <div class="room-shelf"><span>✦</span><span></span><span></span></div>
         <div class="room-lamp"><i></i></div>
         <div class="room-bed"><i></i><b></b></div>
         <div class="room-rug"></div>
@@ -32,7 +33,7 @@
         <div class="kv-currencies">
           <span>✦ 12,850</span>
           <span id="coinText" class="coin-text">MoguCoin 0</span>
-          <span>💎 1,210</span>
+          <span> 1,210</span>
         </div>
       </div>
 
@@ -48,22 +49,22 @@
       </div>
 
       <div class="kv-side-rail">
-        <button id="snackBtn"><span>🍪</span><small>おやつ</small></button>
-        <button id="dexBtn"><span>📖</span><small>図鑑</small></button>
-        <button id="logsBtn"><span>🕯️</span><small>記録</small></button>
+        <button id="snackBtn"><span class="kv-btn-icon"><img src="assets/images/home-icons/snack.svg" alt="" aria-hidden="true"></span><small>おやつ</small></button>
+        <button id="dexBtn"><span class="kv-btn-icon"><img src="assets/images/home-icons/dex.svg" alt="" aria-hidden="true"></span><small>図鑑</small></button>
+        <button id="logsBtn"><span class="kv-btn-icon"><img src="assets/images/home-icons/logs.svg" alt="" aria-hidden="true"></span><small>記録</small></button>
       </div>
 
       <div class="kv-bottom-dock glass">
-        <button id="gachaBtn"><span>🔮</span><b>ガチャ</b></button>
-        <button id="equipBtn"><span>🎒</span><b>装備</b></button>
-        <button id="startBtn" class="primary kv-start"><span>🚪</span><b>ダンジョンへ</b><small>Wave 12</small></button>
-        <button id="outingBtn"><span>🗺️</span><b>おでかけ</b></button>
+        <button id="gachaBtn"><span class="kv-btn-icon"><img src="assets/images/home-icons/gacha.svg" alt="" aria-hidden="true"></span><b>ガチャ</b></button>
+        <button id="equipBtn"><span class="kv-btn-icon"><img src="assets/images/home-icons/equip.svg" alt="" aria-hidden="true"></span><b>装備</b></button>
+        <button id="startBtn" class="primary kv-start"><span class="kv-btn-icon"><img src="assets/images/home-icons/dungeon.svg" alt="" aria-hidden="true"></span><b>ダンジョンへ</b><small>Wave 12</small></button>
+        <button id="outingBtn"><span class="kv-btn-icon"><img src="assets/images/home-icons/outing.svg" alt="" aria-hidden="true"></span><b>おでかけ</b></button>
       </div>
 
       <div class="kv-expedition glass">
-        <span class="mini-mogu">🐹</span>
+        <span class="mini-mogu"></span>
         <div><b>探索ボーナス</b><small>02:45:18</small></div>
-        <div class="kv-mogu-chain"><i></i><i></i><i></i><i></i><em>🎁</em></div>
+        <div class="kv-mogu-chain"><i></i><i></i><i></i><i></i><em></em></div>
         <button>受け取る</button>
       </div>
     </section>
@@ -83,6 +84,7 @@
       </div>
       <button id="pauseBtn" class="tiny pause">一時停止</button>
       <button id="giveupBtn" class="tiny">帰る</button>
+
       <div id="levelModal" class="modal hidden">
         <div class="modal-card">
           <h2>どれを食べる？</h2>
@@ -100,6 +102,7 @@
           <div id="artifactChoices" class="skill-grid artifact-grid"></div>
         </div>
       </div>
+
       <div id="pauseModal" class="modal hidden">
         <div class="modal-card pause-card">
           <h2>少し休憩しよう</h2>
