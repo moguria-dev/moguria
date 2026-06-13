@@ -1,4 +1,4 @@
-const CACHE_NAME = 'moguria-core-v1.3.1-home-cave-bg';
+const CACHE_NAME = 'moguria-core-v1.3.2-home-cave-bg-base';
 
 const CORE_ASSETS = [
   './',
@@ -33,10 +33,13 @@ const CORE_ASSETS = [
   './js/main.js',
 
   './assets/manifest.json',
+  './assets/images/home/home_cave_base.webp',
   './assets/images/home/home_cave_depth_wash.webp',
   './assets/images/home/home_cave_lamp_glow.png',
   './assets/images/home/home_cave_star_particle.png',
-  './assets/images/home/home_cave_crystal_sprite.png'
+  './assets/images/home/home_cave_crystal_sprite.png',
+  './assets/images/home/home_room_bg_v31b.png',
+  './assets/images/home/home_room_bg.png'
 ];
 
 self.addEventListener('install', event => {
@@ -67,16 +70,12 @@ self.addEventListener('fetch', event => {
   if (url.origin !== self.location.origin) return;
 
   event.respondWith(
-    caches.match(req).then(cached => {
-      const network = fetch(req).then(res => {
-        if (res && res.ok) {
-          const copy = res.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(req, copy));
-        }
-        return res;
-      }).catch(() => cached);
-
-      return cached || network;
-    })
+    fetch(req).then(res => {
+      if (res && res.ok) {
+        const copy = res.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(req, copy));
+      }
+      return res;
+    }).catch(() => caches.match(req))
   );
 });
