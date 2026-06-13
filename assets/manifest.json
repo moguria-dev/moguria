@@ -1,12 +1,68 @@
 {
-  "version": "1.3.1-home-icons",
+  "version": "3.1.1-hardening",
   "policy": {
     "criticalBudgetMB": 2,
     "initialAudio": "metadata-only",
     "lazyLoad": true,
     "remoteAssets": false
   },
-  "critical": [],
+  "critical": [
+    {
+      "id": "home_room_bg",
+      "type": "image",
+      "src": "assets/images/home/home_room_bg.png"
+    },
+    {
+      "id": "mogu_home",
+      "type": "image",
+      "src": "assets/images/home/mogu_home.png"
+    },
+    {
+      "id": "glass_panel",
+      "type": "image",
+      "src": "assets/images/home/glass_panel.png"
+    },
+    {
+      "id": "gold_button",
+      "type": "image",
+      "src": "assets/images/home/gold_button.png"
+    },
+    {
+      "id": "home_icon_snack",
+      "type": "image",
+      "src": "assets/images/home-icons/snack.svg"
+    },
+    {
+      "id": "home_icon_dex",
+      "type": "image",
+      "src": "assets/images/home-icons/dex.svg"
+    },
+    {
+      "id": "home_icon_logs",
+      "type": "image",
+      "src": "assets/images/home-icons/logs.svg"
+    },
+    {
+      "id": "home_icon_gacha",
+      "type": "image",
+      "src": "assets/images/home-icons/gacha.svg"
+    },
+    {
+      "id": "home_icon_equip",
+      "type": "image",
+      "src": "assets/images/home-icons/equip.svg"
+    },
+    {
+      "id": "home_icon_dungeon",
+      "type": "image",
+      "src": "assets/images/home-icons/dungeon.svg"
+    },
+    {
+      "id": "home_icon_outing",
+      "type": "image",
+      "src": "assets/images/home-icons/outing.svg"
+    }
+  ],
   "lazy": [],
   "packs": [
     {
