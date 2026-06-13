@@ -1,4 +1,4 @@
-const CACHE_NAME = 'moguria-core-v1.3.2-home-cave-bg-base';
+const CACHE_NAME = 'moguria-core-v1.3.3-kv-full-visual';
 
 const CORE_ASSETS = [
   './',
@@ -6,6 +6,7 @@ const CORE_ASSETS = [
   './style.css',
   './css/home-icons.css',
   './css/home-cave-bg.css',
+  './css/moguria-kv-visual-refresh.css',
 
   './js/config.js',
   './js/debug.js',
@@ -31,6 +32,7 @@ const CORE_ASSETS = [
   './js/platform.js',
   './js/security.js',
   './js/main.js',
+  './js/moguria-kv-visual-refresh.js',
 
   './assets/manifest.json',
   './assets/images/home/home_cave_base.webp',
@@ -39,7 +41,15 @@ const CORE_ASSETS = [
   './assets/images/home/home_cave_star_particle.png',
   './assets/images/home/home_cave_crystal_sprite.png',
   './assets/images/home/home_room_bg_v31b.png',
-  './assets/images/home/home_room_bg.png'
+  './assets/images/home/home_room_bg.png',
+
+  './assets/images/home-icons/snack.svg',
+  './assets/images/home-icons/dex.svg',
+  './assets/images/home-icons/logs.svg',
+  './assets/images/home-icons/gacha.svg',
+  './assets/images/home-icons/equip.svg',
+  './assets/images/home-icons/dungeon.svg',
+  './assets/images/home-icons/outing.svg'
 ];
 
 self.addEventListener('install', event => {
