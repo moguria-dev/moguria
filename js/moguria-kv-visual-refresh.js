@@ -1,17 +1,65 @@
-/* Moguria Keyvisual Visual Refresh
+/* Moguria Keyvisual Asset-Rich Visual Refresh
    Visual-only enhancer for develop-homeui2.
-   It decorates UI DOM and draws an optional overlay canvas above the game canvas.
-   It does not read/write save data and does not change battle, data, or progression logic. */
+   Adds UI decoration and an optional sprite overlay above the gameplay canvas.
+   Does not read/write save data and does not change battle, data, or progression logic. */
 (function () {
   "use strict";
 
   var TAU = Math.PI * 2;
+  var ASSET_VERSION = "?v=20260613-asset-rich";
+  var SPRITE_BASE = "assets/images/kv-sprites/";
+  var ICON_BASE = "assets/images/kv-icons/";
+
+  var spriteNames = {
+    mogu: "mogu_player.png",
+    soft: "enemy_soft.png",
+    bat: "enemy_bat.png",
+    stone: "enemy_stone.png",
+    ghost: "enemy_ghost.png",
+    rare: "enemy_rare.png",
+    bossMid: "boss_mid.png",
+    bossFinal: "boss_final.png",
+    dropStar: "drop_star.png",
+    dropHeal: "drop_heal.png",
+    bullet: "bullet_player.png",
+    enemyBullet: "bullet_enemy.png",
+    mine: "mine_star.png"
+  };
+
+  var iconNames = {
+    fire: "skill_fire.png",
+    ice: "skill_ice.png",
+    poison: "skill_poison.png",
+    guard: "skill_guard.png",
+    star: "skill_star.png",
+    summon: "skill_summon.png",
+    cave: "skill_cave.png",
+    artifact: "artifact_core.png"
+  };
+
+  var sprites = {};
+  var icons = {};
   var overlayCanvas = null;
   var overlayCtx = null;
   var reduceMotion = false;
   var lastDecorate = 0;
 
+  function loadImages() {
+    Object.keys(spriteNames).forEach(function (key) {
+      var img = new Image();
+      img.src = SPRITE_BASE + spriteNames[key] + ASSET_VERSION;
+      sprites[key] = img;
+    });
+
+    Object.keys(iconNames).forEach(function (key) {
+      var img = new Image();
+      img.src = ICON_BASE + iconNames[key] + ASSET_VERSION;
+      icons[key] = img;
+    });
+  }
+
   function init() {
+    loadImages();
     document.body.classList.add("kv-visual-refresh");
 
     var mq = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -72,16 +120,32 @@
     if (/氷|冷|スロー|ice|slow/i.test(text)) return "ice";
     if (/毒|poison/i.test(text)) return "poison";
     if (/守|盾|防|回避|guard|aura/i.test(text)) return "guard";
-    if (/星|光|雷|会心|連鎖|star|light|crit|chain/i.test(text)) return "star";
     if (/召|仲間|summon/i.test(text)) return "summon";
+    if (/星|光|雷|会心|連鎖|star|light|crit|chain/i.test(text)) return "star";
+    if (/アーティファクト|artifact/i.test(text)) return "artifact";
     return "cave";
+  }
+
+  function rarityText(text) {
+    text = String(text || "");
+    if (/伝説|legend|極|神/i.test(text)) return "legendary";
+    if (/レア|rare|特別|紫/i.test(text)) return "rare";
+    return "common";
   }
 
   function decorateAll() {
     document.querySelectorAll(".skill-card,.pause-skill,.artifact-row").forEach(function (card) {
       if (!card.dataset.kvKind) card.dataset.kvKind = classifyText(card.textContent);
+      if (!card.dataset.kvRarity) card.dataset.kvRarity = rarityText(card.textContent);
       var icon = card.querySelector(".skill-icon,.ico");
       if (icon && !icon.dataset.kvKind) icon.dataset.kvKind = card.dataset.kvKind;
+
+      if (!card.querySelector(".kv-card-icon")) {
+        var mark = document.createElement("span");
+        mark.className = "kv-card-icon";
+        mark.dataset.kvKind = card.dataset.kvKind;
+        card.insertBefore(mark, card.firstChild);
+      }
     });
 
     document.querySelectorAll("#overlayBody .item").forEach(function (item) {
@@ -91,26 +155,11 @@
       item.dataset.kvKind = kind;
       var mark = document.createElement("span");
       mark.className = "kv-item-mark";
-      mark.textContent = iconForKind(kind);
+      mark.dataset.kvKind = kind;
       var b = item.querySelector("b");
-      if (b) {
-        b.insertBefore(mark, b.firstChild);
-      } else {
-        item.insertBefore(mark, item.firstChild);
-      }
+      if (b) b.insertBefore(mark, b.firstChild);
+      else item.insertBefore(mark, item.firstChild);
     });
-  }
-
-  function iconForKind(kind) {
-    return {
-      fire: "✦",
-      ice: "❄",
-      poison: "◆",
-      guard: "◇",
-      star: "✦",
-      summon: "●",
-      cave: "✧"
-    }[kind] || "✧";
   }
 
   function loop() {
@@ -145,23 +194,24 @@
     });
 
     (state.mines || []).forEach(function (m) {
-      drawMine(ctx, m.x - camX, m.y - camY, m, t);
+      drawSprite(ctx, sprites.mine, m.x - camX, m.y - camY, (m.r || 20) * 3.4, t * 0.8);
     });
 
     (state.enemyBullets || []).forEach(function (b) {
-      drawEnemyBullet(ctx, b.x - camX, b.y - camY, b, t);
+      drawSprite(ctx, sprites.enemyBullet, b.x - camX, b.y - camY, Math.max(34, (b.r || 6) * 6), t * 1.4);
     });
 
     (state.bullets || []).forEach(function (b) {
-      drawBullet(ctx, b.x - camX, b.y - camY, b, t);
+      var ang = Math.atan2(b.vy || 0, b.vx || 1);
+      drawSprite(ctx, sprites.bullet, b.x - camX, b.y - camY, Math.max(36, (b.r || 6) * 7), ang);
     });
 
     (state.enemies || []).forEach(function (e) {
       if (!e || e.hp <= 0) return;
-      drawEnemy(ctx, e.x - camX, e.y - camY, e, t);
+      drawEnemySprite(ctx, e.x - camX, e.y - camY, e, t);
     });
 
-    drawMogu(ctx, p.x - camX, p.y - camY, p, t);
+    drawPlayerSprite(ctx, p.x - camX, p.y - camY, p, t);
   }
 
   function offscreen(x, y, r) {
@@ -177,7 +227,7 @@
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, w, h);
 
-    ctx.globalAlpha = .16;
+    ctx.globalAlpha = .15;
     ctx.strokeStyle = "rgba(255, 223, 144, .20)";
     ctx.lineWidth = 1;
     for (var i = 0; i < 7; i++) {
@@ -190,399 +240,96 @@
     ctx.restore();
   }
 
-  function glow(ctx, x, y, r, color) {
-    var g = ctx.createRadialGradient(x, y, 0, x, y, r);
-    g.addColorStop(0, color);
-    g.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.arc(x, y, r, 0, TAU);
-    ctx.fill();
-  }
-
-  function star(ctx, cx, cy, r1, r2, points, rot) {
-    ctx.beginPath();
-    for (var i = 0; i < points * 2; i++) {
-      var a = rot + i * Math.PI / points;
-      var r = i % 2 ? r2 : r1;
-      var x = cx + Math.cos(a) * r;
-      var y = cy + Math.sin(a) * r;
-      if (i === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    }
-    ctx.closePath();
-  }
-
-  function blob(ctx, cx, cy, rx, ry, phase) {
-    ctx.beginPath();
-    for (var i = 0; i < 18; i++) {
-      var a = i * TAU / 18;
-      var wob = 1 + Math.sin(a * 3 + phase) * .045 + Math.cos(a * 5 + phase * .7) * .030;
-      var x = cx + Math.cos(a) * rx * wob;
-      var y = cy + Math.sin(a) * ry * wob;
-      if (i === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    }
-    ctx.closePath();
+  function drawSprite(ctx, img, x, y, size, rotation, alpha) {
+    if (!img || !img.complete || !img.naturalWidth) return;
+    if (offscreen(x, y, size)) return;
+    ctx.save();
+    ctx.translate(x, y);
+    if (rotation) ctx.rotate(rotation);
+    if (alpha != null) ctx.globalAlpha = alpha;
+    ctx.drawImage(img, -size / 2, -size / 2, size, size);
+    ctx.restore();
   }
 
   function drawDrop(ctx, x, y, d, t) {
-    if (offscreen(x, y, 80)) return;
-    var pulse = reduceMotion ? 0 : Math.sin(t * 6 + x * .03) * 1.2;
-    ctx.save();
-    ctx.translate(x, y);
-    glow(ctx, 0, 0, d.kind === "heal" ? 34 : 38, d.kind === "heal" ? "rgba(145,240,170,.22)" : "rgba(255,222,125,.28)");
-    ctx.rotate(Math.sin(t * 2.4 + y * .02) * .12);
-
-    if (d.kind === "heal") {
-      ctx.fillStyle = "rgba(154, 244, 177, .92)";
-      ctx.shadowColor = "rgba(154,244,177,.70)";
-      ctx.shadowBlur = 14;
-      ctx.beginPath();
-      ctx.arc(-5, -4, 6, 0, TAU);
-      ctx.arc(5, -4, 6, 0, TAU);
-      ctx.lineTo(0, 11 + pulse);
-      ctx.closePath();
-      ctx.fill();
-      ctx.fillStyle = "rgba(255,255,255,.86)";
-      roundRect(ctx, -2, -8, 4, 14, 2, true);
-      roundRect(ctx, -7, -3, 14, 4, 2, true);
-    } else {
-      ctx.shadowColor = "rgba(255,225,130,.78)";
-      ctx.shadowBlur = d.rare ? 22 : 14;
-      ctx.fillStyle = d.rare ? "rgba(255,218,112,.96)" : "rgba(255,238,162,.94)";
-      star(ctx, 0, 0, d.rare ? 12 : 9, d.rare ? 5 : 4, 5, -Math.PI / 2 + pulse * .02);
-      ctx.fill();
-      ctx.strokeStyle = "rgba(137, 219, 255, .46)";
-      ctx.lineWidth = 1.4;
-      ctx.beginPath();
-      ctx.arc(0, 0, d.rare ? 16 : 13, 0, TAU);
-      ctx.stroke();
-    }
-    ctx.restore();
+    var img = d.kind === "heal" ? sprites.dropHeal : sprites.dropStar;
+    var size = d.rare ? 58 : 46;
+    var bob = reduceMotion ? 0 : Math.sin(t * 4 + x * .03) * 2;
+    drawSprite(ctx, img, x, y + bob, size, Math.sin(t * 1.4) * .12);
   }
 
-  function drawMine(ctx, x, y, m, t) {
-    if (offscreen(x, y, 90)) return;
-    ctx.save();
-    ctx.translate(x, y);
-    glow(ctx, 0, 0, 50, "rgba(255,172,84,.25)");
-    ctx.rotate(t * .8);
-    ctx.fillStyle = "rgba(255,193,100,.92)";
-    star(ctx, 0, 0, m.r * .96, m.r * .46, 6, -Math.PI / 2);
-    ctx.fill();
-    ctx.strokeStyle = "rgba(255,242,184,.52)";
-    ctx.lineWidth = 2.2;
-    ctx.beginPath();
-    ctx.arc(0, 0, m.r + 3 + Math.sin(t * 5) * 1.5, 0, TAU);
-    ctx.stroke();
-    ctx.restore();
-  }
-
-  function drawBullet(ctx, x, y, b, t) {
-    if (offscreen(x, y, 80)) return;
-    ctx.save();
-    ctx.translate(x, y);
-    var ang = Math.atan2(b.vy || 0, b.vx || 1);
-    ctx.rotate(ang);
-    glow(ctx, 0, 0, 34, b.pierce > 0 ? "rgba(139,226,255,.22)" : "rgba(255,222,130,.25)");
-    ctx.shadowColor = b.pierce > 0 ? "rgba(139,226,255,.72)" : "rgba(255,221,133,.72)";
-    ctx.shadowBlur = 14;
-    var grad = ctx.createLinearGradient(-18, 0, 20, 0);
-    grad.addColorStop(0, "rgba(255,255,255,.20)");
-    grad.addColorStop(.52, "rgba(255,241,166,.95)");
-    grad.addColorStop(1, b.split ? "rgba(188,158,255,.95)" : "rgba(255,191,104,.95)");
-    ctx.fillStyle = grad;
-    ctx.beginPath();
-    ctx.ellipse(0, 0, (b.r || 5) + 10, (b.r || 5) + 3, 0, 0, TAU);
-    ctx.fill();
-    ctx.restore();
-  }
-
-  function drawEnemyBullet(ctx, x, y, b, t) {
-    if (offscreen(x, y, 80)) return;
-    ctx.save();
-    ctx.translate(x, y);
-    glow(ctx, 0, 0, 36, "rgba(180,120,255,.22)");
-    ctx.rotate(t * 1.6);
-    ctx.fillStyle = "rgba(180, 145, 225, .88)";
-    star(ctx, 0, 0, (b.r || 5) + 7, (b.r || 5) + 2, 4, Math.PI / 4);
-    ctx.fill();
-    ctx.strokeStyle = "rgba(255,246,220,.45)";
-    ctx.lineWidth = 1.8;
-    ctx.stroke();
-    ctx.restore();
-  }
-
-  function drawEnemy(ctx, x, y, e, t) {
-    var r = Math.max(8, e.r || 18);
-    if (offscreen(x, y, r + 110)) return;
-
-    var isBoss = e.kind === "boss" || e.kind === "midBoss";
-    var isRare = e.kind === "rare";
-    var phase = e.phase2 ? 1 : 0;
-    var flash = e.hitFlash > 0;
+  function enemySpriteFor(e) {
     var name = String(e.name || "");
+    if (e.kind === "boss") return sprites.bossFinal;
+    if (e.kind === "midBoss") return sprites.bossMid;
+    if (e.kind === "rare") return sprites.rare;
+    if (/コウモリ/.test(name)) return sprites.bat;
+    if (/とげ|石|かち/.test(name)) return sprites.stone;
+    if (/ゴースト/.test(name)) return sprites.ghost;
+    return sprites.soft;
+  }
 
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.globalAlpha = flash ? .98 : .92;
+  function drawEnemySprite(ctx, x, y, e, t) {
+    var r = Math.max(10, e.r || 18);
+    var isBoss = e.kind === "boss" || e.kind === "midBoss";
+    var size = isBoss ? r * 3.35 : r * 3.0;
+    var rot = reduceMotion ? 0 : Math.sin(t * (isBoss ? .55 : 1.1) + x * .02) * (isBoss ? .04 : .08);
+    var img = enemySpriteFor(e);
+    var alpha = e.hitFlash > 0 ? .72 : .96;
+    drawSprite(ctx, img, x, y, size, rot, alpha);
 
-    if (isBoss) {
-      drawBoss(ctx, r, t, phase, e.kind === "boss");
-    } else if (isRare) {
-      drawRareEnemy(ctx, r, t);
-    } else if (/コウモリ/.test(name)) {
-      drawBatEnemy(ctx, r, t, e.color);
-    } else if (/とげ|石|かち/.test(name)) {
-      drawStoneEnemy(ctx, r, t, e.color);
-    } else if (/ゴースト/.test(name)) {
-      drawGhostEnemy(ctx, r, t, e.color);
-    } else {
-      drawSoftEnemy(ctx, r, t, e.color);
+    if (e.maxHp > 40) {
+      drawHpBar(ctx, x, y - size * .43, size * .62, Math.max(0, Math.min(1, e.hp / e.maxHp)), isBoss);
     }
 
     if (e.poison > 0 || e.slow > 0) {
+      ctx.save();
       ctx.strokeStyle = e.slow > 0 ? "rgba(137, 226, 255, .72)" : "rgba(196, 127, 255, .72)";
       ctx.lineWidth = 2.2;
       ctx.beginPath();
-      ctx.arc(0, 0, r + 10 + Math.sin(t * 5) * 2, 0, TAU);
+      ctx.arc(x, y, r + 12 + Math.sin(t * 5) * 2, 0, TAU);
       ctx.stroke();
-    }
-
-    ctx.restore();
-
-    if (e.maxHp > 40) {
-      var hp = Math.max(0, Math.min(1, e.hp / e.maxHp));
-      ctx.save();
-      roundRect(ctx, x - r, y - r - 18, r * 2, 6, 4, false);
-      ctx.fillStyle = "rgba(7,6,18,.46)";
-      ctx.fill();
-      var hg = ctx.createLinearGradient(x - r, y, x + r, y);
-      hg.addColorStop(0, isBoss ? "#c99bff" : "#ffe793");
-      hg.addColorStop(1, isBoss ? "#ff9bd8" : "#7fe5ff");
-      ctx.fillStyle = hg;
-      roundRect(ctx, x - r, y - r - 18, r * 2 * hp, 6, 4, true);
       ctx.restore();
     }
   }
 
-  function drawBoss(ctx, r, t, phase, isFinal) {
-    glow(ctx, 0, 0, r * 3.0, phase ? "rgba(210,118,255,.25)" : "rgba(124,93,255,.20)");
-    ctx.shadowColor = phase ? "rgba(233,135,255,.64)" : "rgba(153,120,255,.58)";
-    ctx.shadowBlur = 28;
-
-    var petals = isFinal ? 14 : 10;
-    for (var i = 0; i < petals; i++) {
-      var a = i * TAU / petals + Math.sin(t * .65) * .08;
-      var grad = ctx.createLinearGradient(Math.cos(a) * -r, Math.sin(a) * -r, Math.cos(a) * r, Math.sin(a) * r);
-      grad.addColorStop(0, phase ? "rgba(255,168,220,.86)" : "rgba(149,112,173,.82)");
-      grad.addColorStop(1, phase ? "rgba(125,72,178,.86)" : "rgba(81,57,116,.88)");
-      ctx.fillStyle = grad;
-      ctx.beginPath();
-      ctx.ellipse(Math.cos(a) * r * .76, Math.sin(a) * r * .76, r * .54, r * .20, a, 0, TAU);
-      ctx.fill();
-    }
-
-    var body = ctx.createRadialGradient(-r * .22, -r * .30, r * .10, 0, 0, r * 1.15);
-    body.addColorStop(0, phase ? "#ffb4ef" : "#c6aeff");
-    body.addColorStop(.34, phase ? "#8051a4" : "#6d538a");
-    body.addColorStop(1, phase ? "#2c1a44" : "#241a38");
-    ctx.fillStyle = body;
-    blob(ctx, 0, 0, r * .96, r * .82, t * 1.2);
-    ctx.fill();
-
-    ctx.strokeStyle = phase ? "rgba(255,218,255,.70)" : "rgba(255,241,190,.52)";
-    ctx.lineWidth = 2.4;
-    ctx.stroke();
-
-    ctx.fillStyle = phase ? "#ffe2ff" : "#fff1c5";
-    ctx.beginPath();
-    ctx.arc(-r * .25, -r * .10, phase ? 5.6 : 4.2, 0, TAU);
-    ctx.arc(r * .18, -r * .18, phase ? 5.2 : 3.8, 0, TAU);
-    ctx.fill();
-
-    ctx.fillStyle = "rgba(44,25,55,.92)";
-    ctx.beginPath();
-    ctx.arc(-r * .25, -r * .10, 1.7, 0, TAU);
-    ctx.arc(r * .18, -r * .18, 1.7, 0, TAU);
-    ctx.fill();
-
-    ctx.strokeStyle = "rgba(255,238,190,.70)";
-    ctx.lineWidth = 2.2;
-    ctx.beginPath();
-    ctx.arc(0, r * .18, r * .25, .05, Math.PI - .05);
-    ctx.stroke();
-
-    ctx.fillStyle = "#fff1a4";
-    star(ctx, 0, -r * 1.18, r * .28, r * .12, 5, -Math.PI / 2 + t * .25);
-    ctx.fill();
-
-    ctx.font = "900 12px system-ui, sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillStyle = "rgba(255,244,210,.92)";
-    ctx.shadowBlur = 12;
-    ctx.fillText(isFinal ? "BOSS" : "MID", 0, -r - 17);
-  }
-
-  function drawRareEnemy(ctx, r, t) {
-    glow(ctx, 0, 0, r * 2.6, "rgba(255,226,124,.30)");
-    ctx.shadowColor = "rgba(255,215,100,.70)";
-    ctx.shadowBlur = 22;
-    ctx.fillStyle = "rgba(255,218,111,.95)";
-    star(ctx, 0, 0, r * 1.22, r * .56, 5, -Math.PI / 2 + t * .55);
-    ctx.fill();
-    ctx.strokeStyle = "rgba(255,255,255,.72)";
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    drawEyes(ctx, r * .10);
-  }
-
-  function drawBatEnemy(ctx, r, t, color) {
-    glow(ctx, 0, 0, r * 2.3, "rgba(132,107,255,.15)");
-    ctx.fillStyle = color || "rgba(124, 104, 171, .94)";
-    ctx.shadowColor = "rgba(50,38,92,.45)";
-    ctx.shadowBlur = 14;
-    ctx.beginPath();
-    ctx.ellipse(-r * .74, 0, r * .78, r * .38, -.28, 0, TAU);
-    ctx.ellipse(r * .74, 0, r * .78, r * .38, .28, 0, TAU);
-    ctx.fill();
-    blob(ctx, 0, 0, r * .74, r * .66, t * 1.4);
-    ctx.fill();
-    drawHighlight(ctx, r);
-    drawEyes(ctx);
-  }
-
-  function drawStoneEnemy(ctx, r, t, color) {
-    glow(ctx, 0, 0, r * 2.0, "rgba(112,220,255,.12)");
-    ctx.fillStyle = color || "rgba(116, 148, 162, .95)";
-    ctx.shadowColor = "rgba(127,220,255,.32)";
-    ctx.shadowBlur = 12;
-    star(ctx, 0, 0, r * 1.16, r * .82, 7, t * .2);
-    ctx.fill();
-    ctx.strokeStyle = "rgba(245,255,255,.28)";
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    drawEyes(ctx);
-  }
-
-  function drawGhostEnemy(ctx, r, t, color) {
-    glow(ctx, 0, 0, r * 2.4, "rgba(190,155,255,.18)");
-    ctx.globalAlpha *= .88;
-    ctx.fillStyle = color || "rgba(187, 165, 230, .90)";
-    ctx.shadowColor = "rgba(185,145,255,.45)";
-    ctx.shadowBlur = 16;
-    blob(ctx, 0, 0, r * .92, r * 1.16, t);
-    ctx.fill();
-    drawHighlight(ctx, r);
-    drawEyes(ctx);
-  }
-
-  function drawSoftEnemy(ctx, r, t, color) {
-    glow(ctx, 0, 0, r * 2.0, "rgba(255,222,130,.12)");
-    var body = ctx.createRadialGradient(-r * .25, -r * .28, r * .14, 0, 0, r * 1.08);
-    body.addColorStop(0, "rgba(255,255,255,.62)");
-    body.addColorStop(.28, color || "rgba(226, 151, 130, .95)");
-    body.addColorStop(1, "rgba(78, 52, 88, .82)");
-    ctx.fillStyle = body;
-    ctx.shadowColor = "rgba(40,28,64,.34)";
-    ctx.shadowBlur = 13;
-    blob(ctx, 0, 0, r * 1.08, r * .90, t);
-    ctx.fill();
-    ctx.strokeStyle = "rgba(255,240,208,.22)";
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    drawHighlight(ctx, r);
-    drawEyes(ctx);
-  }
-
-  function drawHighlight(ctx, r) {
-    ctx.fillStyle = "rgba(255,255,255,.35)";
-    ctx.beginPath();
-    ctx.arc(-r * .32, -r * .32, Math.max(3, r * .16), 0, TAU);
-    ctx.fill();
-  }
-
-  function drawEyes(ctx, shift) {
-    shift = shift || 0;
-    ctx.fillStyle = "rgba(38,28,48,.88)";
-    ctx.beginPath();
-    ctx.arc(-4 - shift, 0, 1.9, 0, TAU);
-    ctx.arc(5 + shift, 0, 1.9, 0, TAU);
-    ctx.fill();
-  }
-
-  function drawMogu(ctx, x, y, p, t) {
-    if (offscreen(x, y, 90)) return;
-
+  function drawPlayerSprite(ctx, x, y, p, t) {
     var bob = reduceMotion ? 0 : Math.sin(t * 3.0) * 1.2;
-    ctx.save();
-    ctx.translate(x, y + bob);
 
     if (p.auraRadius > 0) {
+      ctx.save();
       ctx.strokeStyle = "rgba(154,238,183,.26)";
       ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.arc(0, 0, p.auraRadius, 0, TAU);
+      ctx.arc(x, y, p.auraRadius, 0, TAU);
       ctx.stroke();
+      ctx.restore();
     }
 
-    glow(ctx, 0, 0, 60, "rgba(255,226,124,.22)");
-    ctx.shadowColor = "rgba(255,226,124,.38)";
-    ctx.shadowBlur = 18;
+    drawSprite(ctx, sprites.mogu, x, y + bob, 72, Math.sin(t * 1.8) * .03);
+  }
 
-    ctx.fillStyle = "rgba(255,229,215,.96)";
-    ctx.beginPath();
-    ctx.arc(-14, -18, 9, 0, TAU);
-    ctx.arc(14, -18, 9, 0, TAU);
+  function drawHpBar(ctx, x, y, w, pct, boss) {
+    ctx.save();
+    ctx.fillStyle = "rgba(7,6,18,.46)";
+    roundRect(ctx, x - w / 2, y, w, 7, 4);
     ctx.fill();
 
-    ctx.fillStyle = "rgba(255,249,238,.96)";
-    ctx.beginPath();
-    ctx.arc(-14, -18, 4.5, 0, TAU);
-    ctx.arc(14, -18, 4.5, 0, TAU);
+    var g = ctx.createLinearGradient(x - w / 2, y, x + w / 2, y);
+    if (boss) {
+      g.addColorStop(0, "#c99bff");
+      g.addColorStop(1, "#ff9bd8");
+    } else {
+      g.addColorStop(0, "#ffe793");
+      g.addColorStop(1, "#7fe5ff");
+    }
+    ctx.fillStyle = g;
+    roundRect(ctx, x - w / 2, y, w * pct, 7, 4);
     ctx.fill();
-
-    var body = ctx.createRadialGradient(-8, -10, 4, 0, 2, 30);
-    body.addColorStop(0, "#ffffff");
-    body.addColorStop(.50, "#fff8eb");
-    body.addColorStop(1, "#efd6c5");
-    ctx.fillStyle = body;
-    blob(ctx, 0, 0, 25, 21, t * 1.4);
-    ctx.fill();
-
-    ctx.strokeStyle = "rgba(139,99,113,.20)";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.ellipse(0, 0, 25, 21, 0, 0, TAU);
-    ctx.stroke();
-
-    ctx.fillStyle = "rgba(255,211,197,.52)";
-    ctx.beginPath();
-    ctx.arc(-12, 4, 5.2, 0, TAU);
-    ctx.arc(12, 4, 5.2, 0, TAU);
-    ctx.fill();
-
-    ctx.fillStyle = "#3f2f41";
-    ctx.beginPath();
-    ctx.arc(-7, -3, 2.5, 0, TAU);
-    ctx.arc(7, -3, 2.5, 0, TAU);
-    ctx.fill();
-
-    ctx.strokeStyle = "#3f2f41";
-    ctx.lineWidth = 1.6;
-    ctx.beginPath();
-    ctx.arc(0, 3, 3.6, 0, Math.PI);
-    ctx.stroke();
-
-    ctx.fillStyle = "rgba(255,236,139,.98)";
-    star(ctx, 16, -12, 5.8, 2.6, 5, -Math.PI / 2 + t * .4);
-    ctx.fill();
-
     ctx.restore();
   }
 
-  function roundRect(ctx, x, y, w, h, r, fill) {
+  function roundRect(ctx, x, y, w, h, r) {
     var rr = Math.min(r, Math.abs(w) / 2, Math.abs(h) / 2);
     ctx.beginPath();
     ctx.moveTo(x + rr, y);
@@ -591,7 +338,6 @@
     ctx.arcTo(x, y + h, x, y, rr);
     ctx.arcTo(x, y, x + w, y, rr);
     ctx.closePath();
-    if (fill) ctx.fill();
   }
 
   if (document.readyState === "loading") {

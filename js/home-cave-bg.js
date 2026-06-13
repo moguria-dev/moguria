@@ -1,6 +1,5 @@
 /* Moguria Home Cave Background Loader
-   Visual-only DOM layer for the home screen.
-   It does not read/write save data and does not change battle, data, or progression logic. */
+   Visual-only DOM layer for the home screen. */
 (function () {
   "use strict";
 
@@ -72,7 +71,5 @@
     init();
   }
 
-  window.MoguriaHomeCaveBg = {
-    init: init
-  };
+  window.MoguriaHomeCaveBg = { init: init };
 })();
