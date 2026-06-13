@@ -1,59 +1,40 @@
-# Moguria v1.5.0
+# Moguria v3.1.1-hardening
 
-スマホ向けブラウザローグライトRPG「Moguria」のビルド体験強化版です。
+スマホ向けブラウザローグライトRPG「Moguria」の `develop-homeui` 向け安全化・ホームUI強化版です。
+
+## この版の主な変更
+
+- 公開GitHub Pagesでは `#dev` / `?dev=1` だけで開発メニューが出ないようにしました。
+- セーブ保存・読み込みを `try/catch` で保護し、壊れたセーブJSONを `moguria.corrupt.*` に退避できるようにしました。
+- 開発ブランチでは Service Worker を標準OFFにし、古い `moguria-core-*` キャッシュを起動時に掃除します。
+- ホーム画面のスタートボタンを `innerHTML` 丸ごと差し替えず、アイコンを保持したまま文言だけ更新します。
+- ホーム画面初期化の多重実行を防止しました。
+- 図鑑・記録・装備・ガチャ・おでかけUIで、動的値をHTMLエスケープしてから描画します。
+- バージョン表記を `3.1.1-hardening` に揃えました。
+- ホーム背景にCSSベースの洞窟光、ランプ火、光粒子、鉱石きらめき、Mogu呼吸演出を追加しました。
+- `prefers-reduced-motion` に対応しました。
 
 ## 起動方法
-zipを展開し、`index.html` をローカルサーバー経由で開いてください。
 
-## v1.5の主な追加
-- スキル36種
-- アーティファクト26種
-- 雷連鎖、周回攻撃、設置爆弾、氷スロー、撃破回復、経験値強化
-- 遠距離敵、突進敵、分裂敵、硬い敵などの行動追加
-- リザルトコメント・称号・ビルド名の反応を強化
+ローカルサーバー経由で開いてください。
 
-## 開発用
-- URL末尾 `#dev` で開発メニュー
-- URL末尾 `#debug` でデバッグ表示
+```bash
+python3 -m http.server 8000
+```
 
-## 重要思想
-- かわいい8：不穏2
-- 食べて成長
-- 毎回違う壊れビルド
-- ホームは静か、ダンジョンは熱い
+その後、ブラウザで `http://localhost:8000/` を開きます。
 
-## v1.7.0
-開始・ボス・クリアの節目演出と、ランダムモブイベントを追加しました。単調なウェーブ進行にならないよう、低〜中頻度で小さな山場が発生します。
+## 開発メニュー
 
+開発メニューは以下の条件をすべて満たす時だけ表示されます。
 
-## v1.7 更新
-- 雷連鎖の射程を短縮し、遠距離の敵を無意識に倒しにくくしました。
-- コントローラーの標準位置を少し上に移動しました。
+- `localhost` または `127.0.0.1` で開いている
+- URL末尾に `#dev` または `?dev=1` がある
+- `MoguriaConfig.security.devToolsEnabled` が `true`
 
+公開URLでは `#dev` を付けても表示されません。
 
-## v1.8
-メタ成長基盤版。MoguCoin、装備5部位、簡易ガチャ、装備強化、おでかけ入口を追加しました。
+## Service Worker
 
-## v1.9.0 変更点
-
-- 敵の重なりを軽減しました。
-- 序盤に理不尽な硬い敵イベントが出ないようにしました。
-- 1プレイに制限時間を追加しました。
-- 残り時間をHUDに表示します。
-
-
-### v2.0 感情演出強化版
-キービジュアルで固まった「優しい光＋深い影」「かわいいのに少し不穏」「爽快に壊れる」を反映した演出強化版です。画像素材なしでも軽く動くよう、Canvas粒子とWebAudioの仮SEで実装しています。
-
-
-## v2.3
-危険・覚醒・深層・食べる・ガチャの感情演出を追加しました。
-
-
-## v2.4 notes
-
-This version adds emotional moment effects such as near-miss survival, chain burst, boss phase shift, and star-light absorption. It also adds runtime performance safeguards to reduce heat, input lag, freezes, and browser crashes on mobile browsers.
-
-
-### v2.8
-キービジュアル認識合わせ後の大規模UI刷新版です。ホーム・バトルHUD・スキルカードの見た目を完成形イメージへ大きく寄せています。
+`develop-homeui` ではキャッシュ事故を避けるため、`MoguriaConfig.assets.registerServiceWorker` を `false` にしています。
+リリースで有効化する場合は、`service-worker.js` の `CACHE_NAME` と `CORE_ASSETS` を更新してください。
