@@ -1,20 +1,14 @@
-/* Moguria Keyvisual Visual Refresh
+/* Moguria Keyvisual Asset-Rich Visual Refresh
    Target branch: develop-homeui2.
-   Scope: visual layer only. No save, battle, game data, or progression logic changes. */
+   Visual-only. No save, battle, game data, or progression logic changes. */
 
 :root {
   --kv-ink: #fff8e7;
   --kv-muted: rgba(255, 239, 204, .78);
-  --kv-deep: #0d0a1d;
-  --kv-panel: rgba(25, 17, 39, .50);
-  --kv-panel-strong: rgba(20, 13, 34, .72);
   --kv-line: rgba(255, 231, 177, .28);
   --kv-gold: #ffd88d;
-  --kv-gold2: #ffb867;
-  --kv-violet: #9d77ff;
   --kv-blue: #7fdfff;
-  --kv-pink: #f2a3d7;
-  --kv-green: #9df0ba;
+  --kv-violet: #9d77ff;
 }
 
 body.kv-visual-refresh {
@@ -26,37 +20,29 @@ body.kv-visual-refresh {
 
 body.kv-visual-refresh button {
   color: var(--kv-ink);
-  border: 1px solid rgba(255, 239, 196, .28);
-  background:
-    linear-gradient(180deg, rgba(255, 244, 207, .18), rgba(255, 196, 103, .08)),
-    rgba(20, 14, 34, .58);
-  box-shadow:
-    0 11px 24px rgba(0, 0, 0, .24),
-    inset 0 1px 0 rgba(255, 255, 255, .28),
-    inset 0 -10px 18px rgba(76, 38, 110, .18);
+  border: 0;
+  background-image:
+    url("../assets/images/kv-ui/button_secondary.png?v=20260613-asset-rich"),
+    linear-gradient(180deg, rgba(255, 244, 207, .12), rgba(255, 196, 103, .06));
+  background-size: 100% 100%, auto;
+  background-repeat: no-repeat;
+  box-shadow: none;
   text-shadow: 0 2px 10px rgba(0, 0, 0, .46);
-  backdrop-filter: blur(12px) saturate(1.12);
+  backdrop-filter: blur(10px) saturate(1.12);
 }
 
 body.kv-visual-refresh button:active {
   transform: translateY(2px) scale(.99);
-  box-shadow:
-    0 5px 13px rgba(0, 0, 0, .26),
-    inset 0 1px 0 rgba(255, 255, 255, .18);
 }
 
 body.kv-visual-refresh .primary,
 body.kv-visual-refresh .kv-start {
   color: #2b1735;
-  background:
-    radial-gradient(circle at 28% 8%, rgba(255, 255, 237, .90), transparent 32%),
+  background-image:
+    url("../assets/images/kv-ui/button_primary.png?v=20260613-asset-rich"),
     linear-gradient(180deg, #fff0b5, #ffbf64 52%, #d98645);
-  border-color: rgba(255, 244, 197, .75);
+  background-size: 100% 100%, auto;
   text-shadow: 0 1px rgba(255, 255, 255, .36);
-  box-shadow:
-    0 14px 32px rgba(255, 188, 89, .32),
-    0 0 34px rgba(255, 206, 119, .18),
-    inset 0 2px 0 rgba(255, 255, 255, .55);
 }
 
 body.kv-visual-refresh .glass,
@@ -64,15 +50,23 @@ body.kv-visual-refresh .modal-card,
 body.kv-visual-refresh .panel,
 body.kv-visual-refresh .result-card {
   color: var(--kv-ink);
-  border: 1px solid var(--kv-line);
-  background:
-    linear-gradient(180deg, rgba(255, 245, 214, .09), rgba(169, 115, 255, .08)),
-    var(--kv-panel);
+  border: 0;
+  background-image:
+    url("../assets/images/kv-ui/panel_glass_large.png?v=20260613-asset-rich"),
+    linear-gradient(180deg, rgba(255, 245, 214, .08), rgba(169, 115, 255, .07));
+  background-size: 100% 100%, auto;
+  background-repeat: no-repeat;
   box-shadow:
-    0 24px 60px rgba(0, 0, 0, .30),
-    inset 0 1px 0 rgba(255, 255, 255, .22),
-    inset 0 0 48px rgba(127, 93, 255, .09);
-  backdrop-filter: blur(16px) saturate(1.25);
+    0 24px 60px rgba(0, 0, 0, .24),
+    inset 0 1px 0 rgba(255, 255, 255, .12);
+  backdrop-filter: blur(14px) saturate(1.22);
+}
+
+body.kv-visual-refresh .modal-card,
+body.kv-visual-refresh .panel {
+  background-image:
+    url("../assets/images/kv-ui/panel_glass_modal.png?v=20260613-asset-rich"),
+    linear-gradient(180deg, rgba(255, 245, 214, .09), rgba(169, 115, 255, .08));
 }
 
 body.kv-visual-refresh small,
@@ -84,9 +78,7 @@ body.kv-visual-refresh .stat span {
   color: var(--kv-muted);
 }
 
-body.kv-visual-refresh #home {
-  color: var(--kv-ink);
-}
+body.kv-visual-refresh #home { color: var(--kv-ink); }
 
 body.kv-visual-refresh .kv-topbar {
   color: var(--kv-ink);
@@ -94,14 +86,13 @@ body.kv-visual-refresh .kv-topbar {
 }
 
 body.kv-visual-refresh .kv-logo {
-  background:
-    linear-gradient(135deg, rgba(255, 247, 218, .14), rgba(134, 93, 255, .10)),
-    rgba(14, 10, 29, .36);
-  border: 1px solid rgba(255, 231, 177, .24);
-  box-shadow:
-    0 12px 38px rgba(0, 0, 0, .22),
-    inset 0 1px rgba(255, 255, 255, .15);
-  backdrop-filter: blur(12px);
+  background-image:
+    url("../assets/images/kv-ui/title_plate.png?v=20260613-asset-rich"),
+    linear-gradient(135deg, rgba(255, 247, 218, .10), rgba(134, 93, 255, .08));
+  background-size: 100% 100%, auto;
+  border: 0;
+  box-shadow: none;
+  backdrop-filter: blur(10px);
 }
 
 body.kv-visual-refresh .kv-logo b {
@@ -109,9 +100,7 @@ body.kv-visual-refresh .kv-logo b {
   letter-spacing: .03em;
 }
 
-body.kv-visual-refresh .kv-logo small {
-  color: rgba(255, 236, 195, .90);
-}
+body.kv-visual-refresh .kv-logo small { color: rgba(255, 236, 195, .90); }
 
 body.kv-visual-refresh .kv-logo .spark {
   color: var(--kv-gold);
@@ -121,20 +110,20 @@ body.kv-visual-refresh .kv-logo .spark {
 
 body.kv-visual-refresh .kv-currencies span {
   color: #fff1c6;
-  background:
-    linear-gradient(180deg, rgba(255, 245, 215, .11), rgba(143, 99, 255, .08)),
-    rgba(15, 10, 31, .48);
-  border: 1px solid rgba(255, 231, 177, .24);
-  box-shadow:
-    0 10px 24px rgba(0, 0, 0, .22),
-    inset 0 1px rgba(255, 255, 255, .16);
-  backdrop-filter: blur(12px);
+  background-image:
+    url("../assets/images/kv-ui/currency_pill.png?v=20260613-asset-rich"),
+    linear-gradient(180deg, rgba(255, 245, 215, .09), rgba(143, 99, 255, .06));
+  background-size: 100% 100%, auto;
+  border: 0;
+  box-shadow: none;
+  backdrop-filter: blur(10px);
 }
 
 body.kv-visual-refresh .kv-profile-card {
-  background:
-    linear-gradient(180deg, rgba(255, 247, 221, .12), rgba(99, 55, 141, .12)),
-    rgba(15, 10, 31, .46);
+  background-image:
+    url("../assets/images/kv-ui/panel_glass_large.png?v=20260613-asset-rich"),
+    linear-gradient(180deg, rgba(255, 247, 221, .10), rgba(99, 55, 141, .10));
+  background-size: 100% 100%, auto;
 }
 
 body.kv-visual-refresh .kv-profile-card h2 {
@@ -145,90 +134,84 @@ body.kv-visual-refresh .kv-profile-card h2 {
 body.kv-visual-refresh .belly-wrap {
   background:
     linear-gradient(180deg, rgba(255, 245, 216, .10), rgba(79, 54, 116, .10)),
-    rgba(12, 8, 25, .28);
-  border: 1px solid rgba(255, 231, 177, .22);
+    rgba(12, 8, 25, .24);
+  border: 1px solid rgba(255, 231, 177, .18);
 }
 
 body.kv-visual-refresh .bar {
-  height: 13px;
-  background: rgba(10, 7, 22, .58);
-  border: 1px solid rgba(255, 241, 201, .20);
-  box-shadow: inset 0 0 12px rgba(0, 0, 0, .26);
+  height: 15px;
+  background-image:
+    url("../assets/images/kv-ui/progress_frame.png?v=20260613-asset-rich"),
+    linear-gradient(180deg, rgba(10, 7, 22, .58), rgba(10, 7, 22, .40));
+  background-size: 100% 100%, auto;
+  border: 0;
+  box-shadow: none;
+  overflow: hidden;
 }
 
 body.kv-visual-refresh .bar i {
-  background:
+  background-image:
+    url("../assets/images/kv-ui/progress_fill.png?v=20260613-asset-rich"),
     linear-gradient(90deg, #ffe793, #ffb574 42%, #e889d5 72%, #9a83ff);
-  box-shadow:
-    0 0 14px rgba(255, 207, 126, .54),
-    inset 0 1px rgba(255,255,255,.52);
+  background-size: 100% 100%, auto;
+  box-shadow: 0 0 14px rgba(255, 207, 126, .54);
+}
+
+body.kv-visual-refresh .kv-bottom-dock {
+  background-image:
+    url("../assets/images/kv-ui/dock_glass.png?v=20260613-asset-rich"),
+    linear-gradient(180deg, rgba(255,247,220,.08), rgba(56,37,91,.10));
+  background-size: 100% 100%, auto;
 }
 
 body.kv-visual-refresh .kv-side-rail button,
 body.kv-visual-refresh .kv-bottom-dock button {
-  background:
-    radial-gradient(circle at 45% 5%, rgba(255, 255, 238, .28), transparent 36%),
-    linear-gradient(180deg, rgba(255, 242, 212, .16), rgba(132, 93, 255, .10)),
-    rgba(17, 12, 31, .55);
-  border-color: rgba(255, 232, 183, .26);
+  background-image:
+    url("../assets/images/kv-ui/button_icon_round.png?v=20260613-asset-rich"),
+    radial-gradient(circle at 45% 5%, rgba(255, 255, 238, .18), transparent 36%);
+  background-size: 100% 100%, auto;
+  border: 0;
 }
 
 body.kv-visual-refresh .kv-side-rail button img,
 body.kv-visual-refresh .kv-bottom-dock button img {
+  width: 64%;
+  height: 64%;
+  object-fit: contain;
   filter:
-    drop-shadow(0 7px 10px rgba(0,0,0,.22))
-    drop-shadow(0 0 12px rgba(255, 219, 132, .28));
+    drop-shadow(0 7px 10px rgba(0,0,0,.20))
+    drop-shadow(0 0 12px rgba(255, 219, 132, .30));
 }
 
-body.kv-visual-refresh .kv-btn-icon {
-  filter: saturate(1.08);
+body.kv-visual-refresh .kv-start {
+  background-image:
+    url("../assets/images/kv-ui/button_primary.png?v=20260613-asset-rich"),
+    linear-gradient(180deg, #fff0b5, #ffbf64 52%, #d98645) !important;
+  background-size: 100% 100%, auto !important;
 }
 
 body.kv-visual-refresh .kv-expedition {
-  background:
-    linear-gradient(180deg, rgba(255, 247, 216, .10), rgba(93, 62, 151, .08)),
-    rgba(12, 8, 25, .50);
+  background-image:
+    url("../assets/images/kv-ui/panel_glass_small.png?v=20260613-asset-rich"),
+    linear-gradient(180deg, rgba(255, 247, 216, .08), rgba(93, 62, 151, .06));
+  background-size: 100% 100%, auto;
 }
 
 body.kv-visual-refresh .mini-mogu {
   background:
-    radial-gradient(circle at 35% 28%, #fff, #fff0df 45%, #ecc7b5);
-  box-shadow:
-    0 0 22px rgba(255, 222, 144, .34),
-    inset 0 -5px rgba(89, 52, 80, .08);
+    url("../assets/images/kv-sprites/mogu_player.png?v=20260613-asset-rich") center / 160% 160% no-repeat;
+  box-shadow: none;
 }
 
 body.kv-visual-refresh .mogu {
-  color: #3c2a3f;
   background:
-    radial-gradient(circle at 36% 24%, #ffffff 0 18%, #fff7ea 42%, #f2dacb 72%, #e7bda5 100%);
-  border: 1px solid rgba(255, 245, 220, .62);
-  box-shadow:
-    inset 0 -10px rgba(120, 76, 108, .08),
-    0 18px 34px rgba(13, 8, 24, .30),
-    0 0 28px rgba(255, 220, 139, .30);
+    url("../assets/images/kv-sprites/mogu_player.png?v=20260613-asset-rich") center / contain no-repeat !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  color: transparent !important;
 }
 
-body.kv-visual-refresh .mogu .ear {
-  background:
-    radial-gradient(circle at 50% 46%, #fff8ef 0 36%, #ffd8c8 37% 62%, #e5a98e 100%);
-  box-shadow: inset 0 -4px rgba(116, 72, 92, .08);
-}
-
-body.kv-visual-refresh .mogu .face {
-  text-shadow: 0 1px 0 rgba(255,255,255,.55);
-}
-
-body.kv-visual-refresh .mogu::after {
-  content: "✦";
-  position: absolute;
-  right: 26%;
-  top: 55%;
-  color: #ffe483;
-  font-size: 15px;
-  filter: drop-shadow(0 0 8px rgba(255, 227, 131, .78));
-  animation: kvStarBlink 4.4s ease-in-out infinite;
-}
+body.kv-visual-refresh .mogu > * { opacity: 0 !important; }
 
 body.kv-visual-refresh .modal,
 body.kv-visual-refresh .overlay {
@@ -236,14 +219,6 @@ body.kv-visual-refresh .overlay {
     radial-gradient(circle at 50% 35%, rgba(126, 95, 255, .18), transparent 42%),
     rgba(7, 6, 16, .62);
   backdrop-filter: blur(4px);
-}
-
-body.kv-visual-refresh .modal-card,
-body.kv-visual-refresh .panel {
-  background:
-    linear-gradient(180deg, rgba(255, 247, 220, .13), rgba(123, 86, 199, .08)),
-    rgba(16, 11, 32, .78);
-  border-color: rgba(255, 231, 177, .30);
 }
 
 body.kv-visual-refresh .modal-card h2,
@@ -255,29 +230,39 @@ body.kv-visual-refresh .result-card h2 {
     0 3px 16px rgba(0, 0, 0, .38);
 }
 
-body.kv-visual-refresh .skill-grid {
-  gap: 12px;
-}
+body.kv-visual-refresh .skill-grid { gap: 12px; }
 
 body.kv-visual-refresh .skill-card,
 body.kv-visual-refresh .item,
 body.kv-visual-refresh .pause-skill,
 body.kv-visual-refresh .stat,
 body.kv-visual-refresh .badge {
+  position: relative;
   color: var(--kv-ink);
-  background:
-    linear-gradient(180deg, rgba(255, 249, 224, .12), rgba(118, 84, 201, .08)),
-    rgba(18, 12, 34, .54);
-  border: 1px solid rgba(255, 230, 180, .22);
-  box-shadow:
-    0 10px 24px rgba(0, 0, 0, .18),
-    inset 0 1px rgba(255, 255, 255, .14);
+  border: 0;
+  background-image:
+    url("../assets/images/kv-ui/skill_card_common.png?v=20260613-asset-rich"),
+    linear-gradient(180deg, rgba(255, 249, 224, .10), rgba(118, 84, 201, .07));
+  background-size: 100% 100%, auto;
+  background-repeat: no-repeat;
+  box-shadow: none;
+  overflow: hidden;
 }
 
-body.kv-visual-refresh .skill-card {
-  border-radius: 22px;
-  position: relative;
-  overflow: hidden;
+body.kv-visual-refresh .skill-card[data-kv-rarity="rare"],
+body.kv-visual-refresh .skill-card.rare,
+body.kv-visual-refresh .rarity-rare {
+  background-image:
+    url("../assets/images/kv-ui/skill_card_rare.png?v=20260613-asset-rich"),
+    linear-gradient(180deg, rgba(255, 249, 224, .12), rgba(118, 84, 201, .09));
+}
+
+body.kv-visual-refresh .skill-card[data-kv-rarity="legendary"],
+body.kv-visual-refresh .skill-card.legendary,
+body.kv-visual-refresh .rarity-legendary {
+  background-image:
+    url("../assets/images/kv-ui/skill_card_legendary.png?v=20260613-asset-rich"),
+    linear-gradient(180deg, rgba(255, 249, 224, .16), rgba(255, 172, 94, .08));
 }
 
 body.kv-visual-refresh .skill-card::before,
@@ -286,97 +271,120 @@ body.kv-visual-refresh .item::before {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle at 15% 0%, rgba(255, 224, 143, .16), transparent 34%),
+    radial-gradient(circle at 15% 0%, rgba(255, 224, 143, .15), transparent 34%),
     radial-gradient(circle at 92% 20%, rgba(127, 223, 255, .10), transparent 30%);
   pointer-events: none;
 }
 
-body.kv-visual-refresh .skill-card.rare,
-body.kv-visual-refresh .rarity-rare {
-  border-color: rgba(180, 132, 255, .50);
-  box-shadow: 0 0 24px rgba(166, 120, 255, .16), inset 0 1px rgba(255,255,255,.16);
-}
-
-body.kv-visual-refresh .skill-card.legendary,
-body.kv-visual-refresh .rarity-legendary {
-  border-color: rgba(255, 215, 112, .64);
-  box-shadow: 0 0 28px rgba(255, 205, 113, .22), inset 0 1px rgba(255,255,255,.20);
-}
-
 body.kv-visual-refresh .skill-icon,
 body.kv-visual-refresh .pause-skill .ico,
-body.kv-visual-refresh .kv-item-mark {
-  border-radius: 16px;
+body.kv-visual-refresh .kv-item-mark,
+body.kv-visual-refresh .kv-card-icon {
+  border-radius: 18px;
   background:
-    radial-gradient(circle at 35% 24%, rgba(255, 255, 241, .92), transparent 34%),
-    linear-gradient(160deg, rgba(255, 217, 132, .92), rgba(136, 116, 255, .74));
-  color: #352144;
+    url("../assets/images/kv-icons/skill_cave.png?v=20260613-asset-rich") center / contain no-repeat;
+  color: transparent !important;
   box-shadow:
     0 0 18px rgba(255, 220, 134, .24),
-    inset 0 1px rgba(255,255,255,.58),
-    inset 0 -7px rgba(78, 40, 110, .16);
+    inset 0 1px rgba(255,255,255,.38);
+  overflow: hidden;
 }
 
 body.kv-visual-refresh [data-kv-kind="fire"] .skill-icon,
 body.kv-visual-refresh .skill-icon[data-kv-kind="fire"],
-body.kv-visual-refresh .ico[data-kv-kind="fire"] {
-  background: radial-gradient(circle at 35% 22%, #fff8d2, #ffbd72 44%, #e96f59 100%);
+body.kv-visual-refresh .ico[data-kv-kind="fire"],
+body.kv-visual-refresh .kv-card-icon[data-kv-kind="fire"],
+body.kv-visual-refresh .kv-item-mark[data-kv-kind="fire"] {
+  background-image: url("../assets/images/kv-icons/skill_fire.png?v=20260613-asset-rich");
 }
 
 body.kv-visual-refresh [data-kv-kind="ice"] .skill-icon,
 body.kv-visual-refresh .skill-icon[data-kv-kind="ice"],
-body.kv-visual-refresh .ico[data-kv-kind="ice"] {
-  background: radial-gradient(circle at 35% 22%, #f7ffff, #8fe6ff 48%, #8f88ff 100%);
+body.kv-visual-refresh .ico[data-kv-kind="ice"],
+body.kv-visual-refresh .kv-card-icon[data-kv-kind="ice"],
+body.kv-visual-refresh .kv-item-mark[data-kv-kind="ice"] {
+  background-image: url("../assets/images/kv-icons/skill_ice.png?v=20260613-asset-rich");
 }
 
 body.kv-visual-refresh [data-kv-kind="poison"] .skill-icon,
 body.kv-visual-refresh .skill-icon[data-kv-kind="poison"],
-body.kv-visual-refresh .ico[data-kv-kind="poison"] {
-  background: radial-gradient(circle at 35% 22%, #fff0ff, #cf9bff 48%, #6f4b9e 100%);
+body.kv-visual-refresh .ico[data-kv-kind="poison"],
+body.kv-visual-refresh .kv-card-icon[data-kv-kind="poison"],
+body.kv-visual-refresh .kv-item-mark[data-kv-kind="poison"] {
+  background-image: url("../assets/images/kv-icons/skill_poison.png?v=20260613-asset-rich");
 }
 
 body.kv-visual-refresh [data-kv-kind="guard"] .skill-icon,
 body.kv-visual-refresh .skill-icon[data-kv-kind="guard"],
-body.kv-visual-refresh .ico[data-kv-kind="guard"] {
-  background: radial-gradient(circle at 35% 22%, #f8ffdc, #9ef0ba 48%, #5a9d82 100%);
+body.kv-visual-refresh .ico[data-kv-kind="guard"],
+body.kv-visual-refresh .kv-card-icon[data-kv-kind="guard"],
+body.kv-visual-refresh .kv-item-mark[data-kv-kind="guard"] {
+  background-image: url("../assets/images/kv-icons/skill_guard.png?v=20260613-asset-rich");
 }
 
 body.kv-visual-refresh [data-kv-kind="star"] .skill-icon,
 body.kv-visual-refresh .skill-icon[data-kv-kind="star"],
-body.kv-visual-refresh .ico[data-kv-kind="star"] {
-  background: radial-gradient(circle at 35% 22%, #fffef1, #ffe08a 48%, #a784ff 100%);
+body.kv-visual-refresh .ico[data-kv-kind="star"],
+body.kv-visual-refresh .kv-card-icon[data-kv-kind="star"],
+body.kv-visual-refresh .kv-item-mark[data-kv-kind="star"] {
+  background-image: url("../assets/images/kv-icons/skill_star.png?v=20260613-asset-rich");
+}
+
+body.kv-visual-refresh [data-kv-kind="summon"] .skill-icon,
+body.kv-visual-refresh .skill-icon[data-kv-kind="summon"],
+body.kv-visual-refresh .ico[data-kv-kind="summon"],
+body.kv-visual-refresh .kv-card-icon[data-kv-kind="summon"],
+body.kv-visual-refresh .kv-item-mark[data-kv-kind="summon"] {
+  background-image: url("../assets/images/kv-icons/skill_summon.png?v=20260613-asset-rich");
+}
+
+body.kv-visual-refresh [data-kv-kind="artifact"] .skill-icon,
+body.kv-visual-refresh .skill-icon[data-kv-kind="artifact"],
+body.kv-visual-refresh .ico[data-kv-kind="artifact"],
+body.kv-visual-refresh .kv-card-icon[data-kv-kind="artifact"],
+body.kv-visual-refresh .kv-item-mark[data-kv-kind="artifact"] {
+  background-image: url("../assets/images/kv-icons/artifact_core.png?v=20260613-asset-rich");
+}
+
+body.kv-visual-refresh .kv-card-icon {
+  display: block;
+  width: 54px;
+  height: 54px;
+  flex: 0 0 auto;
+  margin: 0 auto 8px;
+  pointer-events: none;
+}
+
+body.kv-visual-refresh .kv-item-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  margin: 0 10px 0 0;
+  vertical-align: middle;
+  pointer-events: none;
 }
 
 body.kv-visual-refresh .tag,
 body.kv-visual-refresh .badge {
   color: #fff2c6;
-  border: 1px solid rgba(255, 230, 180, .22);
-  background:
-    linear-gradient(180deg, rgba(255,255,255,.10), rgba(126, 91, 210, .12)),
-    rgba(13, 9, 28, .45);
+  border: 0;
+  background-image:
+    url("../assets/images/kv-ui/tag_pill.png?v=20260613-asset-rich"),
+    linear-gradient(180deg, rgba(255,255,255,.08), rgba(126, 91, 210, .10));
+  background-size: 100% 100%, auto;
 }
 
 body.kv-visual-refresh .result-card {
-  background:
-    radial-gradient(circle at 50% 18%, rgba(255, 215, 120, .13), transparent 35%),
-    linear-gradient(180deg, rgba(255, 247, 219, .11), rgba(116, 88, 196, .10)),
-    rgba(13, 9, 28, .76);
+  background-image:
+    url("../assets/images/kv-ui/panel_glass_modal.png?v=20260613-asset-rich"),
+    radial-gradient(circle at 50% 18%, rgba(255, 215, 120, .13), transparent 35%);
 }
 
 body.kv-visual-refresh #result {
   background:
     radial-gradient(circle at 50% 30%, rgba(150, 106, 255, .26), transparent 44%),
     linear-gradient(180deg, #19112f, #0b0817 100%);
-}
-
-body.kv-visual-refresh .gacha-orb {
-  color: #fff3ac;
-  text-shadow: 0 0 18px rgba(255, 223, 128, .80);
-  filter: drop-shadow(0 0 24px rgba(255, 213, 120, .32));
-}
-
-body.kv-visual-refresh .gacha-pop {
-  animation: kvPop .55s cubic-bezier(.2, 1.3, .35, 1);
 }
 
 body.kv-visual-refresh #game {
@@ -386,8 +394,8 @@ body.kv-visual-refresh #game {
 }
 
 body.kv-visual-refresh #gameCanvas {
-  filter: saturate(1.16) contrast(1.05) brightness(.88);
-  opacity: .82;
+  filter: saturate(1.12) contrast(1.04) brightness(.72);
+  opacity: .52;
 }
 
 body.kv-visual-refresh #kvGameVisualOverlay {
@@ -399,9 +407,7 @@ body.kv-visual-refresh #kvGameVisualOverlay {
   pointer-events: none;
 }
 
-body.kv-visual-refresh .hud {
-  z-index: 5;
-}
+body.kv-visual-refresh .hud { z-index: 5; }
 
 body.kv-visual-refresh .hud.top div,
 body.kv-visual-refresh .mini-stats,
@@ -409,62 +415,39 @@ body.kv-visual-refresh .tiny,
 body.kv-visual-refresh .wave-toast,
 body.kv-visual-refresh .big-cue {
   color: #fff3c8;
-  border: 1px solid rgba(255, 231, 177, .26);
-  background:
-    linear-gradient(180deg, rgba(255, 247, 219, .11), rgba(116, 88, 196, .08)),
-    rgba(15, 10, 31, .62);
-  box-shadow:
-    0 12px 28px rgba(0, 0, 0, .24),
-    inset 0 1px rgba(255, 255, 255, .14);
-  backdrop-filter: blur(12px) saturate(1.12);
+  border: 0;
+  background-image:
+    url("../assets/images/kv-ui/hud_pill.png?v=20260613-asset-rich"),
+    linear-gradient(180deg, rgba(255, 247, 219, .09), rgba(116, 88, 196, .06));
+  background-size: 100% 100%, auto;
+  box-shadow: none;
+  backdrop-filter: blur(10px) saturate(1.12);
   text-shadow: 0 2px 10px rgba(0, 0, 0, .42);
 }
 
 body.kv-visual-refresh .joystick {
   z-index: 5;
-  background:
-    radial-gradient(circle at 50% 50%, rgba(255, 239, 195, .28), transparent 48%),
-    rgba(17, 12, 31, .32);
-  border: 2px solid rgba(255, 231, 177, .26);
-  box-shadow:
-    0 16px 36px rgba(0, 0, 0, .28),
-    inset 0 0 28px rgba(127, 223, 255, .10);
+  background-image:
+    url("../assets/images/kv-ui/button_icon_round.png?v=20260613-asset-rich"),
+    radial-gradient(circle at 50% 50%, rgba(255, 239, 195, .18), transparent 48%);
+  background-size: 100% 100%, auto;
+  border: 0;
+  box-shadow: none;
 }
 
 body.kv-visual-refresh .joystick i {
-  background:
+  background-image:
+    url("../assets/images/kv-ui/button_primary.png?v=20260613-asset-rich"),
     radial-gradient(circle at 35% 30%, #ffffff, #ffe9b2 45%, #a98cff 100%);
+  background-size: 100% 100%, auto;
   box-shadow:
     0 0 20px rgba(255, 216, 128, .34),
     inset 0 1px rgba(255,255,255,.72);
 }
 
-body.kv-visual-refresh .kv-item-mark {
-  display: inline-grid;
-  place-items: center;
-  width: 38px;
-  height: 38px;
-  margin: 0 10px 0 0;
-  vertical-align: middle;
-  font-weight: 900;
-  pointer-events: none;
-}
-
-body.kv-visual-refresh #overlayBody .item.kv-decorated {
-  position: relative;
-  padding-left: 14px;
-}
-
-body.kv-visual-refresh .row-actions {
-  display: flex;
-  gap: 8px;
-  margin-top: 10px;
-}
-
-body.kv-visual-refresh .row-actions button {
-  flex: 1;
-  padding: 10px 12px;
-  border-radius: 14px;
+body.kv-visual-refresh .close {
+  background-image: url("../assets/images/kv-ui/button_small.png?v=20260613-asset-rich") !important;
+  background-size: 100% 100% !important;
 }
 
 @keyframes kvStarBlink {
@@ -472,25 +455,10 @@ body.kv-visual-refresh .row-actions button {
   50% { opacity: 1; transform: scale(1.12) rotate(8deg); }
 }
 
-@keyframes kvPop {
-  0% { transform: scale(.88) translateY(8px); opacity: 0; }
-  100% { transform: scale(1) translateY(0); opacity: 1; }
-}
-
 @media (max-width: 380px) {
-  body.kv-visual-refresh .kv-profile-card {
-    background-color: rgba(14, 9, 28, .50);
-  }
-
-  body.kv-visual-refresh .kv-side-rail button,
-  body.kv-visual-refresh .kv-bottom-dock button {
-    backdrop-filter: blur(10px);
-  }
-
+  body.kv-visual-refresh .kv-profile-card { background-color: rgba(14, 9, 28, .50); }
   body.kv-visual-refresh .modal-card,
-  body.kv-visual-refresh .panel {
-    padding: 18px;
-  }
+  body.kv-visual-refresh .panel { padding: 18px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

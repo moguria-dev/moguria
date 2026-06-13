@@ -1,5 +1,5 @@
-/* Moguria Home Cave Background v3
-   Scope: #home only. Visual-only. */
+/* Moguria Home Cave Background - keyvisual asset edition
+   Target: develop-homeui2. Visual-only. */
 
 #home .home-bg.kv-world.v31-room {
   isolation: isolate;
@@ -8,7 +8,7 @@
     radial-gradient(circle at 18% 58%, rgba(255, 180, 80, .18) 0 10%, transparent 31%),
     radial-gradient(circle at 70% 35%, rgba(161, 105, 255, .18) 0 13%, transparent 35%),
     linear-gradient(180deg, rgba(8, 8, 22, .14), rgba(3, 3, 11, .18)),
-    url("../assets/images/home/home_cave_base.webp?v=20260613-kv-full") center center / cover no-repeat !important;
+    url("../assets/images/home/home_cave_base.webp?v=20260613-asset-rich") center center / cover no-repeat !important;
 }
 
 #home .home-bg.kv-world.v31-room > *:not(#homeMogu):not(.home-cave-scene) {
@@ -38,10 +38,10 @@
 #home .home-cave-keyvisual-wash {
   z-index: 1;
   inset: -4%;
-  background-image: url("../assets/images/home/home_cave_depth_wash.webp?v=20260613-kv-full");
+  background-image: url("../assets/images/home/home_cave_depth_wash.webp?v=20260613-asset-rich");
   background-size: cover;
   background-position: center;
-  opacity: .18;
+  opacity: .16;
   mix-blend-mode: screen;
   filter: saturate(1.08) contrast(1.03);
   animation: homeCaveWorldDrift 20s ease-in-out infinite alternate;
@@ -115,7 +115,7 @@
   width: 205px;
   height: 205px;
   transform: translate(-50%, -50%);
-  background-image: url("../assets/images/home/home_cave_lamp_glow.png?v=20260613-kv-full");
+  background-image: url("../assets/images/home/home_cave_lamp_glow.png?v=20260613-asset-rich");
   background-size: contain;
   background-position: center;
   background-repeat: no-repeat;
@@ -141,11 +141,7 @@
 #home .home-cave-lamp-right { right: 20%; top: 43%; width: 15px; height: 20px; opacity: .78; animation-delay: 1.2s; }
 
 #home .home-cave-crystals,
-#home .home-cave-particles {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
+#home .home-cave-particles { position: absolute; inset: 0; pointer-events: none; }
 
 #home .home-cave-crystals { z-index: 6; }
 
@@ -156,7 +152,7 @@
   width: calc(28px * var(--s, 1));
   height: calc(38px * var(--s, 1));
   display: block;
-  background-image: url("../assets/images/home/home_cave_crystal_sprite.png?v=20260613-kv-full");
+  background-image: url("../assets/images/home/home_cave_crystal_sprite.png?v=20260613-asset-rich");
   background-size: contain;
   background-position: center;
   background-repeat: no-repeat;
@@ -176,7 +172,7 @@
   display: block;
   width: calc(14px * var(--s, 1));
   height: calc(14px * var(--s, 1));
-  background-image: url("../assets/images/home/home_cave_star_particle.png?v=20260613-kv-full");
+  background-image: url("../assets/images/home/home_cave_star_particle.png?v=20260613-asset-rich");
   background-size: contain;
   background-position: center;
   background-repeat: no-repeat;
@@ -187,13 +183,18 @@
   animation-delay: var(--d, 0s);
 }
 
-#home .home-cave-particles i:nth-child(3n) {
-  filter: drop-shadow(0 0 10px rgba(123, 220, 255, .72));
-}
+#home .home-cave-particles i:nth-child(3n) { filter: drop-shadow(0 0 10px rgba(123, 220, 255, .72)); }
 
 #home #homeMogu.mogu {
   z-index: 14 !important;
+  width: clamp(88px, 23vw, 142px) !important;
+  height: clamp(88px, 23vw, 142px) !important;
+  background: url("../assets/images/kv-sprites/mogu_home_kv.png?v=20260613-asset-rich") center / contain no-repeat !important;
+  border: 0 !important;
+  box-shadow: none !important;
 }
+
+#home #homeMogu.mogu > * { opacity: 0 !important; }
 
 #home #homeMogu.mogu.idle {
   transform-origin: 50% 78%;
@@ -203,74 +204,24 @@
     drop-shadow(0 0 23px rgba(255, 224, 134, .40));
 }
 
-#home #homeMogu.mogu:before {
-  animation: homeCaveMoguShadow 3.9s ease-in-out infinite;
-}
+#home #homeMogu.mogu:before { animation: homeCaveMoguShadow 3.9s ease-in-out infinite; }
 
-@keyframes homeCaveWorldDrift {
-  from { transform: scale(1.02) translate3d(-.8%, -.45%, 0); }
-  to { transform: scale(1.05) translate3d(.8%, .45%, 0); }
-}
-
-@keyframes homeCaveAmbient {
-  from { transform: scale(1.02) translate3d(-1%, -.6%, 0); opacity: .68; }
-  to { transform: scale(1.045) translate3d(1%, .6%, 0); opacity: .88; }
-}
-
-@keyframes homeCaveMoonbeam {
-  0%, 100% { opacity: .44; filter: blur(1.5px); }
-  50% { opacity: .70; filter: blur(2.2px); }
-}
-
-@keyframes homeCaveLampSway {
-  0%, 100% { transform: rotate(-1.5deg); }
-  50% { transform: rotate(1.2deg); }
-}
-
-@keyframes homeCaveLampGlow {
-  0%, 100% { opacity: .48; transform: translate(-50%, -50%) scale(.92); }
-  50% { opacity: .90; transform: translate(-50%, -50%) scale(1.07); }
-}
-
-@keyframes homeCaveFire {
-  0% { transform: translateX(-50%) scaleX(.82) scaleY(1.12) rotate(-4deg); filter: brightness(.98); }
-  56% { transform: translateX(-50%) scaleX(1.10) scaleY(.92) rotate(3deg); filter: brightness(1.16); }
-  100% { transform: translateX(-50%) scaleX(.94) scaleY(1.16) rotate(1deg); filter: brightness(1.04); }
-}
-
-@keyframes homeCaveCrystal {
-  0%, 72%, 100% { opacity: .40; filter: drop-shadow(0 0 9px rgba(112, 220, 255, .22)); }
-  80%, 88% { opacity: .92; filter: drop-shadow(0 0 22px rgba(146, 226, 255, .72)); }
-}
-
-@keyframes homeCaveParticle {
-  0% { opacity: 0; transform: translate3d(0, 20px, 0) scale(.72); }
-  15% { opacity: .82; }
-  80% { opacity: .52; }
-  100% { opacity: 0; transform: translate3d(var(--dx, 12px), -62px, 0) scale(1.12); }
-}
-
-@keyframes homeCaveMoguBreath {
-  0%, 100% { transform: translate(-50%, -50%) scale(1); }
-  50% { transform: translate(-50%, calc(-50% - 5px)) scale(1.015); }
-}
-
-@keyframes homeCaveMoguShadow {
-  0%, 100% { opacity: .78; transform: translateX(-50%) scaleX(1); }
-  50% { opacity: .55; transform: translateX(-50%) scaleX(.86); }
-}
+@keyframes homeCaveWorldDrift { from { transform: scale(1.02) translate3d(-.8%, -.45%, 0); } to { transform: scale(1.05) translate3d(.8%, .45%, 0); } }
+@keyframes homeCaveAmbient { from { transform: scale(1.02) translate3d(-1%, -.6%, 0); opacity: .68; } to { transform: scale(1.045) translate3d(1%, .6%, 0); opacity: .88; } }
+@keyframes homeCaveMoonbeam { 0%,100% { opacity: .44; filter: blur(1.5px); } 50% { opacity: .70; filter: blur(2.2px); } }
+@keyframes homeCaveLampSway { 0%,100% { transform: rotate(-1.5deg); } 50% { transform: rotate(1.2deg); } }
+@keyframes homeCaveLampGlow { 0%,100% { opacity: .48; transform: translate(-50%, -50%) scale(.92); } 50% { opacity: .90; transform: translate(-50%, -50%) scale(1.07); } }
+@keyframes homeCaveFire { 0% { transform: translateX(-50%) scaleX(.82) scaleY(1.12) rotate(-4deg); filter: brightness(.98); } 56% { transform: translateX(-50%) scaleX(1.10) scaleY(.92) rotate(3deg); filter: brightness(1.16); } 100% { transform: translateX(-50%) scaleX(.94) scaleY(1.16) rotate(1deg); filter: brightness(1.04); } }
+@keyframes homeCaveCrystal { 0%,72%,100% { opacity: .40; filter: drop-shadow(0 0 9px rgba(112, 220, 255, .22)); } 80%,88% { opacity: .92; filter: drop-shadow(0 0 22px rgba(146, 226, 255, .72)); } }
+@keyframes homeCaveParticle { 0% { opacity: 0; transform: translate3d(0, 20px, 0) scale(.72); } 15% { opacity: .82; } 80% { opacity: .52; } 100% { opacity: 0; transform: translate3d(var(--dx, 12px), -62px, 0) scale(1.12); } }
+@keyframes homeCaveMoguBreath { 0%,100% { transform: translate(-50%, -50%) scale(1); } 50% { transform: translate(-50%, calc(-50% - 5px)) scale(1.015); } }
+@keyframes homeCaveMoguShadow { 0%,100% { opacity: .78; transform: translateX(-50%) scaleX(1); } 50% { opacity: .55; transform: translateX(-50%) scaleX(.86); } }
 
 @media (max-width: 380px) {
   #home .home-cave-lamp-left { left: 11%; top: 49%; transform: scale(.86); }
   #home .home-cave-lamp-right { right: 15%; top: 42%; transform: scale(.72); }
   #home .home-cave-crystals i { opacity: .48; }
   #home .home-cave-particles i:nth-child(n+10) { display: none; }
-}
-
-@media (max-height: 740px) {
-  #home .home-cave-lamp-left { top: 47%; }
-  #home .home-cave-lamp-right { top: 40%; }
-  #home .home-cave-particles i:nth-child(n+9) { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
