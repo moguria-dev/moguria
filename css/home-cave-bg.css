@@ -1,32 +1,20 @@
-/* Moguria Home Cave Background v2
-   Scope: #home only.
-   Visual-only layer. No save, battle, game data, or progression logic changes. */
+/* Moguria Home Cave Background v3
+   Scope: #home only. Visual-only. */
 
-:root {
-  --home-cave-gold: #ffd98a;
-  --home-cave-amber: #ffad63;
-  --home-cave-blue: #7dd8ff;
-  --home-cave-violet: #a982ff;
-}
-
-/* Replace the old room base with a keyvisual-based cave base. */
 #home .home-bg.kv-world.v31-room {
   isolation: isolate;
   transform: translateZ(0);
   background:
-    radial-gradient(circle at 18% 58%, rgba(255, 180, 80, .20) 0 10%, transparent 31%),
+    radial-gradient(circle at 18% 58%, rgba(255, 180, 80, .18) 0 10%, transparent 31%),
     radial-gradient(circle at 70% 35%, rgba(161, 105, 255, .18) 0 13%, transparent 35%),
     linear-gradient(180deg, rgba(8, 8, 22, .14), rgba(3, 3, 11, .18)),
-    url("../assets/images/home/home_cave_base.webp?v=20260613-cave-v2") center center / cover no-repeat !important;
+    url("../assets/images/home/home_cave_base.webp?v=20260613-kv-full") center center / cover no-repeat !important;
 }
 
-/* Hide legacy room/window/shelf/bed decorative parts.
-   Mogu and the new cave scene remain visible. */
 #home .home-bg.kv-world.v31-room > *:not(#homeMogu):not(.home-cave-scene) {
   display: none !important;
 }
 
-/* Re-enable only this visual layer even if older v31 CSS hides direct children. */
 #home .home-bg.kv-world.v31-room > .home-cave-scene:not(#homeMogu) {
   display: block !important;
   position: absolute;
@@ -50,11 +38,10 @@
 #home .home-cave-keyvisual-wash {
   z-index: 1;
   inset: -4%;
-  background-image: url("../assets/images/home/home_cave_depth_wash.webp?v=20260613-cave-v2");
+  background-image: url("../assets/images/home/home_cave_depth_wash.webp?v=20260613-kv-full");
   background-size: cover;
   background-position: center;
-  background-repeat: no-repeat;
-  opacity: .20;
+  opacity: .18;
   mix-blend-mode: screen;
   filter: saturate(1.08) contrast(1.03);
   animation: homeCaveWorldDrift 20s ease-in-out infinite alternate;
@@ -128,7 +115,7 @@
   width: 205px;
   height: 205px;
   transform: translate(-50%, -50%);
-  background-image: url("../assets/images/home/home_cave_lamp_glow.png?v=20260613-cave-v2");
+  background-image: url("../assets/images/home/home_cave_lamp_glow.png?v=20260613-kv-full");
   background-size: contain;
   background-position: center;
   background-repeat: no-repeat;
@@ -150,19 +137,8 @@
   animation: homeCaveFire 880ms ease-in-out infinite alternate;
 }
 
-#home .home-cave-lamp-left {
-  left: 13%;
-  top: 50%;
-}
-
-#home .home-cave-lamp-right {
-  right: 20%;
-  top: 43%;
-  width: 15px;
-  height: 20px;
-  opacity: .78;
-  animation-delay: 1.2s;
-}
+#home .home-cave-lamp-left { left: 13%; top: 50%; }
+#home .home-cave-lamp-right { right: 20%; top: 43%; width: 15px; height: 20px; opacity: .78; animation-delay: 1.2s; }
 
 #home .home-cave-crystals,
 #home .home-cave-particles {
@@ -171,9 +147,7 @@
   pointer-events: none;
 }
 
-#home .home-cave-crystals {
-  z-index: 6;
-}
+#home .home-cave-crystals { z-index: 6; }
 
 #home .home-cave-crystals i {
   position: absolute;
@@ -182,7 +156,7 @@
   width: calc(28px * var(--s, 1));
   height: calc(38px * var(--s, 1));
   display: block;
-  background-image: url("../assets/images/home/home_cave_crystal_sprite.png?v=20260613-cave-v2");
+  background-image: url("../assets/images/home/home_cave_crystal_sprite.png?v=20260613-kv-full");
   background-size: contain;
   background-position: center;
   background-repeat: no-repeat;
@@ -193,9 +167,7 @@
   animation-delay: var(--d, 0s);
 }
 
-#home .home-cave-particles {
-  z-index: 10;
-}
+#home .home-cave-particles { z-index: 10; }
 
 #home .home-cave-particles i {
   position: absolute;
@@ -204,7 +176,7 @@
   display: block;
   width: calc(14px * var(--s, 1));
   height: calc(14px * var(--s, 1));
-  background-image: url("../assets/images/home/home_cave_star_particle.png?v=20260613-cave-v2");
+  background-image: url("../assets/images/home/home_cave_star_particle.png?v=20260613-kv-full");
   background-size: contain;
   background-position: center;
   background-repeat: no-repeat;
@@ -301,12 +273,6 @@
   #home .home-cave-particles i:nth-child(n+9) { display: none; }
 }
 
-@media (min-width: 680px) {
-  #home .home-cave-lamp-left { left: 15%; }
-  #home .home-cave-lamp-right { right: 19%; }
-}
-
-/* Accessibility: keep the atmosphere, stop the motion. */
 @media (prefers-reduced-motion: reduce) {
   #home .home-cave-scene,
   #home .home-cave-scene *,
@@ -315,9 +281,4 @@
     animation: none !important;
     transition: none !important;
   }
-
-  #home .home-cave-particles i { opacity: .22; }
-  #home .home-cave-keyvisual-wash { opacity: .16; }
-  #home .home-cave-ambient,
-  #home .home-cave-moonbeam { opacity: .50; }
 }
