@@ -1,0 +1,344 @@
+/* Moguria home hardening and background polish.
+   This file intentionally overlays the existing large style.css instead of deleting legacy rules. */
+
+#home.kv-home {
+  isolation: isolate;
+  background: #101522;
+}
+
+.home-cave-scene {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  transform: translateZ(0);
+}
+
+.home-cave-scene::before,
+.home-cave-scene::after {
+  content: "";
+  position: absolute;
+  inset: -8%;
+  pointer-events: none;
+}
+
+.home-cave-scene::before {
+  background:
+    radial-gradient(circle at 72% 28%, rgba(255, 198, 101, .22) 0 8%, transparent 25%),
+    radial-gradient(circle at 19% 72%, rgba(94, 224, 255, .16) 0 7%, transparent 22%),
+    radial-gradient(circle at 78% 80%, rgba(119, 92, 255, .14) 0 10%, transparent 27%),
+    linear-gradient(145deg, rgba(33, 45, 73, .8), rgba(10, 13, 25, .92) 60%, rgba(4, 5, 12, .98));
+  opacity: .88;
+  animation: homeSceneDrift 18s ease-in-out infinite alternate;
+}
+
+.home-cave-scene::after {
+  background:
+    radial-gradient(circle at 50% 45%, transparent 0 42%, rgba(3, 4, 10, .36) 76%, rgba(1, 2, 6, .74) 100%),
+    linear-gradient(180deg, rgba(3, 5, 11, .35), transparent 36%, rgba(2, 3, 8, .42));
+  z-index: 12;
+}
+
+.home-cave-gradient,
+.home-cave-haze,
+.home-cave-crystal,
+.home-cave-particles {
+  position: absolute;
+  pointer-events: none;
+}
+
+.home-cave-gradient {
+  inset: auto -12% -10%;
+  height: 44%;
+  background:
+    radial-gradient(ellipse at 18% 70%, rgba(8, 11, 21, .88) 0 26%, transparent 27%),
+    radial-gradient(ellipse at 50% 84%, rgba(7, 9, 17, .92) 0 35%, transparent 36%),
+    radial-gradient(ellipse at 86% 72%, rgba(9, 12, 22, .88) 0 27%, transparent 28%);
+  z-index: 1;
+}
+
+.home-cave-haze {
+  width: 210px;
+  height: 210px;
+  border-radius: 999px;
+  filter: blur(24px);
+  mix-blend-mode: screen;
+  z-index: 3;
+  animation: homeSoftPulse 5s ease-in-out infinite;
+}
+
+.home-cave-haze.haze-a {
+  right: 12%;
+  top: 18%;
+  background: rgba(255, 185, 85, .26);
+}
+
+.home-cave-haze.haze-b {
+  left: 9%;
+  bottom: 18%;
+  background: rgba(83, 214, 255, .18);
+  animation-delay: 1.4s;
+}
+
+.home-cave-crystal {
+  width: 24px;
+  height: 64px;
+  clip-path: polygon(50% 0, 92% 24%, 75% 100%, 25% 100%, 8% 24%);
+  background: linear-gradient(160deg, rgba(170, 246, 255, .95), rgba(71, 150, 255, .58), rgba(126, 85, 255, .46));
+  filter: drop-shadow(0 0 14px rgba(112, 226, 255, .36));
+  opacity: .74;
+  z-index: 4;
+  animation: homeCrystalBlink 5.7s ease-in-out infinite;
+}
+
+.home-cave-crystal.crystal-a {
+  left: 13%;
+  bottom: 18%;
+  transform: rotate(-12deg) scale(.82);
+}
+
+.home-cave-crystal.crystal-b {
+  right: 13%;
+  bottom: 20%;
+  transform: rotate(10deg) scale(.94);
+  animation-delay: 2.1s;
+}
+
+.home-cave-crystal.crystal-c {
+  right: 31%;
+  top: 24%;
+  transform: rotate(-18deg) scale(.54);
+  opacity: .45;
+  animation-delay: 3.3s;
+}
+
+.home-cave-particles {
+  inset: 0;
+  z-index: 11;
+}
+
+.home-cave-particles i {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  width: calc(4px * var(--s));
+  height: calc(4px * var(--s));
+  border-radius: 999px;
+  background: rgba(255, 232, 166, .86);
+  box-shadow: 0 0 14px rgba(255, 210, 122, .8);
+  opacity: 0;
+  animation: homeParticleFloat 7.2s ease-in-out infinite;
+  animation-delay: var(--d);
+}
+
+.home-cave-scene .room-lamp {
+  transform-origin: 50% 0;
+  animation: homeLampSway 5.8s ease-in-out infinite;
+}
+
+.home-cave-scene .room-lamp::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 48%;
+  width: 18px;
+  height: 30px;
+  border-radius: 60% 40% 55% 45% / 70% 70% 30% 30%;
+  background: linear-gradient(#fff3b0, #ffb341 54%, #ff6b2f);
+  transform: translate(-50%, -50%);
+  transform-origin: 50% 92%;
+  filter: blur(.15px);
+  z-index: 2;
+  animation: homeFireFlicker .95s ease-in-out infinite alternate;
+}
+
+.home-cave-scene .room-lamp::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 320px;
+  height: 320px;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(255,196,91,.34) 0, rgba(255,176,74,.14) 34%, transparent 68%);
+  filter: blur(18px);
+  transform: translate(-50%, -50%);
+  mix-blend-mode: screen;
+  pointer-events: none;
+  animation: homeSoftPulse 2.8s ease-in-out infinite;
+}
+
+#homeMogu.mogu {
+  animation: homeMoguBreath 3.2s ease-in-out infinite;
+  will-change: transform;
+}
+
+#homeMogu.mogu .ear {
+  transform-origin: 50% 82%;
+  animation: homeEarTwitch 5.6s ease-in-out infinite;
+}
+
+#homeMogu.mogu .ear.r {
+  animation-delay: .25s;
+}
+
+#startBtn[aria-disabled="true"] {
+  filter: grayscale(.25);
+}
+
+#devOpenBtn {
+  position: fixed;
+  right: max(12px, env(safe-area-inset-right));
+  bottom: max(12px, env(safe-area-inset-bottom));
+  z-index: 9999;
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 14px;
+  font-weight: 800;
+  background: #222;
+  color: #fff;
+  box-shadow: 0 8px 24px rgba(0,0,0,.3);
+}
+
+.dev-panel {
+  position: fixed;
+  inset: max(16px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  z-index: 10000;
+  max-width: 560px;
+  margin: auto;
+  overflow: auto;
+  border-radius: 22px;
+  padding: 18px;
+  color: #fff8e9;
+  background: rgba(18, 22, 34, .96);
+  box-shadow: 0 22px 60px rgba(0,0,0,.42);
+  backdrop-filter: blur(16px);
+}
+
+.dev-panel.hidden { display: none; }
+.dev-panel h2 { margin: 0 0 10px; }
+.dev-panel p { opacity: .82; line-height: 1.7; }
+.dev-panel .close,
+.dev-panel [data-close] {
+  float: right;
+  border: 0;
+  border-radius: 999px;
+  width: 36px;
+  height: 36px;
+  font-size: 20px;
+}
+.dev-grid,
+.dev-actions {
+  display: grid;
+  gap: 10px;
+}
+.dev-actions {
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  margin: 14px 0;
+}
+.dev-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+.dev-panel button,
+.dev-panel select,
+.dev-panel textarea,
+.dev-panel input {
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.14);
+  padding: 10px 12px;
+  font: inherit;
+}
+.dev-panel textarea {
+  width: 100%;
+  min-height: 260px;
+  color: #f7f0df;
+  background: rgba(0,0,0,.25);
+}
+.dev-warning {
+  color: #ffdf9a;
+}
+
+@keyframes homeSceneDrift {
+  from { transform: scale(1.03) translate3d(-.8%, -.4%, 0); }
+  to { transform: scale(1.05) translate3d(.8%, .4%, 0); }
+}
+
+@keyframes homeSoftPulse {
+  0%, 100% { opacity: .38; transform: translate(-50%, -50%) scale(.96); }
+  50% { opacity: .68; transform: translate(-50%, -50%) scale(1.05); }
+}
+
+.home-cave-haze.haze-a,
+.home-cave-haze.haze-b {
+  transform: none;
+  animation-name: homeHazePulse;
+}
+
+@keyframes homeHazePulse {
+  0%, 100% { opacity: .34; transform: scale(.96); }
+  50% { opacity: .62; transform: scale(1.06); }
+}
+
+@keyframes homeLampSway {
+  0%, 100% { transform: rotate(-1.7deg); }
+  50% { transform: rotate(1.4deg); }
+}
+
+@keyframes homeFireFlicker {
+  0% { transform: translate(-50%, -50%) scaleX(.82) scaleY(1.08) rotate(-4deg); filter: brightness(.95); }
+  55% { transform: translate(-50%, -50%) scaleX(1.08) scaleY(.94) rotate(3deg); filter: brightness(1.15); }
+  100% { transform: translate(-50%, -50%) scaleX(.95) scaleY(1.14) rotate(1deg); filter: brightness(1.03); }
+}
+
+@keyframes homeMoguBreath {
+  0%, 100% { transform: translateY(0) scaleY(1); }
+  50% { transform: translateY(-5px) scaleY(1.018); }
+}
+
+@keyframes homeEarTwitch {
+  0%, 82%, 100% { filter: brightness(1); }
+  86% { filter: brightness(1.12); }
+  90% { filter: brightness(1); }
+}
+
+@keyframes homeParticleFloat {
+  0% { opacity: 0; transform: translate3d(0, 16px, 0) scale(.7); }
+  18% { opacity: .84; }
+  82% { opacity: .58; }
+  100% { opacity: 0; transform: translate3d(12px, -58px, 0) scale(1.1); }
+}
+
+@keyframes homeCrystalBlink {
+  0%, 74%, 100% { opacity: .48; filter: drop-shadow(0 0 10px rgba(112, 226, 255, .24)); }
+  80%, 88% { opacity: .95; filter: drop-shadow(0 0 22px rgba(112, 226, 255, .66)); }
+}
+
+@media (max-width: 720px) {
+  .home-cave-scene .room-lamp::after {
+    width: 250px;
+    height: 250px;
+  }
+
+  .home-cave-crystal.crystal-b {
+    right: 6%;
+    transform: rotate(10deg) scale(.72);
+  }
+
+  .home-cave-particles i:nth-child(n+7) {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #home .home-cave-scene,
+  #home .home-cave-scene *,
+  #home .home-cave-scene *::before,
+  #home .home-cave-scene *::after,
+  #homeMogu,
+  #homeMogu * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
