@@ -1,10 +1,12 @@
-const CACHE_NAME = 'moguria-core-v3.1.1-hardening';
+const CACHE_NAME = 'moguria-core-v1.3.1-home-cave-bg';
+
 const CORE_ASSETS = [
   './',
   './index.html',
   './style.css',
   './css/home-icons.css',
-  './css/home-hardening.css',
+  './css/home-cave-bg.css',
+
   './js/config.js',
   './js/debug.js',
   './js/save.js',
@@ -16,6 +18,7 @@ const CORE_ASSETS = [
   './js/dungeon.js',
   './js/result.js',
   './js/home.js',
+  './js/home-cave-bg.js',
   './js/audio.js',
   './js/game.js',
   './js/ui.js',
@@ -23,29 +26,23 @@ const CORE_ASSETS = [
   './js/performance.js',
   './js/network.js',
   './js/errorLog.js',
-  './js/platform.js',
-  './js/security.js',
   './js/saveTools.js',
   './js/cheatMenu.js',
+  './js/platform.js',
+  './js/security.js',
   './js/main.js',
+
   './assets/manifest.json',
-  './assets/images/home/home_room_bg.png',
-  './assets/images/home/mogu_home.png',
-  './assets/images/home/glass_panel.png',
-  './assets/images/home/gold_button.png',
-  './assets/images/home-icons/snack.svg',
-  './assets/images/home-icons/dex.svg',
-  './assets/images/home-icons/logs.svg',
-  './assets/images/home-icons/gacha.svg',
-  './assets/images/home-icons/equip.svg',
-  './assets/images/home-icons/dungeon.svg',
-  './assets/images/home-icons/outing.svg'
+  './assets/images/home/home_cave_depth_wash.webp',
+  './assets/images/home/home_cave_lamp_glow.png',
+  './assets/images/home/home_cave_star_particle.png',
+  './assets/images/home/home_cave_crystal_sprite.png'
 ];
 
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => Promise.all(CORE_ASSETS.map(asset => cache.add(asset).catch(error => console.warn('[MoguriaSW] cache failed', asset, error)))))
+      .then(cache => cache.addAll(CORE_ASSETS))
       .then(() => self.skipWaiting())
   );
 });
@@ -53,44 +50,33 @@ self.addEventListener('install', event => {
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys()
-      .then(keys => Promise.all(keys.filter(k => k.startsWith('moguria-core-') && k !== CACHE_NAME).map(k => caches.delete(k))))
+      .then(keys => Promise.all(
+        keys
+          .filter(key => key.startsWith('moguria-core-') && key !== CACHE_NAME)
+          .map(key => caches.delete(key))
+      ))
       .then(() => self.clients.claim())
   );
 });
 
-function isDocumentOrCode(request){
-  const accept = request.headers.get('accept') || '';
-  const url = new URL(request.url);
-  return request.mode === 'navigate' || accept.includes('text/html') || /\.(?:js|css|json)$/i.test(url.pathname);
-}
-
-async function networkFirst(request){
-  const cache = await caches.open(CACHE_NAME);
-  try {
-    const response = await fetch(request);
-    if (response && response.ok) cache.put(request, response.clone());
-    return response;
-  } catch (error) {
-    return await caches.match(request) || Response.error();
-  }
-}
-
-async function cacheFirst(request){
-  const cached = await caches.match(request);
-  if (cached) return cached;
-  const response = await fetch(request);
-  if (response && response.ok) {
-    const cache = await caches.open(CACHE_NAME);
-    cache.put(request, response.clone());
-  }
-  return response;
-}
-
 self.addEventListener('fetch', event => {
   const req = event.request;
   if (req.method !== 'GET') return;
+
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
 
-  event.respondWith(isDocumentOrCode(req) ? networkFirst(req) : cacheFirst(req));
+  event.respondWith(
+    caches.match(req).then(cached => {
+      const network = fetch(req).then(res => {
+        if (res && res.ok) {
+          const copy = res.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(req, copy));
+        }
+        return res;
+      }).catch(() => cached);
+
+      return cached || network;
+    })
+  );
 });
