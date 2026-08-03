@@ -1,5 +1,5 @@
 {
-  "version": "3.1.1-hardening",
+  "version": "3.1.2-home-v2",
   "policy": {
     "criticalBudgetMB": 2,
     "initialAudio": "metadata-only",
@@ -8,62 +8,98 @@
   },
   "critical": [
     {
-      "id": "home_room_bg",
+      "id": "home_v2_background",
       "type": "image",
-      "src": "assets/images/home/home_room_bg.png"
+      "src": "assets/images/home-v2/home_bg_base.webp"
     },
     {
-      "id": "mogu_home",
+      "id": "home_v2_mogu",
       "type": "image",
-      "src": "assets/images/home/mogu_home.png"
+      "src": "assets/images/home-v2/mogu_home_idle.png"
     },
     {
-      "id": "glass_panel",
+      "id": "home_v2_star_companion",
       "type": "image",
-      "src": "assets/images/home/glass_panel.png"
+      "src": "assets/images/home-v2/star_companion_home.png"
     },
     {
-      "id": "gold_button",
+      "id": "home_v2_logo",
       "type": "image",
-      "src": "assets/images/home/gold_button.png"
+      "src": "assets/images/home-v2/logo_moguria_home.png"
     },
     {
-      "id": "home_icon_snack",
+      "id": "home_v2_frame",
       "type": "image",
-      "src": "assets/images/home-icons/snack.svg"
+      "src": "assets/images/home-v2/frame_glass_gold_9slice.png"
     },
     {
-      "id": "home_icon_dex",
+      "id": "home_v2_button",
       "type": "image",
-      "src": "assets/images/home-icons/dex.svg"
+      "src": "assets/images/home-v2/button_pearl_9slice.png"
     },
     {
-      "id": "home_icon_logs",
+      "id": "home_v2_button_gold",
       "type": "image",
-      "src": "assets/images/home-icons/logs.svg"
-    },
-    {
-      "id": "home_icon_gacha",
-      "type": "image",
-      "src": "assets/images/home-icons/gacha.svg"
-    },
-    {
-      "id": "home_icon_equip",
-      "type": "image",
-      "src": "assets/images/home-icons/equip.svg"
-    },
-    {
-      "id": "home_icon_dungeon",
-      "type": "image",
-      "src": "assets/images/home-icons/dungeon.svg"
-    },
-    {
-      "id": "home_icon_outing",
-      "type": "image",
-      "src": "assets/images/home-icons/outing.svg"
+      "src": "assets/images/home-v2/button_gold_9slice.png"
     }
   ],
-  "lazy": [],
+  "lazy": [
+    {
+      "id": "home_v2_icon_snack",
+      "type": "image",
+      "src": "assets/images/home-v2/icon_snack.png"
+    },
+    {
+      "id": "home_v2_icon_dex",
+      "type": "image",
+      "src": "assets/images/home-v2/icon_dex.png"
+    },
+    {
+      "id": "home_v2_icon_logs",
+      "type": "image",
+      "src": "assets/images/home-v2/icon_logs.png"
+    },
+    {
+      "id": "home_v2_icon_gacha",
+      "type": "image",
+      "src": "assets/images/home-v2/icon_gacha.png"
+    },
+    {
+      "id": "home_v2_icon_equip",
+      "type": "image",
+      "src": "assets/images/home-v2/icon_equip.png"
+    },
+    {
+      "id": "home_v2_icon_dungeon",
+      "type": "image",
+      "src": "assets/images/home-v2/icon_dungeon.png"
+    },
+    {
+      "id": "home_v2_icon_outing",
+      "type": "image",
+      "src": "assets/images/home-v2/icon_outing.png"
+    },
+    {
+      "id": "home_v2_currency_star",
+      "type": "image",
+      "src": "assets/images/home-v2/currency_star.png"
+    },
+    {
+      "id": "home_v2_currency_coin",
+      "type": "image",
+      "src": "assets/images/home-v2/currency_coin.png"
+    },
+    {
+      "id": "home_v2_currency_gem",
+      "type": "image",
+      "src": "assets/images/home-v2/currency_gem.png"
+    },
+    {
+      "id": "home_v2_expedition_mogu",
+      "type": "image",
+      "src": "assets/images/home-v2/expedition_mogu.png"
+    }
+  ],
   "packs": [
     {
       "id": "stage-yawaraka-forest",
@@ -77,16 +113,23 @@
     }
   ],
   "images": {
-    "home_room_bg": "assets/images/home/home_room_bg.png",
-    "mogu_home": "assets/images/home/mogu_home.png",
-    "glass_panel": "assets/images/home/glass_panel.png",
-    "gold_button": "assets/images/home/gold_button.png",
-    "home_icon_snack": "assets/images/home-icons/snack.svg",
-    "home_icon_dex": "assets/images/home-icons/dex.svg",
-    "home_icon_logs": "assets/images/home-icons/logs.svg",
-    "home_icon_gacha": "assets/images/home-icons/gacha.svg",
-    "home_icon_equip": "assets/images/home-icons/equip.svg",
-    "home_icon_dungeon": "assets/images/home-icons/dungeon.svg",
-    "home_icon_outing": "assets/images/home-icons/outing.svg"
+    "home_v2_background": "assets/images/home-v2/home_bg_base.webp",
+    "home_v2_mogu": "assets/images/home-v2/mogu_home_idle.png",
+    "home_v2_star_companion": "assets/images/home-v2/star_companion_home.png",
+    "home_v2_logo": "assets/images/home-v2/logo_moguria_home.png",
+    "home_v2_icon_snack": "assets/images/home-v2/icon_snack.png",
+    "home_v2_icon_dex": "assets/images/home-v2/icon_dex.png",
+    "home_v2_icon_logs": "assets/images/home-v2/icon_logs.png",
+    "home_v2_icon_gacha": "assets/images/home-v2/icon_gacha.png",
+    "home_v2_icon_equip": "assets/images/home-v2/icon_equip.png",
+    "home_v2_icon_dungeon": "assets/images/home-v2/icon_dungeon.png",
+    "home_v2_icon_outing": "assets/images/home-v2/icon_outing.png",
+    "home_v2_currency_star": "assets/images/home-v2/currency_star.png",
+    "home_v2_currency_coin": "assets/images/home-v2/currency_coin.png",
+    "home_v2_currency_gem": "assets/images/home-v2/currency_gem.png",
+    "home_v2_expedition_mogu": "assets/images/home-v2/expedition_mogu.png",
+    "home_v2_frame": "assets/images/home-v2/frame_glass_gold_9slice.png",
+    "home_v2_button": "assets/images/home-v2/button_pearl_9slice.png",
+    "home_v2_button_gold": "assets/images/home-v2/button_gold_9slice.png"
   }
 }

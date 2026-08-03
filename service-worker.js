@@ -1,8 +1,9 @@
-const CACHE_NAME = 'moguria-core-v1.3.4-final-faithful-visual';
+const CACHE_NAME = 'moguria-core-v1.3.5-home-v2';
 
 const CORE_ASSETS = [
   "./",
   "./index.html",
+  "./assets/manifest.json",
   "./style.css",
   "./css/home-icons.css",
   "./css/home-cave-bg.css",
@@ -144,7 +145,25 @@ const CORE_ASSETS = [
   "./assets/images/home-icons/gacha.png",
   "./assets/images/home-icons/logs.png",
   "./assets/images/home-icons/outing.png",
-  "./assets/images/home-icons/snack.png"
+  "./assets/images/home-icons/snack.png",
+  "./assets/images/home-v2/home_bg_base.webp",
+  "./assets/images/home-v2/mogu_home_idle.png",
+  "./assets/images/home-v2/star_companion_home.png",
+  "./assets/images/home-v2/icon_snack.png",
+  "./assets/images/home-v2/icon_dex.png",
+  "./assets/images/home-v2/icon_logs.png",
+  "./assets/images/home-v2/icon_gacha.png",
+  "./assets/images/home-v2/icon_equip.png",
+  "./assets/images/home-v2/icon_dungeon.png",
+  "./assets/images/home-v2/icon_outing.png",
+  "./assets/images/home-v2/frame_glass_gold_9slice.png",
+  "./assets/images/home-v2/button_pearl_9slice.png",
+  "./assets/images/home-v2/button_gold_9slice.png",
+  "./assets/images/home-v2/logo_moguria_home.png",
+  "./assets/images/home-v2/currency_star.png",
+  "./assets/images/home-v2/currency_coin.png",
+  "./assets/images/home-v2/currency_gem.png",
+  "./assets/images/home-v2/expedition_mogu.png"
 ];
 
 self.addEventListener('install', event => {

@@ -6,65 +6,63 @@
  <meta name="theme-color" content="#171025" />
  <title>Moguria v3.1</title>
  <link rel="stylesheet" href="style.css" />
- <link rel="stylesheet" href="css/home-icons.css" />
- <link rel="stylesheet" href="css/home-cave-bg.css?v=20260613-asset-rich" />
  <link rel="stylesheet" href="css/moguria-kv-visual-refresh.css?v=20260613-asset-rich" />
- <link rel="stylesheet" href="css/moguria-final-ui.css?v=20260613-final-faithful" />
+ <link rel="stylesheet" href="css/moguria-final-ui.css?v=20260803-home-v2" />
 </head>
 <body>
  <div id="app">
- <section id="home" class="screen active kv-home">
- <div class="home-bg kv-world v31-room">
- <div class="room-night-window"><i></i><b></b><span></span></div>
- <div class="room-curtain left"></div>
- <div class="room-curtain right"></div>
- <div class="room-hanging-stars"><i></i><i></i><i></i></div>
- <div class="room-shelf"><span>✦</span><span></span><span></span></div>
- <div class="room-lamp"><i></i></div>
- <div class="room-bed"><i></i><b></b></div>
- <div class="room-rug"></div>
- <div class="room-table"><i></i><b></b></div>
- <div class="kv-sky-orb"></div>
- <div class="kv-floating-island one"></div>
- <div class="kv-floating-island two"></div>
- <div class="kv-room-glow"></div>
- <div id="homeMogu" class="mogu idle"><span class="ear l"></span><span class="ear r"></span><span class="face">•ᴥ•</span><span class="aura"></span></div>
- </div>
- <div class="kv-topbar">
- <div class="kv-logo"><span class="spark">✦</span><b>Moguria</b><small>もぐりあ</small></div>
- <div class="kv-currencies">
- <span>✦ 12,850</span>
- <span id="coinText" class="coin-text">MoguCoin 0</span>
- <span> 1,210</span>
+ <section id="home" class="screen active home-v2">
+ <div class="home-v2__scene" aria-hidden="true">
+ <div class="home-v2__moonbeam"></div>
+ <div class="home-v2__warm-light"></div>
+ <div class="home-v2__particles"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+ <div class="home-v2__vignette"></div>
+ <div class="home-v2__character-stage">
+ <span class="home-v2__character-halo"></span>
+ <span class="home-v2__mogu-shadow"></span>
+ <img id="homeMogu" class="home-v2__mogu idle" src="assets/images/home-v2/mogu_home_idle.png" alt="" />
+ <span class="home-v2__star-wrap"><span class="home-v2__star-glow"></span><img class="home-v2__star" src="assets/images/home-v2/star_companion_home.png" alt="" /></span>
  </div>
  </div>
- <div class="kv-profile-card glass">
- <p class="eyebrow">Mogu</p>
- <h2>もぐ</h2>
- <div class="belly-wrap">
- <div class="belly-top"><span>おなか</span><span id="bellyText">3/3</span></div>
- <div class="bar"><i id="bellyBar"></i></div>
- <small id="bellyHint">光を食べたら、少し休ませてあげよう。</small>
+
+ <header class="home-v2__topbar">
+ <img class="home-v2__logo" src="assets/images/home-v2/logo_moguria_home.png" alt="Moguria もぐりあ" />
+ <div class="home-v2__currencies" aria-label="所持通貨">
+ <span class="home-v2__currency" aria-label="星 12,850"><img src="assets/images/home-v2/currency_star.png" alt="" /><b>12,850</b></span>
+ <span id="coinCurrency" class="home-v2__currency" aria-label="MoguCoin 0"><img src="assets/images/home-v2/currency_coin.png" alt="" /><b id="coinText" class="home-v2__sr-only" aria-hidden="true">MoguCoin 0</b><b id="coinValue">0</b></span>
+ <span class="home-v2__currency" aria-label="宝石 1,210"><img src="assets/images/home-v2/currency_gem.png" alt="" /><b>1,210</b></span>
  </div>
- <p id="homeLine" class="kv-home-line">小さな光も、集まれば夜を照らすよ。</p>
- </div>
- <div class="kv-side-rail">
- <button id="snackBtn"><span class="kv-btn-icon"><img src="assets/images/home-icons/snack.png" alt="" aria-hidden="true"></span><small>おやつ</small></button>
- <button id="dexBtn"><span class="kv-btn-icon"><img src="assets/images/home-icons/dex.png" alt="" aria-hidden="true"></span><small>図鑑</small></button>
- <button id="logsBtn"><span class="kv-btn-icon"><img src="assets/images/home-icons/logs.png" alt="" aria-hidden="true"></span><small>記録</small></button>
- </div>
- <div class="kv-bottom-dock glass">
- <button id="gachaBtn"><span class="kv-btn-icon"><img src="assets/images/home-icons/gacha.png" alt="" aria-hidden="true"></span><b>ガチャ</b></button>
- <button id="equipBtn"><span class="kv-btn-icon"><img src="assets/images/home-icons/equip.png" alt="" aria-hidden="true"></span><b>装備</b></button>
- <button id="startBtn" class="primary kv-start"><span class="kv-btn-icon"><img src="assets/images/home-icons/dungeon.png" alt="" aria-hidden="true"></span><b>ダンジョンへ</b><small>Wave 12</small></button>
- <button id="outingBtn"><span class="kv-btn-icon"><img src="assets/images/home-icons/outing.png" alt="" aria-hidden="true"></span><b>おでかけ</b></button>
- </div>
- <div class="kv-expedition glass">
- <span class="mini-mogu"></span>
- <div><b>探索ボーナス</b><small>02:45:18</small></div>
- <div class="kv-mogu-chain"><i></i><i></i><i></i><i></i><em></em></div>
- <button>受け取る</button>
- </div>
+ </header>
+
+ <section class="home-v2__frame home-v2__profile" aria-label="Moguの状態">
+ <p class="home-v2__eyebrow">Mogu</p>
+ <h1>もぐ</h1>
+ <div class="home-v2__belly-head"><span>おなか</span><strong id="bellyText">3 / 3</strong></div>
+ <div class="home-v2__bar"><i id="bellyBar"></i></div>
+ <span id="bellyHint" class="home-v2__sr-only">光を食べたら、少し休ませてあげよう。</span>
+ <div class="home-v2__profile-rule"></div>
+ <p class="home-v2__caption">今日のひとこと</p>
+ <p id="homeLine" class="home-v2__home-line">小さな光も、集まれば<br />夜を照らすよ。</p>
+ </section>
+
+ <nav class="home-v2__side-rail" aria-label="ホーム機能">
+ <button id="snackBtn" type="button"><img src="assets/images/home-v2/icon_snack.png" alt="" /><small>おやつ</small></button>
+ <button id="dexBtn" type="button"><img src="assets/images/home-v2/icon_dex.png" alt="" /><small>図鑑</small></button>
+ <button id="logsBtn" type="button"><img src="assets/images/home-v2/icon_logs.png" alt="" /><small>記録</small></button>
+ </nav>
+
+ <section class="home-v2__frame home-v2__expedition" aria-label="探索ボーナス">
+ <img class="home-v2__expedition-mogu" src="assets/images/home-v2/expedition_mogu.png" alt="" />
+ <div class="home-v2__expedition-copy"><b>探索ボーナス</b><strong>02:45:18</strong></div>
+ <button class="home-v2__gold-button home-v2__receive" type="button"><span>受け取る</span></button>
+ </section>
+
+ <nav class="home-v2__frame home-v2__dock" aria-label="メインメニュー">
+ <button id="gachaBtn" type="button"><img src="assets/images/home-v2/icon_gacha.png" alt="" /><b>ガチャ</b></button>
+ <button id="equipBtn" type="button"><img src="assets/images/home-v2/icon_equip.png" alt="" /><b>装備</b></button>
+ <button id="startBtn" class="home-v2__gold-button home-v2__start" type="button"><img src="assets/images/home-v2/icon_dungeon.png" alt="" /><b>ダンジョンへ</b><small>Wave 12</small></button>
+ <button id="outingBtn" type="button"><img src="assets/images/home-v2/icon_outing.png" alt="" /><b>おでかけ</b></button>
+ </nav>
  </section>
  <section id="game" class="screen">
  <canvas id="gameCanvas"></canvas>
@@ -138,7 +136,6 @@
  <script src="js/dungeon.js"></script>
  <script src="js/result.js"></script>
  <script src="js/home.js"></script>
- <script src="js/home-cave-bg.js?v=20260613-asset-rich"></script>
  <script src="js/audio.js"></script>
  <script src="js/game.js"></script>
  <script src="js/ui.js"></script>
@@ -152,6 +149,6 @@
  <script src="js/security.js"></script>
  <script src="js/main.js"></script>
  <script src="js/moguria-kv-visual-refresh.js?v=20260613-asset-rich"></script>
- <script src="js/moguria-final-ui.js?v=20260613-final-faithful"></script>
+ <script src="js/moguria-final-ui.js?v=20260803-home-v2"></script>
 </body>
 </html>
