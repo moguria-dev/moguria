@@ -7,13 +7,14 @@
 
   var TAU = Math.PI * 2;
   var ASSET_VERSION = "?v=20260613-asset-rich";
-  var PLAY_ASSET_VERSION = "?v=20260803-battle-world-1";
+  var PLAY_ASSET_VERSION = "?v=20260804-motion-artifact-1";
   var SPRITE_BASE = "assets/images/kv-sprites/";
   var BATTLE_SPRITE_BASE = "assets/images/battle-v2/";
   var ICON_BASE = "assets/images/kv-icons/";
 
   var battleSpriteNames = {
     mogu: "player_battle.webp",
+    companion: "companion_mogu.webp",
     soft: "enemy_soft.webp",
     bat: "enemy_bat.webp",
     stone: "enemy_stone.webp",
@@ -46,8 +47,13 @@
   var icons = {};
   var overlayCanvas = null;
   var overlayCtx = null;
+  var worldLayer = null;
   var reduceMotion = false;
   var lastDecorate = 0;
+  var activeVisualState = null;
+  var playerTrack = { x: 0, y: 0, sample: 0, vx: 0, vy: 0, facing: 1 };
+  var enemyTracks = new WeakMap();
+  var lastWorldTransform = "";
 
   function loadImages() {
     Object.keys(battleSpriteNames).forEach(function (key) {
@@ -91,6 +97,14 @@
     var game = document.getElementById("game");
     var baseCanvas = document.getElementById("gameCanvas");
     if (!game || !baseCanvas) return;
+
+    if (!worldLayer || !worldLayer.isConnected) {
+      worldLayer = document.createElement("div");
+      worldLayer.id = "kvBattleWorldLayer";
+      worldLayer.setAttribute("aria-hidden", "true");
+      game.insertBefore(worldLayer, baseCanvas);
+    }
+
     if (overlayCanvas && overlayCanvas.isConnected) return;
 
     overlayCanvas = document.createElement("canvas");
@@ -196,7 +210,11 @@
     var p = state.p;
     var camX = p.x - w / 2;
     var camY = p.y - h / 2;
-    var t = reduceMotion ? 0 : (state.time || performance.now() / 1000);
+    var now = performance.now() / 1000;
+    var t = reduceMotion ? 0 : (Number.isFinite(state.time) ? state.time : now);
+    var playerMotion = samplePlayerMotion(state, p, now);
+
+    updateBattleWorld(state, p);
 
     drawCaveScreenWash(ctx, w, h, t);
 
@@ -219,10 +237,91 @@
 
     (state.enemies || []).forEach(function (e) {
       if (!e || e.hp <= 0) return;
-      drawEnemySprite(ctx, e.x - camX, e.y - camY, e, t);
+      drawEnemySprite(ctx, e.x - camX, e.y - camY, e, p, t, now);
     });
 
-    drawPlayerSprite(ctx, p.x - camX, p.y - camY, p, t);
+    drawCompanions(ctx, p.x - camX, p.y - camY, p, t, playerMotion, false);
+    drawPlayerSprite(ctx, p.x - camX, p.y - camY, p, t, playerMotion);
+    drawCompanions(ctx, p.x - camX, p.y - camY, p, t, playerMotion, true);
+  }
+
+  function samplePlayerMotion(state, p, now) {
+    if (state !== activeVisualState) {
+      activeVisualState = state;
+      playerTrack = { x: p.x, y: p.y, sample: now, vx: 0, vy: 0, facing: 1 };
+      enemyTracks = new WeakMap();
+      lastWorldTransform = "";
+    }
+
+    var dt = Math.max(.001, Math.min(.08, now - playerTrack.sample));
+    var rawVx = (p.x - playerTrack.x) / dt;
+    var rawVy = (p.y - playerTrack.y) / dt;
+    var blend = Math.min(1, dt * 12);
+    playerTrack.vx += (rawVx - playerTrack.vx) * blend;
+    playerTrack.vy += (rawVy - playerTrack.vy) * blend;
+    if (Math.abs(playerTrack.vx) > 10) playerTrack.facing = playerTrack.vx < 0 ? -1 : 1;
+    playerTrack.x = p.x;
+    playerTrack.y = p.y;
+    playerTrack.sample = now;
+
+    var speed = Math.hypot(playerTrack.vx, playerTrack.vy);
+    return {
+      vx: playerTrack.vx,
+      vy: playerTrack.vy,
+      speed: speed,
+      moving: speed > 14,
+      facing: playerTrack.facing
+    };
+  }
+
+  function sampleEnemyMotion(e, p, now) {
+    var track = enemyTracks.get(e);
+    if (!track) {
+      track = {
+        x: e.x,
+        y: e.y,
+        sample: now,
+        vx: 0,
+        vy: 0,
+        facing: e.x > p.x ? -1 : 1
+      };
+      enemyTracks.set(e, track);
+      return track;
+    }
+
+    var dt = Math.max(.001, Math.min(.08, now - track.sample));
+    var rawVx = (e.x - track.x) / dt;
+    var rawVy = (e.y - track.y) / dt;
+    var blend = Math.min(1, dt * 10);
+    track.vx += (rawVx - track.vx) * blend;
+    track.vy += (rawVy - track.vy) * blend;
+    if (Math.abs(track.vx) > 7) track.facing = track.vx < 0 ? -1 : 1;
+    track.x = e.x;
+    track.y = e.y;
+    track.sample = now;
+    return track;
+  }
+
+  function updateBattleWorld(state, p) {
+    ensureGameOverlay();
+    if (!worldLayer) return;
+
+    var bounds = state.mapBounds || { minX: -760, maxX: 760, minY: -760, maxY: 760 };
+    var maxX = Math.max(1, Math.max(Math.abs(bounds.minX || 0), Math.abs(bounds.maxX || 0)));
+    var maxY = Math.max(1, Math.max(Math.abs(bounds.minY || 0), Math.abs(bounds.maxY || 0)));
+    var motionFactor = reduceMotion ? .35 : 1;
+    var x = Math.round(Math.max(-38, Math.min(38, -(p.x / maxX) * 38 * motionFactor)) * 2) / 2;
+    var y = Math.round(Math.max(-44, Math.min(44, -(p.y / maxY) * 44 * motionFactor)) * 2) / 2;
+    var transform = "translate3d(" + x + "px," + y + "px,0) scale(1.04)";
+
+    if (transform === lastWorldTransform) return;
+    lastWorldTransform = transform;
+    worldLayer.style.transform = transform;
+    var game = document.getElementById("game");
+    if (game) {
+      game.style.setProperty("--battle-glint-x", (x * 1.85).toFixed(1) + "px");
+      game.style.setProperty("--battle-glint-y", (y * 1.85).toFixed(1) + "px");
+    }
   }
 
   function offscreen(x, y, r) {
@@ -262,6 +361,36 @@
     ctx.restore();
   }
 
+  function drawAnimatedSprite(ctx, img, x, y, size, options) {
+    options = options || {};
+    if (!img || !img.complete || !img.naturalWidth) return;
+    if (offscreen(x, y, size * 1.2)) return;
+    ctx.save();
+    ctx.translate(x, y);
+    if (options.rotation) ctx.rotate(options.rotation);
+    var scaleX = options.scaleX == null ? 1 : options.scaleX;
+    var scaleY = options.scaleY == null ? 1 : options.scaleY;
+    if (options.flip < 0) scaleX *= -1;
+    ctx.scale(scaleX, scaleY);
+    if (options.alpha != null) ctx.globalAlpha = options.alpha;
+    ctx.drawImage(img, -size / 2, -size / 2, size, size);
+    ctx.restore();
+  }
+
+  function drawGroundShadow(ctx, x, y, width, alpha) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(1, .34);
+    var g = ctx.createRadialGradient(0, 0, 1, 0, 0, width / 2);
+    g.addColorStop(0, "rgba(1, 2, 12," + alpha + ")");
+    g.addColorStop(1, "rgba(1, 2, 12,0)");
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(0, 0, width / 2, 0, TAU);
+    ctx.fill();
+    ctx.restore();
+  }
+
   function drawDrop(ctx, x, y, d, t) {
     var img = d.kind === "heal" ? sprites.dropHeal : sprites.dropStar;
     var size = d.rare ? 58 : 46;
@@ -280,14 +409,75 @@
     return sprites.soft;
   }
 
-  function drawEnemySprite(ctx, x, y, e, t) {
+  function drawEnemySprite(ctx, x, y, e, p, t, now) {
     var r = Math.max(10, e.r || 18);
     var isBoss = e.kind === "boss" || e.kind === "midBoss";
+    var isRare = e.kind === "rare";
     var size = isBoss ? r * 3.35 : r * 3.0;
-    var rot = reduceMotion ? 0 : Math.sin(t * (isBoss ? .55 : 1.1) + x * .02) * (isBoss ? .04 : .08);
+    var name = String(e.name || "");
+    var type = /コウモリ/.test(name) ? "bat" : /とげ|石|かち/.test(name) ? "stone" : /ゴースト/.test(name) ? "ghost" : "soft";
+    var seed = ((Number(e.id) || name.length * 17) % 29) * .43;
+    var track = sampleEnemyMotion(e, p, now);
+    var bob = 0;
+    var scaleX = 1;
+    var scaleY = 1;
+    var rot = 0;
+    var alpha = e.hitFlash > 0 ? .72 : (type === "ghost" ? .90 : .97);
+
+    if (!reduceMotion) {
+      if (isBoss) {
+        var bossBreath = Math.sin(t * 1.75 + seed);
+        bob = Math.sin(t * 1.15 + seed) * 1.7;
+        scaleX = 1 + bossBreath * .018;
+        scaleY = 1 - bossBreath * .014;
+        rot = Math.sin(t * .68 + seed) * .025;
+      } else if (isRare) {
+        var rarePulse = Math.sin(t * 3.3 + seed);
+        bob = rarePulse * 3.1;
+        scaleX = 1 + rarePulse * .035;
+        scaleY = 1 - rarePulse * .025;
+        rot = Math.sin(t * 2.1 + seed) * .08;
+      } else if (type === "bat") {
+        var wing = Math.sin(t * 8.2 + seed);
+        bob = Math.sin(t * 4.1 + seed) * 4.1;
+        scaleX = 1 - wing * .035;
+        scaleY = 1 + wing * .10;
+        rot = Math.sin(t * 4.1 + seed) * .09;
+      } else if (type === "ghost") {
+        var float = Math.sin(t * 2.15 + seed);
+        bob = float * 4.4;
+        scaleX = 1 - float * .025;
+        scaleY = 1 + float * .045;
+        rot = Math.sin(t * 1.35 + seed) * .065;
+      } else if (type === "stone") {
+        var stomp = Math.abs(Math.sin(t * 3.1 + seed));
+        bob = -stomp * 2.2;
+        scaleX = 1 + (1 - stomp) * .035;
+        scaleY = 1 - (1 - stomp) * .04;
+        rot = Math.sin(t * 3.1 + seed) * .035;
+      } else {
+        var hop = Math.max(0, Math.sin(t * 4.5 + seed));
+        bob = -hop * 4.2;
+        scaleX = 1 + hop * .045;
+        scaleY = 1 - hop * .055;
+        rot = Math.sin(t * 2.25 + seed) * .045;
+      }
+    }
+
+    if (e.hitFlash > 0) {
+      scaleX *= 1.06;
+      scaleY *= .94;
+    }
+
+    drawGroundShadow(ctx, x, y + size * .29, size * (isBoss ? .64 : .52), isBoss ? .28 : .20);
     var img = enemySpriteFor(e);
-    var alpha = e.hitFlash > 0 ? .72 : .96;
-    drawSprite(ctx, img, x, y, size, rot, alpha);
+    drawAnimatedSprite(ctx, img, x, y + bob, size, {
+      rotation: rot,
+      scaleX: scaleX,
+      scaleY: scaleY,
+      flip: isBoss ? 1 : track.facing,
+      alpha: alpha
+    });
 
     if (e.maxHp > 40) {
       drawHpBar(ctx, x, y - size * .43, size * .62, Math.max(0, Math.min(1, e.hp / e.maxHp)), isBoss);
@@ -304,8 +494,27 @@
     }
   }
 
-  function drawPlayerSprite(ctx, x, y, p, t) {
-    var bob = reduceMotion ? 0 : Math.sin(t * 3.0) * 1.2;
+  function drawPlayerSprite(ctx, x, y, p, t, motion) {
+    var bob = 0;
+    var scaleX = 1;
+    var scaleY = 1;
+    var rotation = 0;
+
+    if (!reduceMotion) {
+      if (motion.moving) {
+        var stride = Math.abs(Math.sin(t * 9.4));
+        bob = -stride * 3.4;
+        scaleX = 1 + stride * .04;
+        scaleY = 1 - stride * .055;
+        rotation = Math.max(-.09, Math.min(.09, motion.vx / 1600));
+      } else {
+        var breath = Math.sin(t * 2.45);
+        bob = breath * 1.35;
+        scaleX = 1 + breath * .012;
+        scaleY = 1 - breath * .018;
+        rotation = Math.sin(t * 1.35) * .018;
+      }
+    }
 
     if (p.auraRadius > 0) {
       ctx.save();
@@ -317,7 +526,42 @@
       ctx.restore();
     }
 
-    drawSprite(ctx, sprites.mogu, x, y + bob, 112, Math.sin(t * 1.8) * .03);
+    drawGroundShadow(ctx, x, y + 34, 70, .28);
+    drawAnimatedSprite(ctx, sprites.mogu, x, y + bob, 96, {
+      rotation: rotation,
+      scaleX: scaleX,
+      scaleY: scaleY,
+      flip: motion.facing,
+      alpha: p.invuln > 0 && !reduceMotion ? .72 + Math.sin(t * 18) * .18 : 1
+    });
+  }
+
+  function drawCompanions(ctx, x, y, p, t, playerMotion, frontPass) {
+    var count = Math.min(5, Math.max(0, Math.floor(Number(p.summons) || 0)));
+    if (!count || !sprites.companion) return;
+
+    for (var i = 0; i < count; i++) {
+      var phase = (reduceMotion ? -.62 : t * .86) + i * TAU / count;
+      var depth = Math.sin(phase);
+      var isFront = depth >= 0;
+      if (isFront !== frontPass) continue;
+
+      var cx = x + Math.cos(phase) * 54;
+      var cy = y + depth * 30;
+      var bob = reduceMotion ? 0 : Math.sin(t * 4.6 + i * 1.7) * 1.8;
+      var depthScale = .82 + (depth + 1) * .09;
+      var flutter = reduceMotion ? 0 : Math.sin(t * 5.2 + i) * .055;
+      var companionSize = 43 * depthScale;
+
+      drawGroundShadow(ctx, cx, cy + 15, companionSize * .60, isFront ? .19 : .12);
+      drawAnimatedSprite(ctx, sprites.companion, cx, cy + bob, companionSize, {
+        rotation: flutter,
+        scaleX: 1 + Math.abs(flutter) * .20,
+        scaleY: 1 - Math.abs(flutter) * .12,
+        flip: playerMotion.facing,
+        alpha: isFront ? .98 : .82
+      });
+    }
   }
 
   function drawHpBar(ctx, x, y, w, pct, boss) {

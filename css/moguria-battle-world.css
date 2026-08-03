@@ -5,22 +5,56 @@
 /* Battle environment ---------------------------------------------------- */
 
 body.kv-visual-refresh #game {
+  --battle-glint-x: 0px;
+  --battle-glint-y: 0px;
   background-color: #08091b !important;
   background-image:
     linear-gradient(180deg, rgba(3, 5, 19, .16), rgba(3, 4, 16, .34)),
-    url("../assets/images/battle-v2/battle_arena.webp?v=20260803-battle-world-1") !important;
+    url("../assets/images/battle-v2/battle_arena.webp?v=20260804-motion-artifact-1") !important;
   background-position: center center !important;
   background-size: cover !important;
   background-repeat: no-repeat !important;
 }
 
+body.kv-visual-refresh #kvBattleWorldLayer {
+  position: absolute;
+  inset: -64px;
+  z-index: 0;
+  pointer-events: none;
+  background-color: #08091b;
+  background-image:
+    linear-gradient(180deg, rgba(3, 5, 19, .08), rgba(3, 4, 16, .24)),
+    url("../assets/images/battle-v2/battle_arena.webp?v=20260804-motion-artifact-1");
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  transform: translate3d(0, 0, 0) scale(1.04);
+  transform-origin: center;
+  will-change: transform;
+  filter: saturate(1.03) contrast(1.03);
+}
+
+body.kv-visual-refresh #kvBattleWorldLayer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 50% 58%, rgba(119, 101, 201, .08), transparent 46%),
+    linear-gradient(180deg, rgba(4, 6, 22, .06), transparent 28%, transparent 68%, rgba(2, 3, 14, .20));
+}
+
 body.kv-visual-refresh #gameCanvas {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
   opacity: .43 !important;
   mix-blend-mode: screen !important;
   filter: saturate(.88) contrast(1.08) brightness(.58) !important;
 }
 
 body.kv-visual-refresh #kvGameVisualOverlay {
+  z-index: 3 !important;
   opacity: 1 !important;
   mix-blend-mode: normal !important;
   filter:
@@ -38,6 +72,9 @@ body.kv-visual-refresh #game::before {
 body.kv-visual-refresh #game::after {
   opacity: .29 !important;
   background-size: 131px 131px, 179px 179px !important;
+  background-position:
+    calc(17px + var(--battle-glint-x)) calc(31px + var(--battle-glint-y)),
+    calc(73px + var(--battle-glint-x)) calc(89px + var(--battle-glint-y)) !important;
 }
 
 body.kv-visual-refresh #game .big-cue {

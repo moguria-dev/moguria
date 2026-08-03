@@ -1924,3 +1924,485 @@ body.kv-visual-refresh #pauseModal .pause-skills {
     right: 18px;
   }
 }
+
+/* Artifact choice --------------------------------------------------------
+   A relic is a run-defining discovery, so this uses its own dark in-world
+   board instead of inheriting the legacy cream modal. */
+
+body.kv-visual-refresh #artifactModal.artifact-choice-modal {
+  z-index: 50;
+  padding:
+    calc(var(--play-safe-top) + 8px)
+    7px
+    calc(var(--play-safe-bottom) + 8px) !important;
+  display: grid;
+  place-items: center;
+  align-items: center !important;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 24%, rgba(157, 111, 226, .18), transparent 35%),
+    radial-gradient(circle at 50% 72%, rgba(226, 180, 92, .08), transparent 34%),
+    linear-gradient(180deg, rgba(2, 4, 17, .76), rgba(2, 3, 14, .91)) !important;
+  backdrop-filter: blur(6px) saturate(.82) brightness(.75) !important;
+  -webkit-backdrop-filter: blur(6px) saturate(.82) brightness(.75) !important;
+}
+
+body.kv-visual-refresh #artifactModal .artifact-choice-sheet {
+  position: relative;
+  isolation: isolate;
+  width: min(100%, 420px);
+  height: min(520px, calc(100dvh - var(--play-safe-top) - var(--play-safe-bottom) - 16px));
+  max-height: calc(100dvh - var(--play-safe-top) - var(--play-safe-bottom) - 16px);
+  min-height: 0;
+  margin: 0;
+  padding: 20px 18px 17px !important;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 11px;
+  overflow: hidden;
+  color: var(--play-ink) !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: none !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+body.kv-visual-refresh #artifactModal .artifact-choice-sheet::before {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: -2;
+  width: auto !important;
+  height: auto !important;
+  box-sizing: border-box;
+  border: 18px solid transparent !important;
+  border-radius: 0 !important;
+  background: none !important;
+  border-image-source: url("../assets/images/home-v2/frame_glass_gold_9slice.png") !important;
+  border-image-slice: 64 fill !important;
+  border-image-width: 18px !important;
+  border-image-repeat: stretch !important;
+  filter: drop-shadow(0 20px 40px rgba(1, 2, 12, .66));
+  pointer-events: none;
+}
+
+body.kv-visual-refresh #artifactModal .artifact-choice-sheet::after {
+  content: "" !important;
+  position: absolute !important;
+  inset: 13px !important;
+  z-index: -1;
+  width: auto !important;
+  height: auto !important;
+  opacity: .58;
+  background:
+    radial-gradient(circle at 12% 10%, rgba(255, 226, 143, .62) 0 1px, transparent 1.8px),
+    radial-gradient(circle at 86% 17%, rgba(159, 191, 255, .48) 0 1px, transparent 1.7px),
+    radial-gradient(circle at 78% 86%, rgba(255, 226, 143, .36) 0 1px, transparent 1.7px),
+    linear-gradient(180deg, rgba(23, 24, 62, .08), rgba(4, 6, 22, .20)) !important;
+  transform: none !important;
+  animation: none !important;
+  pointer-events: none;
+}
+
+#artifactModal .artifact-choice-header {
+  position: relative;
+  z-index: 2;
+  min-height: 70px;
+  padding: 0 8px 10px;
+  display: grid;
+  grid-template-columns: 62px minmax(0, 1fr);
+  align-items: center;
+  gap: 11px;
+  border-bottom: 1px solid rgba(226, 180, 92, .24);
+  text-align: left;
+}
+
+#artifactModal .artifact-choice-header__core {
+  position: relative;
+  width: 58px;
+  height: 58px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(226, 180, 92, .60);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, rgba(99, 77, 155, .34), rgba(3, 5, 20, .78) 70%);
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 232, 178, .08),
+    0 0 21px rgba(226, 180, 92, .17);
+  overflow: hidden;
+  animation: artifactCoreFloat 3.4s ease-in-out infinite;
+}
+
+#artifactModal .artifact-choice-header__core::after {
+  content: "✦";
+  position: absolute;
+  right: 2px;
+  top: 1px;
+  color: #f1cc78;
+  font: 10px/1 Georgia, serif;
+  text-shadow: 0 0 8px rgba(255, 222, 139, .72);
+}
+
+#artifactModal .artifact-choice-header__core img {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  filter: saturate(.92) brightness(.82) contrast(1.10);
+}
+
+#artifactModal .artifact-choice-header__copy {
+  min-width: 0;
+}
+
+body.kv-visual-refresh #artifactModal .artifact-choice-header .eyebrow {
+  margin: 0 0 3px;
+  color: rgba(226, 180, 92, .90) !important;
+  font: 800 8px/1 Georgia, serif;
+  letter-spacing: .24em;
+}
+
+body.kv-visual-refresh #artifactModal .artifact-choice-header h2 {
+  margin: 0;
+  color: #fff2d6 !important;
+  font-family: "Yu Mincho", "Hiragino Mincho ProN", Georgia, serif;
+  font-size: 20px !important;
+  line-height: 1.16;
+  letter-spacing: .03em;
+  text-shadow:
+    0 0 14px rgba(239, 193, 95, .18),
+    0 3px 10px rgba(1, 2, 12, .72);
+}
+
+body.kv-visual-refresh #artifactModal .artifact-choice-header__copy > p:last-child {
+  margin: 5px 0 0;
+  color: var(--play-ink-muted) !important;
+  font-size: 9.5px;
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+#artifactModal #artifactChoices {
+  position: relative;
+  z-index: 2;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: repeat(3, minmax(92px, 1fr));
+  gap: 8px !important;
+  overflow: hidden;
+}
+
+body.kv-visual-refresh #artifactModal .artifact-choice {
+  position: relative;
+  isolation: isolate;
+  min-width: 0;
+  min-height: 92px !important;
+  height: 100%;
+  margin: 0;
+  padding: 12px 12px 10px !important;
+  display: grid !important;
+  grid-template-columns: 56px minmax(0, 1fr) 46px;
+  grid-template-rows: auto minmax(18px, 1fr) auto;
+  column-gap: 10px;
+  row-gap: 3px;
+  align-items: center;
+  overflow: hidden;
+  color: var(--play-ink) !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: none !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  text-align: left;
+  touch-action: manipulation;
+}
+
+body.kv-visual-refresh #artifactModal .artifact-choice::before {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: -2;
+  width: auto !important;
+  height: auto !important;
+  box-sizing: border-box;
+  border: 16px solid transparent !important;
+  border-image-source: url("../assets/images/home-v2/button_pearl_9slice.png") !important;
+  border-image-slice: 48 fill !important;
+  border-image-width: 13px !important;
+  border-image-repeat: stretch !important;
+  background: none !important;
+  filter: drop-shadow(0 5px 8px rgba(1, 2, 12, .42));
+  pointer-events: none;
+}
+
+body.kv-visual-refresh #artifactModal .artifact-choice::after {
+  content: "" !important;
+  position: absolute !important;
+  inset: 8px !important;
+  z-index: -1;
+  width: auto !important;
+  height: auto !important;
+  background:
+    linear-gradient(105deg, transparent 0 61%, rgba(255, 232, 178, .05) 69%, transparent 78%),
+    radial-gradient(circle at 10% 13%, rgba(255, 224, 143, .10), transparent 30%) !important;
+  transform: none !important;
+  animation: artifactCardGleam 5.2s ease-in-out infinite !important;
+  pointer-events: none;
+}
+
+#artifactModal .artifact-choice:active {
+  transform: translateY(1px) scale(.994) !important;
+  filter: brightness(1.10);
+}
+
+#artifactModal .artifact-choice:focus-visible {
+  outline: 2px solid #f0ca76;
+  outline-offset: -3px;
+}
+
+#artifactModal .artifact-choice .skill-head {
+  display: contents !important;
+}
+
+body.kv-visual-refresh #artifactModal .artifact-choice .skill-icon {
+  grid-column: 1;
+  grid-row: 1 / 4;
+  align-self: center;
+  width: 54px !important;
+  height: 54px !important;
+  min-width: 54px;
+  margin: 0 !important;
+  padding: 0 !important;
+  color: transparent !important;
+  border: 1px solid rgba(226, 180, 92, .58) !important;
+  border-radius: 50% !important;
+  background-color: rgba(3, 5, 19, .72) !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-size: 88% !important;
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 232, 178, .08),
+    0 0 14px rgba(105, 121, 225, .13) !important;
+  font-size: 0 !important;
+  animation: none !important;
+}
+
+body.kv-visual-refresh #artifactModal .skill-icon[data-kv-kind="cave"] { background-image: url("../assets/images/play-ui/skill_cave.png?v=20260804-motion-artifact-1") !important; }
+body.kv-visual-refresh #artifactModal .skill-icon[data-kv-kind="fire"] { background-image: url("../assets/images/play-ui/skill_fire.png?v=20260804-motion-artifact-1") !important; }
+body.kv-visual-refresh #artifactModal .skill-icon[data-kv-kind="ice"] { background-image: url("../assets/images/play-ui/skill_ice.png?v=20260804-motion-artifact-1") !important; }
+body.kv-visual-refresh #artifactModal .skill-icon[data-kv-kind="poison"] { background-image: url("../assets/images/play-ui/skill_poison.png?v=20260804-motion-artifact-1") !important; }
+body.kv-visual-refresh #artifactModal .skill-icon[data-kv-kind="guard"] { background-image: url("../assets/images/play-ui/skill_guard.png?v=20260804-motion-artifact-1") !important; }
+body.kv-visual-refresh #artifactModal .skill-icon[data-kv-kind="star"] { background-image: url("../assets/images/play-ui/skill_star.png?v=20260804-motion-artifact-1") !important; }
+body.kv-visual-refresh #artifactModal .skill-icon[data-kv-kind="summon"] { background-image: url("../assets/images/play-ui/skill_summon.png?v=20260804-motion-artifact-1") !important; }
+
+#artifactModal .artifact-choice .skill-head b {
+  grid-column: 2 / 4;
+  grid-row: 1;
+  align-self: end;
+  min-width: 0;
+  padding-right: 4px;
+  display: block;
+  overflow: hidden;
+  color: #fff1d4 !important;
+  font-size: 14px !important;
+  font-weight: 850;
+  line-height: 1.16;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-shadow: 0 2px 5px rgba(1, 2, 12, .72);
+}
+
+#artifactModal .artifact-choice .skill-head b::before {
+  content: "✦";
+  margin-right: 6px;
+  color: #dcae55;
+  font-size: 8px;
+}
+
+body.kv-visual-refresh #artifactModal .artifact-choice > span:not(.skill-icon):not(.kv-card-icon) {
+  grid-column: 2 / 4;
+  grid-row: 2;
+  align-self: start;
+  min-width: 0;
+  margin: 0 !important;
+  padding: 0 2px 0 0 !important;
+  display: -webkit-box !important;
+  overflow: hidden;
+  color: rgba(247, 229, 200, .76) !important;
+  font-size: 10.5px !important;
+  font-weight: 600;
+  line-height: 1.28;
+  text-shadow: 0 1px 3px rgba(1, 2, 12, .72);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+#artifactModal .artifact-choice > em {
+  grid-column: 2;
+  grid-row: 3;
+  align-self: center;
+  min-width: 0;
+  height: 21px;
+  margin: 0 !important;
+  padding: 0 !important;
+  display: flex !important;
+  align-items: center;
+  gap: 4px;
+  overflow: hidden;
+  white-space: nowrap;
+  font-style: normal;
+}
+
+body.kv-visual-refresh #artifactModal .artifact-choice .tag {
+  flex: 0 0 auto;
+  min-height: 18px;
+  margin: 0 !important;
+  padding: 2px 6px !important;
+  display: inline-flex;
+  align-items: center;
+  color: rgba(246, 222, 176, .88) !important;
+  border: 1px solid rgba(226, 180, 92, .24) !important;
+  border-radius: 999px;
+  background-image: none !important;
+  background: rgba(3, 5, 20, .56) !important;
+  font-size: 7.5px !important;
+  font-weight: 800;
+  line-height: 1;
+}
+
+#artifactModal .artifact-choice__pick {
+  grid-column: 3;
+  grid-row: 3;
+  align-self: center;
+  justify-self: end;
+  min-width: 43px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #f1d092;
+  border: 1px solid rgba(226, 180, 92, .34);
+  border-radius: 999px;
+  background: rgba(4, 6, 22, .62);
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .06em;
+}
+
+@keyframes artifactCoreFloat {
+  0%, 100% { transform: translateY(0); filter: brightness(.96); }
+  50% { transform: translateY(-2px); filter: brightness(1.08); }
+}
+
+@keyframes artifactCardGleam {
+  0%, 78%, 100% { opacity: .55; }
+  88% { opacity: .95; }
+}
+
+@media (max-height: 560px) {
+  body.kv-visual-refresh #artifactModal.artifact-choice-modal {
+    padding:
+      calc(var(--play-safe-top) + 5px)
+      5px
+      calc(var(--play-safe-bottom) + 5px) !important;
+  }
+
+  body.kv-visual-refresh #artifactModal .artifact-choice-sheet {
+    height: calc(100dvh - var(--play-safe-top) - var(--play-safe-bottom) - 10px);
+    max-height: calc(100dvh - var(--play-safe-top) - var(--play-safe-bottom) - 10px);
+    padding: 12px 13px 11px !important;
+    gap: 6px;
+  }
+
+  body.kv-visual-refresh #artifactModal .artifact-choice-sheet::before {
+    border-image-width: 14px !important;
+  }
+
+  #artifactModal .artifact-choice-header {
+    min-height: 48px;
+    padding: 0 5px 6px;
+    grid-template-columns: 46px minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  #artifactModal .artifact-choice-header__core {
+    width: 43px;
+    height: 43px;
+  }
+
+  #artifactModal .artifact-choice-header__core img {
+    width: 54px;
+    height: 54px;
+  }
+
+  body.kv-visual-refresh #artifactModal .artifact-choice-header .eyebrow {
+    font-size: 7px;
+  }
+
+  body.kv-visual-refresh #artifactModal .artifact-choice-header h2 {
+    font-size: 17px !important;
+  }
+
+  body.kv-visual-refresh #artifactModal .artifact-choice-header__copy > p:last-child {
+    display: none;
+  }
+
+  #artifactModal #artifactChoices {
+    grid-template-rows: repeat(3, minmax(82px, 1fr));
+    gap: 5px !important;
+  }
+
+  body.kv-visual-refresh #artifactModal .artifact-choice {
+    min-height: 82px !important;
+    padding: 8px 9px 7px !important;
+    grid-template-columns: 49px minmax(0, 1fr) 44px;
+    column-gap: 7px;
+    row-gap: 2px;
+  }
+
+  body.kv-visual-refresh #artifactModal .artifact-choice::before {
+    border-image-width: 11px !important;
+  }
+
+  body.kv-visual-refresh #artifactModal .artifact-choice .skill-icon {
+    width: 47px !important;
+    height: 47px !important;
+    min-width: 47px;
+  }
+
+  #artifactModal .artifact-choice .skill-head b {
+    font-size: 12px !important;
+  }
+
+  body.kv-visual-refresh #artifactModal .artifact-choice > span:not(.skill-icon):not(.kv-card-icon) {
+    font-size: 9px !important;
+    line-height: 1.18;
+    -webkit-line-clamp: 2;
+  }
+
+  #artifactModal .artifact-choice > em {
+    height: 18px;
+  }
+
+  body.kv-visual-refresh #artifactModal .artifact-choice .tag {
+    min-height: 16px;
+    padding: 1px 5px !important;
+    font-size: 6.8px !important;
+  }
+
+  #artifactModal .artifact-choice__pick {
+    min-width: 41px;
+    height: 28px;
+    font-size: 7px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #artifactModal .artifact-choice-header__core,
+  #artifactModal .artifact-choice::after {
+    animation: none !important;
+  }
+}

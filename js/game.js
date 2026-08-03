@@ -199,7 +199,11 @@ window.MoguriaGame = (() => {
       const btn=document.createElement('button');
       btn.type='button';
       btn.className='skill-card artifact-choice';
-      btn.innerHTML=`<div class="skill-head"><span class="skill-icon">${a.icon||'🏺'}</span><b>${a.name}</b></div><span>${a.desc}</span><em>${a.tags.map(t=>`<i class="tag ${tagClass(t)}">${t}</i>`).join('')}</em>`;
+      const visualKind=visualKindForArtifact(a);
+      btn.dataset.artifactId=a.id;
+      btn.dataset.kvKind=visualKind;
+      btn.setAttribute('aria-label',`${a.name}を選ぶ。${a.desc}`);
+      btn.innerHTML=`<div class="skill-head"><span class="skill-icon" data-kv-kind="${visualKind}" aria-hidden="true"></span><b>${a.name}</b></div><span>${a.desc}</span><em>${a.tags.map(t=>`<i class="tag ${tagClass(t)}">${t}</i>`).join('')}</em><strong class="artifact-choice__pick" aria-hidden="true">選ぶ</strong>`;
       let chosen=false;
       const choose=(ev)=>{
         if(ev){ev.preventDefault();ev.stopPropagation();}
@@ -215,11 +219,11 @@ window.MoguriaGame = (() => {
         startNextWave();
         loop(state.last);
       };
-      btn.addEventListener('pointerup', choose, {passive:false});
       btn.addEventListener('click', choose, {passive:false});
       wrap.appendChild(btn);
     }
-    const title=document.querySelector('#artifactModal h2');
+    window.MoguriaKVVisualRefresh?.decorateAll?.();
+    const title=document.getElementById('artifactTitle');
     if(title) title.textContent = wave===3 ? '前半のアーティファクト' : '中盤のアーティファクト';
     document.getElementById('artifactModal').classList.remove('hidden');
   }
@@ -947,7 +951,9 @@ window.MoguriaGame = (() => {
     if(hpRatio<.28){ ctx.strokeStyle='rgba(255,110,132,.55)'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(x,y,34+Math.sin(state.time*9)*2,0,7); ctx.stroke(); }
     ctx.restore();
     if(p.shield>0){ctx.strokeStyle='rgba(180,245,190,.58)';ctx.lineWidth=4;ctx.beginPath();ctx.arc(x,y,28,0,7);ctx.stroke();}
-    if(p.visual.summon){ for(let i=0;i<Math.min(5,p.summons);i++){ const a=state.time*2+i*6.28/Math.max(1,p.summons); ctx.fillStyle='#f8c994'; ctx.beginPath(); ctx.arc(x+Math.cos(a)*34,y+Math.sin(a)*25,6,0,7); ctx.fill(); ctx.fillStyle='#513b32'; ctx.beginPath(); ctx.arc(x+Math.cos(a)*34-1.5,y+Math.sin(a)*25,1,0,7); ctx.arc(x+Math.cos(a)*34+1.5,y+Math.sin(a)*25,1,0,7); ctx.fill(); } }
+    // The visual refresh supplies painterly companions. Keep the legacy dots
+    // only as a fallback when that layer is unavailable.
+    if(!document.body.classList.contains('kv-visual-refresh') && p.visual.summon){ for(let i=0;i<Math.min(5,p.summons);i++){ const a=state.time*2+i*6.28/Math.max(1,p.summons); ctx.fillStyle='#f8c994'; ctx.beginPath(); ctx.arc(x+Math.cos(a)*34,y+Math.sin(a)*25,6,0,7); ctx.fill(); ctx.fillStyle='#513b32'; ctx.beginPath(); ctx.arc(x+Math.cos(a)*34-1.5,y+Math.sin(a)*25,1,0,7); ctx.arc(x+Math.cos(a)*34+1.5,y+Math.sin(a)*25,1,0,7); ctx.fill(); } }
   }
   function aura(x,y,c,n){ ctx.fillStyle=c; ctx.globalAlpha=Math.min(.12+n*.025,.28); ctx.beginPath(); ctx.arc(x,y,28+n*2,0,7); ctx.fill(); ctx.globalAlpha=1; }
   function roundRect(x,y,w,h,r,fill){ctx.beginPath();ctx.roundRect(x,y,w,h,r);if(fill)ctx.fill();}
@@ -955,6 +961,17 @@ window.MoguriaGame = (() => {
   function tagClass(t){
     const map={ '毒':'tag-poison','爆発':'tag-fire','連鎖':'tag-fire','回避':'tag-ice','速度':'tag-ice','防御':'tag-guard','反撃':'tag-guard','召喚':'tag-summon','会心':'tag-star','攻撃':'tag-star','範囲':'tag-poison','貫通':'tag-star','分裂':'tag-star','領域':'tag-guard','自動':'tag-star','氷':'tag-ice','設置':'tag-fire','回復':'tag-guard','経験値':'tag-star','成長':'tag-star','移動':'tag-ice' };
     return map[t] || '';
+  }
+
+  function visualKindForArtifact(artifact){
+    const tags=new Set(artifact?.tags||[]);
+    if(tags.has('毒')) return 'poison';
+    if(tags.has('召喚')) return 'summon';
+    if(tags.has('氷') || tags.has('回避') || tags.has('移動') || tags.has('速度')) return 'ice';
+    if(tags.has('防御') || tags.has('反撃') || tags.has('回復') || tags.has('領域')) return 'guard';
+    if(tags.has('爆発') || tags.has('設置')) return 'fire';
+    if(tags.has('自動') || tags.has('攻撃') || tags.has('会心') || tags.has('連鎖') || tags.has('成長') || tags.has('経験値')) return 'star';
+    return 'cave';
   }
 
   function visualKindForSkill(skill){
