@@ -8,6 +8,7 @@
  <link rel="stylesheet" href="style.css" />
  <link rel="stylesheet" href="css/moguria-kv-visual-refresh.css?v=20260613-asset-rich" />
  <link rel="stylesheet" href="css/moguria-final-ui.css?v=20260803-home-layout-2" />
+ <link rel="stylesheet" href="css/moguria-play-ui.css?v=20260803-play-ui-1" />
 </head>
 <body>
  <div id="app">
@@ -66,25 +67,30 @@
  </section>
  <section id="game" class="screen">
  <canvas id="gameCanvas"></canvas>
- <div class="hud top">
- <div><b>Lv.<span id="lv">1</span></b></div>
- <div>HP <span id="hp">100</span></div>
- <div>EXP <span id="exp">0</span>/<span id="nextExp">10</span></div>
- <div>WAVE <span id="wave">1</span>/12</div>
- <div>⏱ <span id="timer">0:00</span></div>
+ <div class="hud top play-hud" aria-label="冒険の状態">
+ <div class="play-hud__level"><small>LEVEL</small><b>Lv.<span id="lv">1</span></b></div>
+ <div class="play-hud__hp"><small>HP</small><b><span id="hp">100</span></b></div>
+ <div class="play-hud__exp"><small>EXP</small><b><span id="exp">0</span><i>/</i><span id="nextExp">10</span></b></div>
+ <div class="play-hud__wave"><small>WAVE</small><b><span id="wave">1</span><i>/12</i></b></div>
+ <div class="play-hud__timer"><small>TIME</small><b><span id="timer">0:00</span></b></div>
  </div>
- <div class="hud bottom">
+ <div class="hud bottom play-controls">
  <div class="joystick" id="stick"><i id="knob"></i></div>
  <div class="mini-stats" id="miniStats">最大DMG 0<br>撃破 0<br>爆発 0</div>
  </div>
- <button id="pauseBtn" class="tiny pause">一時停止</button>
- <button id="giveupBtn" class="tiny">帰る</button>
- <div id="levelModal" class="modal hidden">
- <div class="modal-card">
+ <button id="pauseBtn" class="tiny pause play-pause" aria-label="一時停止"><span aria-hidden="true">Ⅱ</span><b>一時停止</b></button>
+ <button id="giveupBtn" class="tiny play-giveup">帰る</button>
+ <div id="levelModal" class="modal play-choice-modal hidden">
+ <div class="modal-card play-choice-sheet">
+ <header class="play-choice-header">
+ <p class="eyebrow">LEVEL UP</p>
  <h2>どれを食べる？</h2>
  <p>食べた力で、Moguが少し変わります。</p>
+ </header>
  <div id="skillChoices" class="skill-grid"></div>
- <button id="rerollBtn" class="reroll-btn" type="button">リロール 残り <span id="rerollCount">3</span></button>
+ <footer class="play-choice-footer">
+ <button id="rerollBtn" class="reroll-btn" type="button"><span>選びなおす</span><small>残り <b id="rerollCount">3</b></small></button>
+ </footer>
  </div>
  </div>
  <div id="artifactModal" class="modal hidden">

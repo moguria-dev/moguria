@@ -140,7 +140,7 @@
       var icon = card.querySelector(".skill-icon,.ico");
       if (icon && !icon.dataset.kvKind) icon.dataset.kvKind = card.dataset.kvKind;
 
-      if (!card.querySelector(".kv-card-icon")) {
+      if (!icon && !card.querySelector(".kv-card-icon")) {
         var mark = document.createElement("span");
         mark.className = "kv-card-icon";
         mark.dataset.kvKind = card.dataset.kvKind;
@@ -306,7 +306,7 @@
       ctx.restore();
     }
 
-    drawSprite(ctx, sprites.mogu, x, y + bob, 72, Math.sin(t * 1.8) * .03);
+    drawSprite(ctx, sprites.mogu, x, y + bob, 96, Math.sin(t * 1.8) * .03);
   }
 
   function drawHpBar(ctx, x, y, w, pct, boss) {

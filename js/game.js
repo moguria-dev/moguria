@@ -12,10 +12,15 @@ window.MoguriaGame = (() => {
     let activePointer=null;
     function centerKnob(){ const kx=(stick.clientWidth-knob.offsetWidth)/2, ky=(stick.clientHeight-knob.offsetHeight)/2; knob.style.left=kx+'px'; knob.style.top=ky+'px'; }
     function placeStick(cx,cy){
-      const size=stick.clientWidth||132;
+      const size=stick.offsetWidth||132;
+      const edge=12;
+      const safeBottom=parseFloat(getComputedStyle(game).getPropertyValue('--play-safe-bottom'))||0;
+      const bottomGuard=safeBottom+58;
+      const clampedX=Math.max(size/2+edge,Math.min(innerWidth-size/2-edge,cx));
+      const clampedY=Math.max(size/2+edge,Math.min(innerHeight-size/2-bottomGuard,cy));
       stick.classList.add('floating');
-      stick.style.left=(cx-size/2)+'px';
-      stick.style.top=(cy-size/2)+'px';
+      stick.style.left=(clampedX-size/2)+'px';
+      stick.style.top=(clampedY-size/2)+'px';
       stick.style.opacity='1';
       centerKnob();
     }
@@ -65,8 +70,7 @@ window.MoguriaGame = (() => {
     if(window.MoguriaMeta) MoguriaMeta.applyEquipmentToPlayer(state.p);
     state.p.x=0; state.p.y=0; state.p.hp=state.p.maxHp;
     MoguriaAudio?.play('start');
-    pushFx({x:0,y:0,r:180,life:1.2,type:'startGlow'});
-    toast('Mogu、そろそろ潜るよ…');
+    pushFx({x:0,y:0,r:92,life:1.0,type:'startGlow'});
     loop(performance.now());
   }
 
@@ -519,7 +523,7 @@ window.MoguriaGame = (() => {
         const currentLv = state.p.skillLevels?.[s.id] || 0;
         btn.innerHTML=`<div class="skill-head"><span class="skill-icon">${s.icon||'🍽️'}</span><b>${s.name}<small class="skill-lv">Lv.${currentLv}→${currentLv+1}</small></b></div><span>${s.desc}</span><em>${s.tags.map(t=>`<i class="tag ${tagClass(t)}">${t}</i>`).join('')}</em><button class="ban-skill" type="button">封印 ${state.bans}</button>`;
         const banBtn=btn.querySelector('.ban-skill');
-        if(banBtn){ banBtn.disabled=state.bans<=0; banBtn.addEventListener('pointerup',(ev)=>{ ev.preventDefault(); ev.stopPropagation(); if(!state||state.mode!=='choice'||state.bans<=0) return; state.bans--; state.bannedSkills.push(s.id); MoguriaAudio?.play('select'); choices=MoguriaSkills.weightedChoices(3,state.p,state.bannedSkills); renderChoices(); },{passive:false}); }
+        if(banBtn){ banBtn.disabled=state.bans<=0; banBtn.addEventListener('click',(ev)=>{ ev.preventDefault(); ev.stopPropagation(); if(!state||state.mode!=='choice'||state.bans<=0) return; state.bans--; state.bannedSkills.push(s.id); MoguriaAudio?.play('select'); choices=MoguriaSkills.weightedChoices(3,state.p,state.bannedSkills); renderChoices(); }); }
         let chosen=false;
         const choose=(ev)=>{
           if(ev){ ev.preventDefault(); ev.stopPropagation(); }
@@ -540,8 +544,7 @@ window.MoguriaGame = (() => {
           state.last=performance.now();
           loop(state.last);
         };
-        btn.addEventListener('pointerup', choose, {passive:false});
-        btn.addEventListener('click', choose, {passive:false});
+        btn.addEventListener('click', choose);
         wrap.appendChild(btn);
       }
     }
@@ -565,7 +568,7 @@ window.MoguriaGame = (() => {
     if(window.MoguriaMeta) MoguriaMeta.awardFromRun(run);
     const save=MoguriaSave.load(); MoguriaSave.addRun(save,run); MoguriaUI.showResult(run);
   }
-  function updateHud(){ const p=state.p; document.getElementById('lv').textContent=p.lv; document.getElementById('hp').textContent=Math.max(0,Math.floor(p.hp)); document.getElementById('exp').textContent=Math.floor(p.exp); document.getElementById('nextExp').textContent=p.nextExp; const remain=Math.max(0,Math.ceil((state.timeLimit||0)-state.time)); const m=Math.floor(remain/60),s=(remain%60).toString().padStart(2,'0'); document.getElementById('timer').textContent=`${m}:${s}`; const waveEl=document.getElementById('wave'); if(waveEl) waveEl.textContent=state.wave; document.getElementById('miniStats').innerHTML=`残り ${m}:${s}<br>最大DMG ${state.stats.maxDamage}<br>撃破 ${state.stats.kills}<br>爆発 ${state.stats.explosions}`; }
+  function updateHud(){ const p=state.p; document.getElementById('lv').textContent=p.lv; document.getElementById('hp').textContent=Math.max(0,Math.floor(p.hp)); document.getElementById('exp').textContent=Math.floor(p.exp); document.getElementById('nextExp').textContent=p.nextExp; const remain=Math.max(0,Math.ceil((state.timeLimit||0)-state.time)); const m=Math.floor(remain/60),s=(remain%60).toString().padStart(2,'0'); document.getElementById('timer').textContent=`${m}:${s}`; const waveEl=document.getElementById('wave'); if(waveEl) waveEl.textContent=Math.max(1,state.wave); document.getElementById('miniStats').innerHTML=`残り ${m}:${s}<br>最大DMG ${state.stats.maxDamage}<br>撃破 ${state.stats.kills}<br>爆発 ${state.stats.explosions}`; }
   function draw(){
     const w=innerWidth,h=innerHeight,p=state.p; const camX=p.x-w/2,camY=p.y-h/2; const col=MoguriaDungeon.colorForTime(state.time);
     drawAtmosphere(w,h,col);
@@ -607,14 +610,14 @@ window.MoguriaGame = (() => {
   function drawRunOverlay(w,h){
     if(!state) return;
     let title='', sub='';
-    if(state.introTimer>0){ title='もぐ…'; sub='おなかを整えているよ'; }
+    if(state.introTimer>0){ title='もぐ、いくよ'; sub='画面下をなぞって移動'; }
     else if(state.bossAlertTimer>0){ title=state.wave===12?'大きな足音…':'ざわざわ…'; sub=state.wave===12?'大ボスが近づいている':'中ボスが近づいている'; }
     else if(state.clearTimer>0){ title='ただいま'; sub='ほしの光を抱えて、帰ろう'; }
     if(!title) return;
-    ctx.save(); ctx.fillStyle='rgba(35,31,39,.24)'; ctx.fillRect(0,0,w,h);
+    ctx.save(); ctx.fillStyle='rgba(20,16,34,.10)'; ctx.fillRect(0,0,w,h);
     ctx.textAlign='center'; ctx.fillStyle='#fff4dc'; ctx.shadowColor='rgba(0,0,0,.28)'; ctx.shadowBlur=12;
-    ctx.font='900 34px sans-serif'; ctx.fillText(title,w/2,h*.43);
-    ctx.font='800 14px sans-serif'; ctx.fillText(sub,w/2,h*.43+30);
+    ctx.font='900 26px sans-serif'; ctx.fillText(title,w/2,h*.40);
+    ctx.fillStyle='rgba(255,240,211,.80)'; ctx.font='800 12px sans-serif'; ctx.fillText(sub,w/2,h*.40+25);
     ctx.restore();
   }
 

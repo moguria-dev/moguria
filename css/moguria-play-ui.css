@@ -1,0 +1,969 @@
+/* Moguria play UI
+   Scope: gameplay HUD, start cues, dynamic joystick and level-up choice.
+   Battle values, progression and save data are unchanged. */
+
+#game {
+  --play-safe-top: env(safe-area-inset-top, 0px);
+  --play-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --play-cream: #fff3d3;
+  --play-muted: rgba(255, 239, 205, .76);
+  --play-gold: #f2ca78;
+  --play-gold-soft: rgba(242, 202, 120, .34);
+  --play-violet: #9d78e8;
+  --play-panel: rgba(16, 13, 31, .78);
+  --play-panel-deep: rgba(9, 8, 20, .92);
+  isolation: isolate;
+  overflow: hidden;
+  color: var(--play-cream);
+  font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", "Noto Sans JP", sans-serif;
+}
+
+body.kv-visual-refresh #gameCanvas {
+  opacity: .68 !important;
+  filter: saturate(1.14) contrast(1.06) brightness(.86) !important;
+}
+
+/* Top hierarchy ---------------------------------------------------------- */
+
+#game .play-hud {
+  position: absolute !important;
+  inset: 0 !important;
+  width: auto !important;
+  height: auto !important;
+  display: block !important;
+  padding: 0 !important;
+  z-index: 12 !important;
+  pointer-events: none;
+}
+
+#game .play-hud::after {
+  content: "";
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: calc(var(--play-safe-bottom) + 8px);
+  height: 42px;
+  border: 1px solid rgba(255, 226, 157, .34);
+  border-radius: 17px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.06), transparent 45%),
+    linear-gradient(180deg, rgba(25,19,42,.88), rgba(10,9,21,.86));
+  box-shadow:
+    0 10px 28px rgba(0, 0, 0, .34),
+    inset 0 1px rgba(255,255,255,.10),
+    0 0 22px rgba(132, 92, 213, .08);
+  backdrop-filter: blur(12px) saturate(1.12);
+  -webkit-backdrop-filter: blur(12px) saturate(1.12);
+}
+
+body.kv-visual-refresh #game .play-hud > div {
+  position: absolute;
+  min-width: 0;
+  margin: 0;
+  color: var(--play-cream) !important;
+  border: 1px solid rgba(255, 226, 157, .31) !important;
+  border-radius: 15px !important;
+  background-image:
+    url("../assets/images/kv-ui/hud_pill.png?v=20260613-asset-rich"),
+    linear-gradient(180deg, rgba(31,24,50,.92), rgba(12,10,25,.82)) !important;
+  background-size: 100% 100%, auto !important;
+  background-repeat: no-repeat !important;
+  box-shadow:
+    0 8px 24px rgba(0,0,0,.28),
+    inset 0 1px rgba(255,255,255,.12) !important;
+  text-align: center;
+  text-shadow: 0 2px 7px rgba(0,0,0,.55);
+  backdrop-filter: blur(10px) saturate(1.1);
+  -webkit-backdrop-filter: blur(10px) saturate(1.1);
+}
+
+#game .play-hud small {
+  display: block;
+  margin: 0;
+  color: rgba(255, 222, 151, .72) !important;
+  font-size: 7px;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: .13em;
+}
+
+#game .play-hud b {
+  display: block;
+  color: #fff5dc;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+#game .play-hud i {
+  margin-left: 2px;
+  color: rgba(255, 239, 208, .68);
+  font-size: .72em;
+  font-style: normal;
+}
+
+#game .play-hud__wave {
+  top: calc(var(--play-safe-top) + 8px);
+  left: 50%;
+  width: 112px;
+  height: 44px;
+  padding: 6px 10px !important;
+  transform: translateX(-50%);
+  border-color: rgba(207, 164, 255, .48) !important;
+  box-shadow:
+    0 9px 26px rgba(0,0,0,.30),
+    0 0 22px rgba(157,120,232,.18),
+    inset 0 1px rgba(255,255,255,.14) !important;
+}
+
+#game .play-hud__wave small {
+  margin-bottom: 3px;
+}
+
+#game .play-hud__wave b {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 18px;
+  letter-spacing: .02em;
+}
+
+#game .play-hud__timer {
+  top: calc(var(--play-safe-top) + 12px);
+  left: 62px;
+  width: 64px;
+  height: 36px;
+  padding: 5px 7px !important;
+}
+
+#game .play-hud__timer small {
+  margin-bottom: 3px;
+}
+
+#game .play-hud__timer b {
+  font-size: 12px;
+  letter-spacing: .03em;
+}
+
+#game .play-hud__level {
+  top: calc(var(--play-safe-top) + 12px);
+  right: 10px;
+  width: 54px;
+  height: 36px;
+  padding: 5px 6px !important;
+}
+
+#game .play-hud__level small {
+  margin-bottom: 3px;
+}
+
+#game .play-hud__level b {
+  font-size: 12px;
+}
+
+body.kv-visual-refresh #game .play-hud__hp,
+body.kv-visual-refresh #game .play-hud__exp {
+  z-index: 1;
+  bottom: calc(var(--play-safe-bottom) + 10px);
+  height: 38px;
+  padding: 7px 10px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+}
+
+#game .play-hud__hp {
+  left: 18px;
+  width: 122px;
+}
+
+#game .play-hud__exp {
+  left: 150px;
+  right: 18px;
+  width: auto;
+  border-left: 1px solid rgba(255,226,157,.20) !important;
+}
+
+#game .play-hud__hp::before {
+  content: "♥";
+  color: #ff8796;
+  font-size: 15px;
+  filter: drop-shadow(0 0 8px rgba(255,104,131,.32));
+}
+
+#game .play-hud__hp small,
+#game .play-hud__exp small {
+  display: inline;
+  flex: 0 0 auto;
+  margin: 0;
+  font-size: 8px;
+}
+
+#game .play-hud__hp b,
+#game .play-hud__exp b {
+  display: inline;
+  min-width: 0;
+  font-size: 13px;
+}
+
+#game .play-hud__exp::after {
+  content: "";
+  flex: 1 1 auto;
+  min-width: 28px;
+  height: 3px;
+  margin-left: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(166,129,235,.82), rgba(255,214,126,.70));
+  box-shadow: 0 0 9px rgba(157,120,232,.28);
+}
+
+/* Pause is immediate; returning home lives inside the pause sheet. */
+
+body.kv-visual-refresh #game .play-pause {
+  top: calc(var(--play-safe-top) + 8px) !important;
+  left: 10px !important;
+  right: auto !important;
+  z-index: 14;
+  width: 46px;
+  min-width: 46px;
+  height: 46px;
+  min-height: 46px;
+  padding: 0 !important;
+  display: grid;
+  place-items: center;
+  color: #fff0cb !important;
+  border: 1px solid rgba(255,226,157,.35) !important;
+  border-radius: 15px !important;
+  background-image:
+    url("../assets/images/kv-ui/button_small.png?v=20260613-asset-rich"),
+    linear-gradient(180deg, rgba(36,28,56,.94), rgba(13,11,27,.92)) !important;
+  background-size: 100% 100%, auto !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,.28) !important;
+  text-shadow: 0 2px 5px rgba(0,0,0,.55);
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+#game .play-pause span {
+  font-family: Georgia, serif;
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: -3px;
+  transform: translateX(-1px);
+}
+
+#game .play-pause b {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+}
+
+#game .play-giveup {
+  display: none !important;
+}
+
+/* Touch controls --------------------------------------------------------- */
+
+#game .play-controls {
+  position: absolute;
+  inset: 0;
+  z-index: 13;
+  pointer-events: none;
+}
+
+#game .mini-stats {
+  display: none !important;
+}
+
+#game .joystick {
+  width: 112px !important;
+  height: 112px !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  border: 1px solid rgba(255,226,157,.36) !important;
+  background-image:
+    url("../assets/images/kv-ui/button_icon_round.png?v=20260613-asset-rich"),
+    radial-gradient(circle at 50% 48%, rgba(255,240,196,.15), rgba(91,62,139,.16) 56%, rgba(8,8,20,.62)) !important;
+  background-size: 100% 100%, auto !important;
+  box-shadow:
+    0 18px 48px rgba(0,0,0,.34),
+    0 0 24px rgba(157,120,232,.13),
+    inset 0 1px rgba(255,255,255,.11) !important;
+  transition: opacity .10s ease, transform .10s ease !important;
+}
+
+#game .joystick::before {
+  inset: 15px !important;
+  border: 1px dashed rgba(255,232,180,.30) !important;
+}
+
+#game .joystick.floating {
+  opacity: .92 !important;
+  transform: scale(1) !important;
+}
+
+#game .joystick i {
+  width: 38px !important;
+  height: 38px !important;
+  left: 37px;
+  top: 37px;
+  border: 1px solid rgba(255,250,226,.54);
+  background-image:
+    url("../assets/images/kv-ui/button_primary.png?v=20260613-asset-rich"),
+    radial-gradient(circle at 35% 28%, #fffbe7, #f4d18e 51%, #a784d8 100%) !important;
+  background-size: 100% 100%, auto !important;
+  box-shadow:
+    0 0 22px rgba(255,218,118,.30),
+    0 7px 18px rgba(0,0,0,.24) !important;
+}
+
+/* Temporary cues --------------------------------------------------------- */
+
+body.kv-visual-refresh #game .wave-toast {
+  top: calc(var(--play-safe-top) + 60px) !important;
+  max-width: min(270px, calc(100vw - 24px));
+  min-height: 34px;
+  padding: 8px 15px !important;
+  color: #fff2d2 !important;
+  border: 1px solid rgba(255,226,157,.30) !important;
+  border-radius: 999px !important;
+  background-image:
+    url("../assets/images/kv-ui/hud_pill.png?v=20260613-asset-rich"),
+    linear-gradient(180deg, rgba(30,23,48,.93), rgba(12,10,25,.88)) !important;
+  background-size: 100% 100%, auto !important;
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: 0 10px 30px rgba(0,0,0,.30) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+body.kv-visual-refresh #game .big-cue {
+  top: 42% !important;
+  width: min(260px, calc(100vw - 40px));
+  padding: 13px 18px !important;
+  color: #fff2d3 !important;
+  border: 1px solid rgba(255,226,157,.32) !important;
+  border-radius: 22px !important;
+  background-image:
+    url("../assets/images/kv-ui/panel_glass_small.png?v=20260613-asset-rich"),
+    linear-gradient(180deg, rgba(30,23,48,.91), rgba(12,10,25,.86)) !important;
+  background-size: 100% 100%, auto !important;
+  box-shadow:
+    0 18px 58px rgba(0,0,0,.36),
+    0 0 28px rgba(157,120,232,.11) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+#game .big-cue b {
+  color: #fff1c8 !important;
+  font-size: 19px !important;
+}
+
+#game .big-cue span {
+  color: rgba(255,239,210,.74) !important;
+  font-size: 11px !important;
+}
+
+/* Level-up sheet --------------------------------------------------------- */
+
+body.kv-visual-refresh #levelModal.play-choice-modal {
+  z-index: 40;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  height: 100dvh;
+  padding:
+    calc(var(--play-safe-top) + 8px)
+    10px
+    calc(var(--play-safe-bottom) + 8px) !important;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 14%, rgba(147,103,231,.20), transparent 34%),
+    linear-gradient(180deg, rgba(6,6,16,.68), rgba(7,6,16,.84)) !important;
+  backdrop-filter: blur(6px) saturate(.9);
+  -webkit-backdrop-filter: blur(6px) saturate(.9);
+}
+
+body.kv-visual-refresh #levelModal .play-choice-sheet {
+  position: relative;
+  width: min(100%, 430px);
+  max-height: calc(100vh - var(--play-safe-top) - var(--play-safe-bottom) - 16px);
+  max-height: calc(100dvh - var(--play-safe-top) - var(--play-safe-bottom) - 16px);
+  min-height: 0;
+  margin: 0;
+  padding: 17px 16px 14px !important;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 11px;
+  overflow: hidden;
+  color: var(--play-cream) !important;
+  border: 1px solid rgba(255,226,157,.42) !important;
+  border-radius: 28px !important;
+  background-image:
+    url("../assets/images/kv-ui/panel_glass_modal.png?v=20260613-asset-rich"),
+    radial-gradient(circle at 50% 0%, rgba(121,83,186,.22), transparent 38%),
+    linear-gradient(180deg, rgba(25,19,42,.98), rgba(10,9,22,.97)) !important;
+  background-size: 100% 100%, auto, auto !important;
+  background-repeat: no-repeat !important;
+  box-shadow:
+    0 28px 90px rgba(0,0,0,.52),
+    0 0 34px rgba(157,120,232,.12),
+    inset 0 1px rgba(255,255,255,.12) !important;
+  animation: none !important;
+  opacity: 1 !important;
+  transform: none !important;
+}
+
+#levelModal .play-choice-sheet::before {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  width: auto;
+  height: auto;
+  border: 1px solid rgba(255,239,196,.10);
+  border-radius: 23px;
+  background: none;
+  filter: none;
+  pointer-events: none;
+}
+
+#levelModal .play-choice-header {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+}
+
+#levelModal .play-choice-header .eyebrow {
+  margin: 0 0 3px;
+  color: rgba(255,210,124,.76) !important;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .22em;
+}
+
+#levelModal .play-choice-header h2 {
+  margin: 0;
+  color: #fff2c9 !important;
+  font-family: Georgia, "Yu Mincho", serif;
+  font-size: 25px !important;
+  line-height: 1.15;
+  letter-spacing: .03em;
+  text-shadow:
+    0 0 18px rgba(255,211,127,.20),
+    0 3px 12px rgba(0,0,0,.46) !important;
+}
+
+#levelModal .play-choice-header > p:last-child {
+  margin: 5px 0 0;
+  color: rgba(255,239,210,.72) !important;
+  font-size: 11px !important;
+  line-height: 1.3;
+}
+
+#levelModal #skillChoices {
+  position: relative;
+  z-index: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: repeat(3, minmax(92px, 1fr));
+  gap: 9px !important;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+
+#levelModal #skillChoices::-webkit-scrollbar {
+  display: none;
+}
+
+body.kv-visual-refresh #levelModal .skill-card {
+  position: relative;
+  min-width: 0;
+  min-height: 92px !important;
+  height: 100%;
+  margin: 0;
+  padding: 10px 10px 9px !important;
+  display: grid !important;
+  grid-template-columns: 54px minmax(0, 1fr) 54px;
+  grid-template-rows: auto minmax(18px, 1fr) auto;
+  column-gap: 10px;
+  row-gap: 3px;
+  align-items: center;
+  overflow: hidden;
+  color: #fff2d8 !important;
+  border: 1px solid rgba(255,226,157,.28) !important;
+  border-radius: 20px !important;
+  background-image:
+    url("../assets/images/kv-ui/skill_card_common.png?v=20260613-asset-rich"),
+    radial-gradient(circle at 10% 8%, rgba(255,221,139,.13), transparent 30%),
+    linear-gradient(145deg, rgba(49,36,70,.95), rgba(21,17,39,.96)) !important;
+  background-size: 100% 100%, auto, auto !important;
+  background-repeat: no-repeat !important;
+  box-shadow:
+    0 8px 24px rgba(0,0,0,.28),
+    inset 0 1px rgba(255,255,255,.10) !important;
+  text-align: left;
+  touch-action: manipulation;
+  cursor: pointer;
+  transition: transform .12s ease, filter .12s ease, border-color .12s ease;
+}
+
+body.kv-visual-refresh #levelModal .skill-card.rare {
+  border-color: rgba(194,151,255,.58) !important;
+  background-image:
+    url("../assets/images/kv-ui/skill_card_rare.png?v=20260613-asset-rich"),
+    radial-gradient(circle at 12% 10%, rgba(192,142,255,.18), transparent 32%),
+    linear-gradient(145deg, rgba(57,38,84,.97), rgba(24,17,44,.96)) !important;
+  box-shadow:
+    0 8px 26px rgba(0,0,0,.30),
+    0 0 22px rgba(157,120,232,.13),
+    inset 0 1px rgba(255,255,255,.10) !important;
+}
+
+body.kv-visual-refresh #levelModal .skill-card.legendary,
+body.kv-visual-refresh #levelModal .skill-card.fusion {
+  border-color: rgba(255,218,126,.68) !important;
+  background-image:
+    url("../assets/images/kv-ui/skill_card_legendary.png?v=20260613-asset-rich"),
+    radial-gradient(circle at 12% 10%, rgba(255,218,126,.22), transparent 34%),
+    linear-gradient(145deg, rgba(77,50,67,.98), rgba(29,20,43,.96)) !important;
+  box-shadow:
+    0 8px 26px rgba(0,0,0,.30),
+    0 0 24px rgba(255,210,112,.15),
+    inset 0 1px rgba(255,255,255,.12) !important;
+}
+
+#levelModal .skill-card:active {
+  transform: translateY(1px) scale(.992) !important;
+  filter: brightness(1.08);
+}
+
+#levelModal .skill-card:focus-visible {
+  outline: 2px solid #ffe6a4;
+  outline-offset: 1px;
+}
+
+#levelModal .skill-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(105deg, transparent 0 65%, rgba(255,242,204,.055) 72%, transparent 80%),
+    radial-gradient(circle at 94% 12%, rgba(143,212,255,.08), transparent 24%);
+  pointer-events: none;
+}
+
+#levelModal .skill-card::after {
+  content: "›" !important;
+  position: absolute !important;
+  top: 50% !important;
+  right: 8px !important;
+  left: auto !important;
+  width: auto !important;
+  height: auto !important;
+  color: rgba(255,226,157,.48);
+  background: none !important;
+  font-family: Georgia, serif;
+  font-size: 24px;
+  line-height: 1;
+  transform: translateY(-50%) !important;
+  animation: none !important;
+  pointer-events: none;
+}
+
+#levelModal .kv-card-icon {
+  display: none !important;
+}
+
+#levelModal .skill-head {
+  display: contents !important;
+}
+
+body.kv-visual-refresh #levelModal .skill-icon {
+  grid-column: 1;
+  grid-row: 1 / 4;
+  align-self: center;
+  width: 54px !important;
+  height: 54px !important;
+  min-width: 54px;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 1px solid rgba(255,239,199,.34);
+  border-radius: 17px !important;
+  background-size: contain !important;
+  box-shadow:
+    0 0 18px rgba(255,214,122,.18),
+    inset 0 1px rgba(255,255,255,.20) !important;
+}
+
+#levelModal .skill-head b {
+  grid-column: 2 / 4;
+  grid-row: 1;
+  align-self: end;
+  min-width: 0;
+  margin: 0;
+  padding-right: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #fff3d7 !important;
+  font-size: 16px !important;
+  font-weight: 900;
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 2px 7px rgba(0,0,0,.42);
+}
+
+#levelModal .skill-head b::before {
+  content: "✦";
+  flex: 0 0 auto;
+  color: #e9b65f;
+  font-size: 10px;
+}
+
+#levelModal .skill-lv {
+  flex: 0 0 auto;
+  margin: 0 !important;
+  padding: 3px 7px !important;
+  display: inline-flex !important;
+  align-items: center;
+  min-height: 19px;
+  color: #473450 !important;
+  border: 1px solid rgba(255,255,255,.44);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #fff2cd, #d7b9eb) !important;
+  font-size: 10px !important;
+  font-weight: 900;
+  line-height: 1 !important;
+  text-shadow: none;
+}
+
+body.kv-visual-refresh #levelModal .skill-card > span:not(.skill-icon):not(.kv-card-icon) {
+  grid-column: 2 / 4;
+  grid-row: 2;
+  align-self: start;
+  min-width: 0;
+  margin: 0 !important;
+  padding: 0 13px 0 0 !important;
+  display: -webkit-box !important;
+  overflow: hidden;
+  color: rgba(255,241,216,.76) !important;
+  font-size: 11.5px !important;
+  font-weight: 650;
+  line-height: 1.35;
+  text-shadow: 0 1px 4px rgba(0,0,0,.34);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+#levelModal .skill-card > em {
+  grid-column: 2;
+  grid-row: 3;
+  align-self: center;
+  min-width: 0;
+  height: 24px;
+  margin: 0 !important;
+  padding: 0 !important;
+  display: flex !important;
+  align-items: center;
+  gap: 4px;
+  overflow: hidden;
+  white-space: nowrap;
+  font-style: normal;
+}
+
+body.kv-visual-refresh #levelModal .tag {
+  flex: 0 0 auto;
+  margin: 0 !important;
+  padding: 3px 7px !important;
+  min-height: 20px;
+  display: inline-flex;
+  align-items: center;
+  color: #4a3550 !important;
+  border: 1px solid rgba(255,255,255,.38) !important;
+  border-radius: 999px;
+  background-image: none !important;
+  background: linear-gradient(180deg, rgba(255,242,208,.96), rgba(216,186,215,.92)) !important;
+  font-size: 9px !important;
+  font-weight: 900;
+  line-height: 1;
+  text-shadow: none;
+}
+
+body.kv-visual-refresh #levelModal .ban-skill {
+  position: static !important;
+  grid-column: 3;
+  grid-row: 3;
+  align-self: center;
+  justify-self: end;
+  z-index: 2;
+  width: 52px;
+  min-width: 52px;
+  height: 46px;
+  min-height: 46px;
+  margin: 0;
+  padding: 0 4px !important;
+  color: rgba(255,238,207,.82) !important;
+  border: 1px solid rgba(255,226,157,.26) !important;
+  border-radius: 14px !important;
+  background-image: none !important;
+  background: rgba(9,8,20,.48) !important;
+  box-shadow: inset 0 1px rgba(255,255,255,.06) !important;
+  font-size: 9px !important;
+  font-weight: 850;
+  line-height: 1.1;
+  text-shadow: 0 1px 4px rgba(0,0,0,.48);
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+#levelModal .ban-skill:active {
+  transform: translateY(1px);
+  background: rgba(71,48,87,.72) !important;
+}
+
+#levelModal .ban-skill:disabled {
+  opacity: .34;
+  filter: grayscale(.35);
+}
+
+#levelModal .play-choice-footer {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: center;
+}
+
+body.kv-visual-refresh #levelModal .reroll-btn {
+  width: 176px;
+  min-width: 176px;
+  height: 46px;
+  min-height: 46px;
+  margin: 0 !important;
+  padding: 5px 14px !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: #3e2b45 !important;
+  border: 1px solid rgba(255,250,225,.70) !important;
+  border-radius: 16px !important;
+  background-image:
+    url("../assets/images/kv-ui/button_primary.png?v=20260613-asset-rich"),
+    linear-gradient(180deg, #fff0b9, #dda968 58%, #a97459) !important;
+  background-size: 100% 100%, auto !important;
+  box-shadow:
+    0 5px 0 rgba(44,28,42,.42),
+    0 0 19px rgba(255,215,118,.18) !important;
+  text-shadow: 0 1px rgba(255,255,255,.38) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+#levelModal .reroll-btn > span {
+  margin: 0 !important;
+  padding: 0 !important;
+  color: #3e2b45 !important;
+  font-size: 13px !important;
+  font-weight: 950;
+}
+
+#levelModal .reroll-btn small {
+  margin: 0;
+  color: rgba(62,43,69,.70) !important;
+  font-size: 9px;
+  font-weight: 850;
+}
+
+#levelModal .reroll-btn small b {
+  color: #3e2b45;
+  font-size: 11px;
+}
+
+#levelModal .reroll-btn:disabled {
+  opacity: .42;
+  filter: grayscale(.25);
+}
+
+/* Short Safari viewport -------------------------------------------------- */
+
+@media (max-height: 560px) {
+  body.kv-visual-refresh #levelModal.play-choice-modal {
+    padding:
+      calc(var(--play-safe-top) + 6px)
+      6px
+      calc(var(--play-safe-bottom) + 6px) !important;
+  }
+
+  body.kv-visual-refresh #levelModal .play-choice-sheet {
+    max-height: calc(100vh - var(--play-safe-top) - var(--play-safe-bottom) - 12px);
+    max-height: calc(100dvh - var(--play-safe-top) - var(--play-safe-bottom) - 12px);
+    padding: 10px !important;
+    gap: 7px;
+    border-radius: 22px !important;
+  }
+
+  #levelModal .play-choice-sheet::before {
+    inset: 4px;
+    border-radius: 18px;
+  }
+
+  #levelModal .play-choice-header {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    column-gap: 9px;
+    padding: 0 5px;
+    text-align: left;
+  }
+
+  #levelModal .play-choice-header .eyebrow {
+    grid-column: 1;
+    grid-row: 1;
+    margin: 0;
+    font-size: 8px;
+    letter-spacing: .12em;
+  }
+
+  #levelModal .play-choice-header h2 {
+    grid-column: 2;
+    grid-row: 1;
+    font-size: 20px !important;
+    text-align: left;
+  }
+
+  #levelModal .play-choice-header > p:last-child {
+    display: none;
+  }
+
+  #levelModal #skillChoices {
+    grid-template-rows: repeat(3, minmax(84px, 1fr));
+    gap: 6px !important;
+  }
+
+  body.kv-visual-refresh #levelModal .skill-card {
+    min-height: 84px !important;
+    grid-template-columns: 46px minmax(0, 1fr) 50px;
+    padding: 7px 8px !important;
+    column-gap: 8px;
+    row-gap: 2px;
+    border-radius: 17px !important;
+  }
+
+  body.kv-visual-refresh #levelModal .skill-icon {
+    width: 46px !important;
+    height: 46px !important;
+    min-width: 46px;
+    border-radius: 14px !important;
+  }
+
+  #levelModal .skill-head b {
+    padding-right: 10px;
+    font-size: 14px !important;
+  }
+
+  #levelModal .skill-lv {
+    min-height: 17px;
+    padding: 2px 6px !important;
+    font-size: 9px !important;
+  }
+
+  body.kv-visual-refresh #levelModal .skill-card > span:not(.skill-icon):not(.kv-card-icon) {
+    padding-right: 10px !important;
+    font-size: 10.5px !important;
+    line-height: 1.25;
+    -webkit-line-clamp: 1;
+  }
+
+  #levelModal .skill-card > em {
+    height: 21px;
+  }
+
+  body.kv-visual-refresh #levelModal .tag {
+    min-height: 18px;
+    padding: 2px 6px !important;
+    font-size: 8px !important;
+  }
+
+  body.kv-visual-refresh #levelModal .ban-skill {
+    width: 50px;
+    min-width: 50px;
+    height: 46px;
+    min-height: 46px;
+    border-radius: 13px !important;
+  }
+
+  body.kv-visual-refresh #levelModal .reroll-btn {
+    width: 164px;
+    min-width: 164px;
+    height: 46px;
+    min-height: 46px;
+    border-radius: 15px !important;
+  }
+
+  #game .play-hud::after {
+    bottom: calc(var(--play-safe-bottom) + 6px);
+    height: 40px;
+  }
+
+  body.kv-visual-refresh #game .play-hud__hp,
+  body.kv-visual-refresh #game .play-hud__exp {
+    bottom: calc(var(--play-safe-bottom) + 8px);
+    height: 36px;
+  }
+}
+
+@media (max-width: 380px) {
+  #game .play-hud__wave {
+    width: 102px;
+  }
+
+  #game .play-hud__timer {
+    left: 62px;
+    width: 60px;
+  }
+
+  #game .play-hud__level {
+    right: 8px;
+    width: 50px;
+  }
+
+  #game .play-hud__hp {
+    left: 16px;
+    width: 112px;
+  }
+
+  #game .play-hud__exp {
+    left: 136px;
+    right: 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #game .joystick,
+  #game .wave-toast,
+  #game .big-cue,
+  #levelModal .skill-card {
+    animation: none !important;
+    transition: none !important;
+  }
+}
