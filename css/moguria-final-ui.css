@@ -2,8 +2,8 @@
    Visual scope only: the existing IDs/events/save/battle flow remain unchanged. */
 
 #home.home-v2 {
-  --home-safe-top: max(env(safe-area-inset-top, 0px), 20px);
-  --home-safe-bottom: max(env(safe-area-inset-bottom, 0px), 16px);
+  --home-safe-top: env(safe-area-inset-top, 0px);
+  --home-safe-bottom: env(safe-area-inset-bottom, 0px);
   position: absolute;
   inset: 0;
   overflow: hidden;
@@ -11,13 +11,6 @@
   color: #fff4d8;
   background: #070817;
   font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", "Noto Sans JP", sans-serif;
-}
-
-@media (min-height: 780px) {
-  #home.home-v2 {
-    --home-safe-top: max(env(safe-area-inset-top, 0px), 47px);
-    --home-safe-bottom: max(env(safe-area-inset-bottom, 0px), 34px);
-  }
 }
 
 #home.home-v2 .home-v2__scene {
@@ -382,6 +375,8 @@ body.kv-visual-refresh #home.home-v2 button {
   color: #fff2d8;
   background: none !important;
   box-shadow: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
   text-shadow: 0 1px 3px rgba(0, 0, 0, .9);
   -webkit-tap-highlight-color: transparent;
 }
@@ -432,9 +427,9 @@ body.kv-visual-refresh #home.home-v2 button {
 #home.home-v2 .home-v2__expedition {
   left: 12px;
   right: 12px;
-  bottom: calc(var(--home-safe-bottom) + 120px);
-  height: 76px;
-  padding: 15px 17px;
+  bottom: calc(var(--home-safe-bottom) + 110px);
+  height: 72px;
+  padding: 12px 16px;
   display: flex;
   align-items: center;
   gap: 9px;
@@ -504,17 +499,19 @@ body.kv-visual-refresh #home.home-v2 button {
   left: 12px;
   right: 12px;
   bottom: calc(var(--home-safe-bottom) + 4px);
-  height: 102px;
-  padding: 10px 12px 9px;
+  height: 92px;
+  padding: 9px 10px 8px;
   display: grid;
   grid-template-columns: 1fr 1fr 1.22fr 1fr;
-  align-items: center;
-  gap: 2px;
+  grid-template-rows: minmax(0, 1fr);
+  align-items: stretch;
+  gap: 4px;
 }
 
 #home.home-v2 .home-v2__dock button {
   min-width: 0;
-  height: 78px;
+  min-height: 44px;
+  height: auto;
   padding: 4px 2px;
   display: flex;
   flex-direction: column;
@@ -538,9 +535,10 @@ body.kv-visual-refresh #home.home-v2 button {
 }
 
 #home.home-v2 .home-v2__start {
-  height: 103px !important;
-  padding: 12px 6px 9px !important;
-  transform: translateY(-7px);
+  height: 83px !important;
+  align-self: end;
+  padding: 7px 5px 5px !important;
+  transform: translateY(-5px);
   color: #2d2138 !important;
   text-shadow: 0 1px rgba(255, 255, 255, .5) !important;
 }
@@ -574,7 +572,7 @@ body.kv-visual-refresh #home.home-v2 button {
 }
 
 #home.home-v2 .home-v2__start:active {
-  transform: translateY(-5px);
+  transform: translateY(-3px);
 }
 
 #home.home-v2 button:focus-visible {
@@ -611,16 +609,21 @@ body.kv-visual-refresh #home.home-v2 button {
   }
 
   #home.home-v2 .home-v2__expedition {
-    bottom: calc(var(--home-safe-bottom) + 112px);
-    height: 70px;
+    bottom: calc(var(--home-safe-bottom) + 100px);
+    height: 62px;
+    padding: 9px 14px;
   }
 
   #home.home-v2 .home-v2__dock {
-    height: 96px;
+    height: 84px;
+    padding-top: 8px;
+    padding-bottom: 7px;
   }
 
   #home.home-v2 .home-v2__start {
-    height: 97px !important;
+    height: 77px !important;
+    padding: 6px 5px 9px !important;
+    gap: 2px;
   }
 }
 
