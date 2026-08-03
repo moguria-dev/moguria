@@ -967,3 +967,960 @@ body.kv-visual-refresh #levelModal .reroll-btn {
     transition: none !important;
   }
 }
+
+/* Home-aligned play UI ---------------------------------------------------
+   The home screen is the canonical visual system: deep navy glass, aged gold,
+   painterly cave light, and restrained glow. These rules intentionally sit
+   last so legacy pearl/pastel surfaces cannot leak through on short Safari
+   viewports. */
+
+#game {
+  --play-ink: #fff3d8;
+  --play-ink-muted: rgba(248, 230, 199, .72);
+  --play-antique-gold: #dcae55;
+  --play-antique-gold-soft: rgba(226, 180, 92, .40);
+  --play-navy: rgba(8, 11, 34, .91);
+  --play-navy-soft: rgba(13, 16, 43, .78);
+  --play-hp-ratio: 100%;
+  --play-exp-ratio: 0%;
+  background:
+    linear-gradient(180deg, rgba(3, 5, 20, .18), rgba(3, 4, 17, .48)),
+    url("../assets/images/home-v2/home_bg_base.webp") 50% 52% / cover no-repeat !important;
+}
+
+body.kv-visual-refresh #gameCanvas {
+  opacity: .38 !important;
+  filter: saturate(.92) contrast(1.10) brightness(.68) !important;
+  mix-blend-mode: soft-light;
+}
+
+body.kv-visual-refresh #kvGameVisualOverlay {
+  filter: saturate(1.04) contrast(1.02);
+}
+
+body.kv-visual-refresh #game::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(3, 5, 18, .54) 0, transparent 18%, transparent 76%, rgba(3, 4, 15, .68) 100%),
+    radial-gradient(circle at 50% 42%, transparent 0 27%, rgba(2, 4, 16, .14) 58%, rgba(2, 3, 13, .46) 100%);
+  mix-blend-mode: normal !important;
+}
+
+body.kv-visual-refresh #game::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  opacity: .48;
+  background-image:
+    radial-gradient(circle, rgba(255, 225, 145, .62) 0 1px, transparent 1.6px),
+    radial-gradient(circle, rgba(160, 192, 255, .42) 0 1px, transparent 1.5px);
+  background-size: 101px 101px, 149px 149px;
+  background-position: 17px 31px, 73px 89px;
+  mix-blend-mode: screen;
+}
+
+/* HUD: light information architecture, matching the home resource pills. */
+
+body.kv-visual-refresh #game .play-hud > div {
+  color: var(--play-ink) !important;
+  border: 1px solid rgba(224, 174, 76, .78) !important;
+  background-image: none !important;
+  background:
+    linear-gradient(180deg, rgba(18, 20, 53, .94), rgba(7, 9, 29, .92)) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 230, 172, .10),
+    0 5px 16px rgba(1, 2, 12, .42) !important;
+  backdrop-filter: blur(7px) saturate(1.08) !important;
+  -webkit-backdrop-filter: blur(7px) saturate(1.08) !important;
+}
+
+#game .play-hud small {
+  color: rgba(235, 192, 108, .82) !important;
+  font-size: 7px;
+  letter-spacing: .16em;
+}
+
+#game .play-hud b {
+  color: #fff5dd !important;
+  font-variant-numeric: tabular-nums;
+}
+
+#game .play-hud__timer {
+  top: calc(var(--play-safe-top) + 10px);
+  left: 58px;
+  width: 72px;
+  height: 40px;
+  padding: 5px 8px !important;
+  border-radius: 999px !important;
+}
+
+#game .play-hud__timer b {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 14px;
+}
+
+#game .play-hud__wave {
+  top: calc(var(--play-safe-top) + 6px);
+  width: 118px;
+  height: 50px;
+  padding: 7px 10px !important;
+  border-color: rgba(235, 189, 98, .90) !important;
+  border-radius: 17px !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 233, 180, .12),
+    0 7px 20px rgba(1, 2, 12, .46),
+    0 0 20px rgba(85, 114, 229, .10) !important;
+}
+
+#game .play-hud__wave small {
+  margin-bottom: 3px;
+}
+
+#game .play-hud__wave b {
+  font-size: 20px;
+  line-height: 1;
+}
+
+#game .play-hud__level {
+  top: calc(var(--play-safe-top) + 10px);
+  right: 10px;
+  width: 62px;
+  height: 40px;
+  padding: 5px 7px !important;
+  border-radius: 999px !important;
+}
+
+#game .play-hud__level b {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 13px;
+}
+
+body.kv-visual-refresh #game .play-pause {
+  top: calc(var(--play-safe-top) + 8px) !important;
+  left: 10px !important;
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
+  color: #fff1d0 !important;
+  border: 1px solid rgba(224, 174, 76, .84) !important;
+  border-radius: 50% !important;
+  background-image: none !important;
+  background:
+    radial-gradient(circle at 38% 30%, rgba(71, 70, 121, .58), transparent 38%),
+    linear-gradient(180deg, rgba(17, 19, 49, .96), rgba(6, 8, 27, .94)) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 231, 170, .10),
+    0 6px 17px rgba(1, 2, 12, .46) !important;
+}
+
+#game .play-pause span {
+  font-size: 14px;
+  letter-spacing: -2px;
+}
+
+/* Bottom status is one framed object, not two unrelated capsules. */
+
+#game .play-hud::after {
+  left: 10px;
+  right: 10px;
+  bottom: calc(var(--play-safe-bottom) + 8px);
+  height: 52px;
+  box-sizing: border-box;
+  border: 16px solid transparent;
+  border-radius: 0;
+  background: none;
+  border-image-source: url("../assets/images/home-v2/frame_glass_gold_9slice.png");
+  border-image-slice: 64 fill;
+  border-image-width: 14px;
+  border-image-repeat: stretch;
+  box-shadow: none;
+  filter: drop-shadow(0 6px 10px rgba(1, 2, 12, .48));
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+body.kv-visual-refresh #game .play-hud__hp,
+body.kv-visual-refresh #game .play-hud__exp {
+  bottom: calc(var(--play-safe-bottom) + 12px);
+  height: 43px;
+  padding: 6px 10px 11px !important;
+  color: var(--play-ink) !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+#game .play-hud__hp {
+  left: 20px;
+  width: 111px;
+}
+
+#game .play-hud__exp {
+  left: 132px;
+  right: 20px;
+  width: auto;
+  border-left: 1px solid rgba(226, 180, 92, .26) !important;
+}
+
+#game .play-hud__hp::before {
+  content: "♥";
+  flex: 0 0 auto;
+  color: #ff778c;
+  font-size: 15px;
+  filter: drop-shadow(0 0 6px rgba(255, 97, 125, .38));
+}
+
+#game .play-hud__hp::after,
+#game .play-hud__exp::after {
+  content: "";
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 7px;
+  width: auto;
+  min-width: 0;
+  height: 4px;
+  margin: 0;
+  border: 1px solid rgba(255, 232, 178, .22);
+  border-radius: 999px;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, .62);
+}
+
+#game .play-hud__hp::after {
+  background: linear-gradient(90deg,
+    #ef788c 0,
+    #ffb97e var(--play-hp-ratio),
+    rgba(2, 4, 18, .76) var(--play-hp-ratio),
+    rgba(2, 4, 18, .76) 100%);
+}
+
+#game .play-hud__exp::after {
+  background:
+    linear-gradient(90deg, #7db8ff, #a98aea 58%, #f2ce73)
+      left / var(--play-exp-ratio) 100% no-repeat,
+    rgba(2, 4, 18, .76);
+  box-shadow:
+    inset 0 1px 2px rgba(0, 0, 0, .62),
+    0 0 7px rgba(113, 144, 255, .16);
+}
+
+#game .play-hud__hp small,
+#game .play-hud__exp small {
+  color: rgba(235, 192, 108, .84) !important;
+}
+
+#game .play-hud__hp b,
+#game .play-hud__exp b {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 14px;
+}
+
+/* Touch control follows the same dark-metal language without becoming a
+   permanent visual obstacle. */
+
+#game .joystick {
+  width: 108px !important;
+  height: 108px !important;
+  border: 1px solid rgba(226, 180, 92, .54) !important;
+  background-image: none !important;
+  background:
+    radial-gradient(circle at 50% 48%, rgba(106, 112, 188, .20), rgba(7, 9, 28, .48) 62%, rgba(3, 4, 16, .70)) !important;
+  box-shadow:
+    0 14px 34px rgba(1, 2, 12, .36),
+    inset 0 0 0 1px rgba(255, 232, 178, .08) !important;
+}
+
+#game .joystick::before {
+  inset: 15px !important;
+  border: 1px dashed rgba(226, 180, 92, .34) !important;
+}
+
+#game .joystick i {
+  left: 36px;
+  top: 36px;
+  width: 36px !important;
+  height: 36px !important;
+  border: 1px solid rgba(255, 235, 191, .64);
+  background-image: none !important;
+  background:
+    radial-gradient(circle at 36% 28%, #fff4cf, #d9ad5b 48%, #5b4b7e 100%) !important;
+  box-shadow:
+    0 0 16px rgba(239, 193, 95, .25),
+    0 5px 12px rgba(1, 2, 12, .35) !important;
+}
+
+body.kv-visual-refresh #game .wave-toast,
+body.kv-visual-refresh #game .big-cue {
+  color: var(--play-ink) !important;
+  border: 1px solid rgba(226, 180, 92, .62) !important;
+  background-image: none !important;
+  background:
+    linear-gradient(180deg, rgba(16, 19, 49, .94), rgba(6, 8, 27, .91)) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 231, 170, .08),
+    0 10px 28px rgba(1, 2, 12, .42) !important;
+}
+
+body.kv-visual-refresh #game .big-cue {
+  top: calc(50% - 105px) !important;
+  width: min(270px, calc(100vw - 34px));
+  padding: 14px 22px !important;
+  border: 16px solid transparent !important;
+  border-radius: 0 !important;
+  border-image-source: url("../assets/images/home-v2/button_pearl_9slice.png") !important;
+  border-image-slice: 48 fill !important;
+  border-image-width: 13px !important;
+  border-image-repeat: stretch !important;
+  background: none !important;
+  filter: drop-shadow(0 8px 18px rgba(1, 2, 12, .48));
+}
+
+/* Level-up: an in-world selection board, built from the same 9-slice assets
+   as the home profile and dock. */
+
+body.kv-visual-refresh #levelModal.play-choice-modal {
+  z-index: 40;
+  padding:
+    calc(var(--play-safe-top) + 8px)
+    7px
+    calc(var(--play-safe-bottom) + 8px) !important;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 25%, rgba(77, 101, 205, .15), transparent 38%),
+    linear-gradient(180deg, rgba(2, 4, 17, .72), rgba(2, 3, 14, .88)) !important;
+  backdrop-filter: blur(5px) saturate(.86) !important;
+  -webkit-backdrop-filter: blur(5px) saturate(.86) !important;
+}
+
+body.kv-visual-refresh #levelModal .play-choice-sheet {
+  position: relative;
+  width: min(100%, 420px);
+  height: min(575px, calc(100dvh - var(--play-safe-top) - var(--play-safe-bottom) - 16px));
+  max-height: calc(100dvh - var(--play-safe-top) - var(--play-safe-bottom) - 16px);
+  min-height: 0;
+  margin: 0;
+  padding: 22px 19px 17px !important;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 11px;
+  overflow: hidden;
+  isolation: isolate;
+  color: var(--play-ink) !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+body.kv-visual-refresh #levelModal .play-choice-sheet::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  box-sizing: border-box;
+  border: 18px solid transparent;
+  border-radius: 0;
+  background: none;
+  border-image-source: url("../assets/images/home-v2/frame_glass_gold_9slice.png");
+  border-image-slice: 64 fill;
+  border-image-width: 18px;
+  border-image-repeat: stretch;
+  filter: drop-shadow(0 18px 36px rgba(1, 2, 12, .62));
+  pointer-events: none;
+}
+
+body.kv-visual-refresh #levelModal .play-choice-sheet::after {
+  content: "";
+  position: absolute;
+  inset: 14px;
+  z-index: -1;
+  opacity: .48;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 11% 12%, rgba(255, 226, 143, .60) 0 1px, transparent 1.8px),
+    radial-gradient(circle at 87% 18%, rgba(150, 184, 255, .46) 0 1px, transparent 1.7px),
+    radial-gradient(circle at 76% 82%, rgba(255, 226, 143, .36) 0 1px, transparent 1.7px);
+}
+
+#levelModal .play-choice-header {
+  position: relative;
+  z-index: 2;
+  min-height: 50px;
+  display: grid;
+  place-content: center;
+  text-align: center;
+}
+
+#levelModal .play-choice-header::before,
+#levelModal .play-choice-header::after {
+  content: "";
+  position: absolute;
+  top: 27px;
+  width: 54px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(226, 180, 92, .72));
+}
+
+#levelModal .play-choice-header::before {
+  left: 7px;
+}
+
+#levelModal .play-choice-header::after {
+  right: 7px;
+  transform: scaleX(-1);
+}
+
+#levelModal .play-choice-header .eyebrow {
+  margin: 0 0 2px;
+  color: rgba(224, 177, 87, .88) !important;
+  font-size: 8px;
+  letter-spacing: .24em;
+}
+
+#levelModal .play-choice-header h2 {
+  margin: 0;
+  color: #fff2d3 !important;
+  font-family: "Yu Mincho", "Hiragino Mincho ProN", Georgia, serif;
+  font-size: 24px !important;
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: .05em;
+  text-shadow:
+    0 0 14px rgba(239, 193, 95, .20),
+    0 3px 10px rgba(1, 2, 12, .70) !important;
+}
+
+#levelModal .play-choice-header h2::before {
+  content: "✦";
+  margin-right: 8px;
+  color: #e2b45c;
+  font-family: Georgia, serif;
+  font-size: 11px;
+  vertical-align: .18em;
+}
+
+#levelModal .play-choice-header > p:last-child {
+  margin: 5px 0 0;
+  color: var(--play-ink-muted) !important;
+  font-size: 10px !important;
+  line-height: 1.25;
+}
+
+#levelModal #skillChoices {
+  position: relative;
+  z-index: 2;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: repeat(3, minmax(92px, 1fr));
+  gap: 8px !important;
+  overflow: hidden;
+}
+
+body.kv-visual-refresh #levelModal .skill-card {
+  position: relative;
+  min-width: 0;
+  min-height: 92px !important;
+  height: 100%;
+  margin: 0;
+  padding: 13px 14px 11px !important;
+  display: grid !important;
+  grid-template-columns: 58px minmax(0, 1fr) 52px;
+  grid-template-rows: auto minmax(18px, 1fr) auto;
+  column-gap: 10px;
+  row-gap: 3px;
+  align-items: center;
+  overflow: hidden;
+  isolation: isolate;
+  color: var(--play-ink) !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: none !important;
+  box-shadow: none !important;
+  text-align: left;
+  touch-action: manipulation;
+}
+
+body.kv-visual-refresh #levelModal .skill-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  box-sizing: border-box;
+  border: 16px solid transparent;
+  background: none;
+  border-image-source: url("../assets/images/home-v2/button_pearl_9slice.png");
+  border-image-slice: 48 fill;
+  border-image-width: 13px;
+  border-image-repeat: stretch;
+  filter: drop-shadow(0 4px 7px rgba(1, 2, 12, .38));
+  pointer-events: none;
+}
+
+body.kv-visual-refresh #levelModal .skill-card::after {
+  content: "" !important;
+  position: absolute !important;
+  inset: 8px !important;
+  z-index: -1;
+  width: auto !important;
+  height: auto !important;
+  background:
+    linear-gradient(105deg, transparent 0 64%, rgba(255, 232, 178, .035) 72%, transparent 80%),
+    radial-gradient(circle at 10% 12%, rgba(255, 224, 143, .09), transparent 29%) !important;
+  transform: none !important;
+  animation: none !important;
+  pointer-events: none;
+}
+
+body.kv-visual-refresh #levelModal .skill-card.rare {
+  background: none !important;
+  background-image: none !important;
+  box-shadow: 0 0 16px rgba(132, 104, 220, .18) !important;
+}
+
+body.kv-visual-refresh #levelModal .skill-card.legendary,
+body.kv-visual-refresh #levelModal .skill-card.fusion {
+  background: none !important;
+  background-image: none !important;
+  box-shadow: 0 0 18px rgba(226, 180, 92, .20) !important;
+}
+
+body.kv-visual-refresh #levelModal .skill-card[data-kv-rarity="rare"],
+body.kv-visual-refresh #levelModal .skill-card[data-kv-rarity="legendary"] {
+  background: none !important;
+  background-image: none !important;
+}
+
+#levelModal .skill-card:active {
+  transform: translateY(1px) scale(.994) !important;
+  filter: brightness(1.10);
+}
+
+#levelModal .skill-head {
+  display: contents !important;
+}
+
+body.kv-visual-refresh #levelModal .skill-icon {
+  grid-column: 1;
+  grid-row: 1 / 4;
+  align-self: center;
+  width: 56px !important;
+  height: 56px !important;
+  min-width: 56px;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 1px solid rgba(226, 180, 92, .58) !important;
+  border-radius: 50% !important;
+  background-color: rgba(3, 5, 19, .68) !important;
+  background-size: 112% !important;
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 232, 178, .08),
+    0 0 13px rgba(105, 121, 225, .12) !important;
+}
+
+body.kv-visual-refresh #levelModal .skill-icon[data-kv-kind="fire"] { border-color: rgba(235, 137, 82, .76) !important; box-shadow: 0 0 14px rgba(235, 112, 68, .24) !important; }
+body.kv-visual-refresh #levelModal .skill-icon[data-kv-kind="ice"] { border-color: rgba(112, 198, 231, .76) !important; box-shadow: 0 0 14px rgba(90, 185, 231, .22) !important; }
+body.kv-visual-refresh #levelModal .skill-icon[data-kv-kind="poison"] { border-color: rgba(183, 117, 225, .78) !important; box-shadow: 0 0 14px rgba(171, 94, 226, .24) !important; }
+body.kv-visual-refresh #levelModal .skill-icon[data-kv-kind="guard"] { border-color: rgba(111, 193, 143, .76) !important; box-shadow: 0 0 14px rgba(89, 184, 129, .22) !important; }
+body.kv-visual-refresh #levelModal .skill-icon[data-kv-kind="star"] { border-color: rgba(238, 194, 89, .84) !important; box-shadow: 0 0 15px rgba(238, 188, 71, .24) !important; }
+body.kv-visual-refresh #levelModal .skill-icon[data-kv-kind="summon"] { border-color: rgba(224, 151, 184, .78) !important; box-shadow: 0 0 14px rgba(213, 126, 174, .22) !important; }
+
+/* Gameplay skills use a fixed id-to-kind mapping and a single painterly icon
+   family. Keep these scoped to the choice sheet so unrelated inventory art is
+   unchanged. */
+body.kv-visual-refresh #levelModal .skill-icon {
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-size: 88% !important;
+}
+
+body.kv-visual-refresh #levelModal .skill-icon[data-kv-kind="cave"] { background-image: url("../assets/images/play-ui/skill_cave.png?v=20260803-play-ui-3") !important; }
+body.kv-visual-refresh #levelModal .skill-icon[data-kv-kind="fire"] { background-image: url("../assets/images/play-ui/skill_fire.png?v=20260803-play-ui-3") !important; }
+body.kv-visual-refresh #levelModal .skill-icon[data-kv-kind="ice"] { background-image: url("../assets/images/play-ui/skill_ice.png?v=20260803-play-ui-3") !important; }
+body.kv-visual-refresh #levelModal .skill-icon[data-kv-kind="poison"] { background-image: url("../assets/images/play-ui/skill_poison.png?v=20260803-play-ui-3") !important; }
+body.kv-visual-refresh #levelModal .skill-icon[data-kv-kind="guard"] { background-image: url("../assets/images/play-ui/skill_guard.png?v=20260803-play-ui-3") !important; }
+body.kv-visual-refresh #levelModal .skill-icon[data-kv-kind="star"] { background-image: url("../assets/images/play-ui/skill_star.png?v=20260803-play-ui-3") !important; }
+body.kv-visual-refresh #levelModal .skill-icon[data-kv-kind="summon"] { background-image: url("../assets/images/play-ui/skill_summon.png?v=20260803-play-ui-3") !important; }
+
+#levelModal .skill-head b {
+  grid-column: 2 / 4;
+  grid-row: 1;
+  align-self: end;
+  min-width: 0;
+  padding-right: 4px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #fff1d4 !important;
+  font-size: 15px !important;
+  font-weight: 850;
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 2px 5px rgba(1, 2, 12, .72);
+}
+
+#levelModal .skill-head b::before {
+  content: "✦";
+  color: #dcae55;
+  font-size: 9px;
+}
+
+#levelModal .skill-lv {
+  flex: 0 0 auto;
+  min-height: 18px;
+  margin: 0 !important;
+  padding: 2px 7px !important;
+  display: inline-flex !important;
+  align-items: center;
+  color: #f2d28e !important;
+  border: 1px solid rgba(226, 180, 92, .34) !important;
+  border-radius: 999px;
+  background: rgba(4, 6, 22, .62) !important;
+  font-size: 9px !important;
+  font-weight: 850;
+  line-height: 1 !important;
+  text-shadow: none;
+}
+
+body.kv-visual-refresh #levelModal .skill-card > span:not(.skill-icon):not(.kv-card-icon) {
+  grid-column: 2 / 4;
+  grid-row: 2;
+  align-self: start;
+  min-width: 0;
+  margin: 0 !important;
+  padding: 0 2px 0 0 !important;
+  display: -webkit-box !important;
+  overflow: hidden;
+  color: rgba(247, 229, 200, .76) !important;
+  font-size: 11px !important;
+  font-weight: 600;
+  line-height: 1.32;
+  text-shadow: 0 1px 3px rgba(1, 2, 12, .72);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+#levelModal .skill-card > em {
+  grid-column: 2;
+  grid-row: 3;
+  align-self: center;
+  min-width: 0;
+  height: 23px;
+  margin: 0 !important;
+  padding: 0 !important;
+  display: flex !important;
+  align-items: center;
+  gap: 4px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+body.kv-visual-refresh #levelModal .tag {
+  flex: 0 0 auto;
+  min-height: 19px;
+  margin: 0 !important;
+  padding: 2px 7px !important;
+  display: inline-flex;
+  align-items: center;
+  color: rgba(246, 222, 176, .88) !important;
+  border: 1px solid rgba(226, 180, 92, .24) !important;
+  border-radius: 999px;
+  background-image: none !important;
+  background: rgba(3, 5, 20, .54) !important;
+  font-size: 8px !important;
+  font-weight: 800;
+  line-height: 1;
+}
+
+body.kv-visual-refresh #levelModal .ban-skill {
+  position: static !important;
+  grid-column: 3;
+  grid-row: 3;
+  align-self: center;
+  justify-self: end;
+  z-index: 3;
+  width: 50px;
+  min-width: 50px;
+  height: 44px;
+  min-height: 44px;
+  margin: 0;
+  padding: 0 3px !important;
+  color: rgba(244, 222, 181, .82) !important;
+  border: 1px solid rgba(148, 115, 77, .72) !important;
+  border-radius: 12px !important;
+  background-image: none !important;
+  background:
+    linear-gradient(180deg, rgba(36, 26, 52, .84), rgba(8, 7, 24, .88)) !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 227, 169, .05) !important;
+  font-size: 9px !important;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+#levelModal .play-choice-footer {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  justify-content: center;
+}
+
+body.kv-visual-refresh #levelModal .reroll-btn {
+  position: relative;
+  isolation: isolate;
+  width: 180px;
+  min-width: 180px;
+  height: 48px;
+  min-height: 48px;
+  margin: 0 !important;
+  padding: 5px 15px !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: #f7dfb1 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: none !important;
+  box-shadow: none !important;
+  text-shadow: 0 2px 4px rgba(1, 2, 12, .72) !important;
+}
+
+body.kv-visual-refresh #levelModal .reroll-btn::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  box-sizing: border-box;
+  border: 18px solid transparent;
+  border-image-source: url("../assets/images/home-v2/button_pearl_9slice.png");
+  border-image-slice: 48 fill;
+  border-image-width: 12px;
+  border-image-repeat: stretch;
+  filter: drop-shadow(0 4px 6px rgba(1, 2, 12, .38));
+}
+
+#levelModal .reroll-btn > span,
+#levelModal .reroll-btn small,
+#levelModal .reroll-btn small b {
+  color: #f7dfb1 !important;
+}
+
+#levelModal .reroll-btn > span {
+  font-size: 13px !important;
+  font-weight: 900;
+}
+
+#levelModal .reroll-btn small {
+  color: rgba(231, 201, 147, .72) !important;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+#levelModal .reroll-btn small b {
+  color: #fff0ce !important;
+  font-size: 11px;
+}
+
+/* Related play overlay: keep pause controls inside the physical iPhone safe
+   area. Only the skill list scrolls; primary actions remain visible. */
+
+body.kv-visual-refresh #pauseModal {
+  box-sizing: border-box;
+  padding:
+    calc(var(--play-safe-top) + 8px)
+    10px
+    calc(var(--play-safe-bottom) + 8px) !important;
+  overflow: hidden;
+}
+
+body.kv-visual-refresh #pauseModal .pause-card {
+  box-sizing: border-box;
+  max-height: calc(100dvh - var(--play-safe-top) - var(--play-safe-bottom) - 16px);
+  margin: 0;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+  overflow: hidden;
+}
+
+body.kv-visual-refresh #pauseModal .pause-skills {
+  min-height: 0;
+  max-height: none;
+  overflow-y: auto;
+}
+
+/* The actual iPhone screenshot has a ~495px Safari content viewport. Keep the
+   same hierarchy there instead of swapping back to a pale compact skin. */
+
+@media (max-height: 560px) {
+  body.kv-visual-refresh #levelModal.play-choice-modal {
+    padding:
+      calc(var(--play-safe-top) + 5px)
+      5px
+      calc(var(--play-safe-bottom) + 5px) !important;
+  }
+
+  body.kv-visual-refresh #levelModal .play-choice-sheet {
+    width: min(100%, 410px);
+    height: calc(100dvh - var(--play-safe-top) - var(--play-safe-bottom) - 10px);
+    max-height: calc(100dvh - var(--play-safe-top) - var(--play-safe-bottom) - 10px);
+    padding: 14px 13px 12px !important;
+    gap: 6px;
+  }
+
+  body.kv-visual-refresh #levelModal .play-choice-sheet::before {
+    border-image-width: 15px;
+  }
+
+  #levelModal .play-choice-header {
+    min-height: 31px;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    justify-content: center;
+    column-gap: 8px;
+    padding: 0 7px;
+    text-align: left;
+  }
+
+  #levelModal .play-choice-header::before,
+  #levelModal .play-choice-header::after,
+  #levelModal .play-choice-header > p:last-child {
+    display: none;
+  }
+
+  #levelModal .play-choice-header .eyebrow {
+    grid-column: 1;
+    grid-row: 1;
+    margin: 0;
+    font-size: 7px;
+    letter-spacing: .15em;
+  }
+
+  #levelModal .play-choice-header h2 {
+    grid-column: 2;
+    grid-row: 1;
+    font-size: 20px !important;
+  }
+
+  #levelModal .play-choice-header h2::before {
+    margin-right: 6px;
+    font-size: 9px;
+  }
+
+  #levelModal #skillChoices {
+    grid-template-rows: repeat(3, minmax(84px, 1fr));
+    gap: 5px !important;
+  }
+
+  body.kv-visual-refresh #levelModal .skill-card {
+    min-height: 84px !important;
+    padding: 9px 10px 8px !important;
+    grid-template-columns: 50px minmax(0, 1fr) 48px;
+    column-gap: 8px;
+    row-gap: 2px;
+  }
+
+  body.kv-visual-refresh #levelModal .skill-card::before {
+    border-image-width: 11px;
+  }
+
+  body.kv-visual-refresh #levelModal .skill-icon {
+    width: 48px !important;
+    height: 48px !important;
+    min-width: 48px;
+  }
+
+  #levelModal .skill-head b {
+    font-size: 13px !important;
+    gap: 5px;
+  }
+
+  #levelModal .skill-lv {
+    min-height: 16px;
+    padding: 2px 5px !important;
+    font-size: 8px !important;
+  }
+
+  body.kv-visual-refresh #levelModal .skill-card > span:not(.skill-icon):not(.kv-card-icon) {
+    font-size: 9.5px !important;
+    line-height: 1.2;
+    -webkit-line-clamp: 1;
+  }
+
+  #levelModal .skill-card > em {
+    height: 20px;
+  }
+
+  body.kv-visual-refresh #levelModal .tag {
+    min-height: 17px;
+    padding: 2px 5px !important;
+    font-size: 7px !important;
+  }
+
+  body.kv-visual-refresh #levelModal .ban-skill {
+    width: 47px;
+    min-width: 47px;
+    height: 44px;
+    min-height: 44px;
+    font-size: 8px !important;
+  }
+
+  body.kv-visual-refresh #levelModal .reroll-btn {
+    width: 170px;
+    min-width: 170px;
+    height: 46px;
+    min-height: 46px;
+  }
+
+  #game .play-hud::after {
+    bottom: calc(var(--play-safe-bottom) + 6px);
+    height: 49px;
+  }
+
+  body.kv-visual-refresh #game .play-hud__hp,
+  body.kv-visual-refresh #game .play-hud__exp {
+    bottom: calc(var(--play-safe-bottom) + 10px);
+    height: 41px;
+  }
+}
+
+@media (max-width: 380px) {
+  #game .play-hud__timer {
+    left: 57px;
+    width: 69px;
+  }
+
+  #game .play-hud__wave {
+    width: 112px;
+  }
+
+  #game .play-hud__level {
+    right: 8px;
+    width: 60px;
+  }
+
+  #game .play-hud__hp {
+    left: 18px;
+    width: 107px;
+  }
+
+  #game .play-hud__exp {
+    left: 126px;
+    right: 18px;
+  }
+}

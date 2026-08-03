@@ -7,6 +7,7 @@
 
   var TAU = Math.PI * 2;
   var ASSET_VERSION = "?v=20260613-asset-rich";
+  var PLAY_ASSET_VERSION = "?v=20260803-play-ui-3";
   var SPRITE_BASE = "assets/images/kv-sprites/";
   var ICON_BASE = "assets/images/kv-icons/";
 
@@ -47,7 +48,9 @@
   function loadImages() {
     Object.keys(spriteNames).forEach(function (key) {
       var img = new Image();
-      img.src = SPRITE_BASE + spriteNames[key] + ASSET_VERSION;
+      img.src = key === "mogu"
+        ? "assets/images/home-v2/mogu_home_idle.png" + PLAY_ASSET_VERSION
+        : SPRITE_BASE + spriteNames[key] + ASSET_VERSION;
       sprites[key] = img;
     });
 
@@ -306,7 +309,7 @@
       ctx.restore();
     }
 
-    drawSprite(ctx, sprites.mogu, x, y + bob, 96, Math.sin(t * 1.8) * .03);
+    drawSprite(ctx, sprites.mogu, x, y + bob, 112, Math.sin(t * 1.8) * .03);
   }
 
   function drawHpBar(ctx, x, y, w, pct, boss) {
