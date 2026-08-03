@@ -37,19 +37,23 @@ window.MoguriaUI = (() => {
     document.getElementById('resultComment').textContent = run.comment || '今日はよくがんばったね…';
     window.MoguriaHome?.applyVisual?.(document.getElementById('resultMogu'), run.visual);
 
-    const stats = [
+    const primaryStats = [
       ['到達階層', run.floor],
-      ['レベル', run.lv],
       ['撃破数', run.kills],
-      ['最大DMG', run.maxDamage],
       ['獲得MC', run.coins || 0],
+      ['レベル', run.lv]
+    ];
+    const detailStats = [
+      ['最大DMG', run.maxDamage],
       ['DPS', run.dps],
       ['最大連鎖', run.bestCombo || 0],
       ['爆発回数', run.explosions],
       ['会心率', (run.critRate || 0) + '%'],
       ['回避率', (run.dodgeRate || 0) + '%']
     ];
-    document.getElementById('resultStats').innerHTML = stats.map(([k, v]) => `<div class="stat"><b>${esc(v ?? 0)}</b><span>${esc(k)}</span></div>`).join('');
+    const primaryHtml = primaryStats.map(([k, v]) => `<div class="stat stat--primary"><b>${esc(v ?? 0)}</b><span>${esc(k)}</span></div>`).join('');
+    const detailHtml = detailStats.map(([k, v]) => `<div class="stat stat--detail"><b>${esc(v ?? 0)}</b><span>${esc(k)}</span></div>`).join('');
+    document.getElementById('resultStats').innerHTML = `<div class="result-primary-stats">${primaryHtml}</div><details class="result-detail"><summary>くわしい記録</summary><div class="result-detail-stats">${detailHtml}</div></details>`;
 
     const badges = [
       ...asArray(run.titles),

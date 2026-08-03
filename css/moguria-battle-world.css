@@ -1,0 +1,726 @@
+/* Moguria battle world v2
+   Visual scope: battle environment and sprites, pause, and result screens.
+   Existing battle values, hit boxes, save data, and screen IDs remain intact. */
+
+/* Battle environment ---------------------------------------------------- */
+
+body.kv-visual-refresh #game {
+  background-color: #08091b !important;
+  background-image:
+    linear-gradient(180deg, rgba(3, 5, 19, .16), rgba(3, 4, 16, .34)),
+    url("../assets/images/battle-v2/battle_arena.webp?v=20260803-battle-world-1") !important;
+  background-position: center center !important;
+  background-size: cover !important;
+  background-repeat: no-repeat !important;
+}
+
+body.kv-visual-refresh #gameCanvas {
+  opacity: .43 !important;
+  mix-blend-mode: screen !important;
+  filter: saturate(.88) contrast(1.08) brightness(.58) !important;
+}
+
+body.kv-visual-refresh #kvGameVisualOverlay {
+  opacity: 1 !important;
+  mix-blend-mode: normal !important;
+  filter:
+    saturate(1.06)
+    contrast(1.04)
+    drop-shadow(0 7px 9px rgba(2, 3, 15, .42)) !important;
+}
+
+body.kv-visual-refresh #game::before {
+  background:
+    linear-gradient(180deg, rgba(2, 4, 18, .58) 0, transparent 17%, transparent 77%, rgba(2, 3, 14, .68) 100%),
+    radial-gradient(circle at 50% 47%, transparent 0 34%, rgba(3, 5, 20, .08) 54%, rgba(2, 3, 14, .48) 100%) !important;
+}
+
+body.kv-visual-refresh #game::after {
+  opacity: .29 !important;
+  background-size: 131px 131px, 179px 179px !important;
+}
+
+body.kv-visual-refresh #game .big-cue {
+  top: calc(50% - 142px) !important;
+  width: min(248px, calc(100vw - 46px)) !important;
+  min-height: 68px;
+  padding: 12px 20px !important;
+}
+
+/* A large encounter cue carries the same information with more context.
+   Suppress the transient wave pill while both are present so the two boards
+   never stack over each other in the short Safari viewport. */
+body.kv-visual-refresh #game:has(> .big-cue) > .wave-toast {
+  opacity: 0 !important;
+}
+
+/* Pause: live battle remains visible behind a quiet rest board. ---------- */
+
+body.kv-visual-refresh #pauseModal {
+  z-index: 60 !important;
+  padding:
+    calc(var(--play-safe-top) + 9px)
+    10px
+    calc(var(--play-safe-bottom) + 9px) !important;
+  background:
+    radial-gradient(circle at 72% 24%, rgba(235, 184, 87, .10), transparent 26%),
+    rgba(2, 4, 17, .72) !important;
+  backdrop-filter: blur(4px) saturate(.68) brightness(.67) !important;
+  -webkit-backdrop-filter: blur(4px) saturate(.68) brightness(.67) !important;
+}
+
+@media (min-height: 700px) {
+  body.kv-visual-refresh #pauseModal {
+    align-items: center !important;
+  }
+}
+
+body.kv-visual-refresh #pauseModal .pause-card {
+  position: relative;
+  isolation: isolate;
+  width: min(360px, 100%);
+  max-height: calc(100dvh - var(--play-safe-top) - var(--play-safe-bottom) - 18px);
+  margin: 0;
+  padding: 18px 18px 16px !important;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto !important;
+  gap: 10px;
+  overflow: hidden;
+  color: #fff1d4 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: none !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+body.kv-visual-refresh #pauseModal .pause-card::before {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: -2;
+  width: auto !important;
+  height: auto !important;
+  border: 18px solid transparent;
+  border-radius: 0 !important;
+  background: none !important;
+  border-image-source: url("../assets/images/home-v2/frame_glass_gold_9slice.png") !important;
+  border-image-slice: 64 fill !important;
+  border-image-width: 18px !important;
+  border-image-repeat: stretch !important;
+  filter: drop-shadow(0 18px 36px rgba(1, 2, 12, .64));
+  pointer-events: none;
+}
+
+body.kv-visual-refresh #pauseModal .pause-card::after {
+  content: "";
+  position: absolute;
+  inset: 12px;
+  z-index: -1;
+  border: 1px solid rgba(229, 184, 94, .16);
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 78% 15%, rgba(255, 218, 136, .09), transparent 23%),
+    linear-gradient(180deg, rgba(25, 25, 63, .12), rgba(4, 6, 23, .18));
+}
+
+.pause-card__hero {
+  position: relative;
+  min-height: 116px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 112px;
+  align-items: center;
+  gap: 5px;
+  border-bottom: 1px solid rgba(226, 180, 92, .24);
+}
+
+.pause-card__copy {
+  min-width: 0;
+  padding: 2px 0 12px 7px;
+  text-align: left;
+}
+
+body.kv-visual-refresh #pauseModal .pause-card__copy .eyebrow {
+  margin: 0 0 4px;
+  color: rgba(226, 180, 92, .88) !important;
+  font: 800 8px/1 Georgia, serif;
+  letter-spacing: .24em;
+}
+
+body.kv-visual-refresh #pauseModal .pause-card h2 {
+  margin: 0 0 8px;
+  color: #fff2d6 !important;
+  font-family: "Yu Mincho", "Hiragino Mincho ProN", Georgia, serif;
+  font-size: 22px;
+  line-height: 1.15;
+  text-shadow: 0 3px 10px rgba(1, 2, 12, .72);
+}
+
+body.kv-visual-refresh #pauseModal #pauseSummary {
+  margin: 0;
+  color: rgba(243, 222, 188, .74) !important;
+  font-size: 10px;
+  font-weight: 750;
+  line-height: 1.45;
+}
+
+.pause-card__mogu {
+  align-self: end;
+  justify-self: end;
+  width: 112px;
+  height: 112px;
+  object-fit: contain;
+  filter:
+    drop-shadow(0 10px 13px rgba(1, 2, 12, .46))
+    drop-shadow(0 0 12px rgba(242, 194, 100, .12));
+  pointer-events: none;
+}
+
+body.kv-visual-refresh #pauseModal .pause-skills {
+  min-height: 0;
+  max-height: none;
+  margin: 0;
+  padding: 2px 3px 2px 2px;
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(226, 180, 92, .42) transparent;
+}
+
+body.kv-visual-refresh #pauseModal .pause-subhead {
+  margin: 5px 4px 0;
+  color: rgba(226, 180, 92, .78) !important;
+  font-size: 9px;
+  letter-spacing: .12em;
+}
+
+body.kv-visual-refresh #pauseModal .pause-skill,
+body.kv-visual-refresh #pauseModal .pause-skills > .item {
+  min-height: 55px;
+  padding: 7px 9px !important;
+  color: #fff0d2 !important;
+  border: 1px solid rgba(226, 180, 92, .22) !important;
+  border-radius: 13px !important;
+  background:
+    linear-gradient(180deg, rgba(26, 27, 64, .78), rgba(7, 9, 29, .82)) !important;
+  box-shadow: inset 0 1px rgba(255, 235, 190, .05) !important;
+}
+
+body.kv-visual-refresh #pauseModal .pause-skill {
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 9px;
+}
+
+body.kv-visual-refresh #pauseModal .pause-skill .ico {
+  width: 40px;
+  height: 40px;
+  margin: 0;
+  border: 1px solid rgba(226, 180, 92, .31) !important;
+  border-radius: 50% !important;
+  background-color: rgba(3, 5, 20, .66) !important;
+  background-position: center !important;
+  background-size: 90% !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 235, 190, .05) !important;
+}
+
+body.kv-visual-refresh #pauseModal .pause-skill b,
+body.kv-visual-refresh #pauseModal .pause-skills > .item b {
+  color: #fff0d2 !important;
+  font-size: 11px;
+}
+
+body.kv-visual-refresh #pauseModal .pause-skill small,
+body.kv-visual-refresh #pauseModal .pause-skills > .item small {
+  color: rgba(238, 217, 183, .64) !important;
+  font-size: 9px;
+  line-height: 1.3;
+}
+
+.pause-card__actions {
+  display: grid;
+  gap: 7px;
+}
+
+body.kv-visual-refresh #pauseModal .pause-card__actions button {
+  width: 100%;
+  min-height: 47px;
+  margin: 0 !important;
+  padding: 7px 16px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  text-shadow: 0 2px 4px rgba(1, 2, 12, .45);
+}
+
+body.kv-visual-refresh #pauseModal #resumeBtn {
+  color: #38233e !important;
+  background-color: transparent !important;
+  background-image: url("../assets/images/home-v2/button_gold_9slice.png") !important;
+  background-size: 100% 100% !important;
+  background-repeat: no-repeat !important;
+  font-size: 15px;
+  text-shadow: 0 1px rgba(255, 248, 220, .62);
+}
+
+body.kv-visual-refresh #pauseModal #pauseGiveupBtn {
+  color: #f2dcb4 !important;
+  background-color: transparent !important;
+  background-image: url("../assets/images/home-v2/button_pearl_9slice.png") !important;
+  background-size: 100% 100% !important;
+  background-repeat: no-repeat !important;
+  font-size: 13px;
+}
+
+/* Result: a homeward scene with primary outcomes before detailed metrics. -- */
+
+body.kv-visual-refresh #result {
+  position: absolute;
+  inset: 0;
+  isolation: isolate;
+  padding: 0 !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  color: #fff1d4;
+  background-color: #060719 !important;
+  background-image:
+    linear-gradient(180deg, rgba(3, 5, 18, .08) 0, rgba(3, 4, 17, .16) 40%, rgba(2, 3, 14, .72) 78%, rgba(2, 3, 13, .92) 100%),
+    url("../assets/images/battle-v2/result_return.webp?v=20260803-battle-world-1") !important;
+  background-position: center top !important;
+  background-size: cover !important;
+  background-repeat: no-repeat !important;
+}
+
+body.kv-visual-refresh #result::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 50% 28%, rgba(255, 211, 116, .08), transparent 31%),
+    linear-gradient(180deg, transparent 45%, rgba(3, 4, 16, .50) 68%, rgba(2, 3, 13, .88) 100%);
+}
+
+body.kv-visual-refresh #result .result-card {
+  position: relative;
+  isolation: isolate;
+  width: min(100%, 440px);
+  min-height: 100dvh;
+  margin: 0 auto;
+  padding:
+    calc(env(safe-area-inset-top, 0px) + 14px)
+    14px
+    calc(env(safe-area-inset-bottom, 0px) + 14px) !important;
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  overflow: visible !important;
+  color: #fff1d4 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: none !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  text-align: center;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  animation: none !important;
+}
+
+body.kv-visual-refresh #result .result-card::before,
+body.kv-visual-refresh #result .result-card::after {
+  display: none !important;
+}
+
+.result-hero {
+  position: relative;
+  min-height: 294px;
+  padding: 5px 8px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+body.kv-visual-refresh #result .eyebrow {
+  margin: 0 0 3px;
+  color: rgba(226, 180, 92, .90) !important;
+  font: 800 9px/1 Georgia, serif;
+  letter-spacing: .22em;
+  text-shadow: 0 2px 8px rgba(2, 3, 13, .74);
+}
+
+body.kv-visual-refresh #result .result-card h2 {
+  margin: 0 0 6px;
+  color: #fff3d9 !important;
+  font-family: "Yu Mincho", "Hiragino Mincho ProN", Georgia, serif;
+  font-size: 27px;
+  line-height: 1.18;
+  letter-spacing: .04em;
+  text-shadow:
+    0 0 16px rgba(241, 191, 91, .18),
+    0 4px 13px rgba(1, 2, 12, .78);
+}
+
+body.kv-visual-refresh #result .comment {
+  max-width: 340px;
+  margin: 0;
+  color: rgba(255, 237, 205, .86) !important;
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.5;
+  text-shadow: 0 2px 7px rgba(1, 2, 12, .82);
+}
+
+body.kv-visual-refresh #result #resultMogu.result-mogu {
+  position: relative !important;
+  left: auto !important;
+  top: auto !important;
+  width: 216px !important;
+  height: 216px !important;
+  min-height: 0;
+  margin: -1px auto -10px !important;
+  padding: 0 !important;
+  transform: none !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background-color: transparent !important;
+  background-image: url("../assets/images/battle-v2/result_mogu.webp?v=20260803-battle-world-1") !important;
+  background-position: center !important;
+  background-size: contain !important;
+  background-repeat: no-repeat !important;
+  box-shadow: none !important;
+  filter:
+    drop-shadow(0 18px 18px rgba(1, 2, 12, .48))
+    drop-shadow(0 0 15px rgba(240, 190, 92, .12));
+  animation: resultMoguBreathe 3.8s ease-in-out infinite !important;
+}
+
+body.kv-visual-refresh #result #resultMogu > *,
+body.kv-visual-refresh #result #resultMogu::before,
+body.kv-visual-refresh #result #resultMogu::after {
+  display: none !important;
+}
+
+.result-outcome {
+  position: relative;
+  isolation: isolate;
+  padding: 18px 17px 16px;
+  color: #fff1d4;
+}
+
+.result-outcome::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  border: 18px solid transparent;
+  border-image-source: url("../assets/images/home-v2/frame_glass_gold_9slice.png");
+  border-image-slice: 64 fill;
+  border-image-width: 17px;
+  border-image-repeat: stretch;
+  filter: drop-shadow(0 14px 26px rgba(1, 2, 12, .58));
+}
+
+.result-outcome::after {
+  content: "";
+  position: absolute;
+  inset: 12px;
+  z-index: -1;
+  border: 1px solid rgba(226, 180, 92, .13);
+  background: linear-gradient(180deg, rgba(18, 20, 50, .14), rgba(4, 6, 22, .24));
+  pointer-events: none;
+}
+
+body.kv-visual-refresh #result #resultStats.stats-grid {
+  display: block;
+  margin: 0;
+}
+
+.result-primary-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+body.kv-visual-refresh #result .stat {
+  min-width: 0;
+  color: #fff1d4 !important;
+  border: 1px solid rgba(226, 180, 92, .19) !important;
+  border-radius: 13px !important;
+  background:
+    radial-gradient(circle at 50% 0, rgba(104, 116, 222, .10), transparent 55%),
+    linear-gradient(180deg, rgba(25, 27, 65, .78), rgba(7, 9, 29, .80)) !important;
+  box-shadow: inset 0 1px rgba(255, 235, 190, .04) !important;
+}
+
+body.kv-visual-refresh #result .stat--primary {
+  min-height: 65px;
+  padding: 9px 8px 8px !important;
+}
+
+body.kv-visual-refresh #result .stat b {
+  color: #fff2d6 !important;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 22px;
+  line-height: 1.05;
+  text-shadow: 0 0 10px rgba(240, 193, 97, .14);
+}
+
+body.kv-visual-refresh #result .stat span {
+  color: rgba(230, 195, 130, .78) !important;
+  font-size: 9px;
+  letter-spacing: .06em;
+}
+
+.result-detail {
+  margin: 9px 0 0;
+  border-top: 1px solid rgba(226, 180, 92, .18);
+}
+
+.result-detail summary {
+  min-height: 42px;
+  padding: 0 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: rgba(242, 219, 178, .78);
+  cursor: pointer;
+  list-style: none;
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: .08em;
+}
+
+.result-detail summary::-webkit-details-marker {
+  display: none;
+}
+
+.result-detail summary::before {
+  content: "✦";
+  color: #dcae55;
+  font-family: Georgia, serif;
+  font-size: 9px;
+}
+
+.result-detail summary::after {
+  content: "＋";
+  color: rgba(240, 215, 168, .64);
+  font-size: 12px;
+}
+
+.result-detail[open] summary::after {
+  content: "−";
+}
+
+.result-detail-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  padding: 0 0 7px;
+}
+
+body.kv-visual-refresh #result .stat--detail {
+  min-height: 48px;
+  padding: 6px 7px !important;
+}
+
+body.kv-visual-refresh #result .stat--detail b {
+  font-size: 16px;
+}
+
+body.kv-visual-refresh #result #resultBadges.badges {
+  min-height: 0;
+  margin: 9px 0 8px;
+  gap: 5px;
+}
+
+body.kv-visual-refresh #result .badge {
+  padding: 5px 8px;
+  color: #f0d9ad !important;
+  border: 1px solid rgba(226, 180, 92, .20) !important;
+  background: rgba(5, 7, 24, .56) !important;
+  font-size: 9px;
+  box-shadow: none !important;
+}
+
+.result-actions {
+  display: grid;
+  gap: 7px;
+}
+
+body.kv-visual-refresh #result .result-actions button {
+  width: 100%;
+  min-height: 47px;
+  margin: 0 !important;
+  padding: 7px 16px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background-color: transparent !important;
+  background-size: 100% 100% !important;
+  background-repeat: no-repeat !important;
+  box-shadow: none !important;
+}
+
+body.kv-visual-refresh #result #againBtn {
+  color: #38233e !important;
+  background-image: url("../assets/images/home-v2/button_gold_9slice.png") !important;
+  font-size: 15px;
+  text-shadow: 0 1px rgba(255, 248, 220, .62);
+}
+
+body.kv-visual-refresh #result #homeBtn {
+  color: #f2dcb4 !important;
+  background-image: url("../assets/images/home-v2/button_pearl_9slice.png") !important;
+  font-size: 13px;
+  text-shadow: 0 2px 4px rgba(1, 2, 12, .46);
+}
+
+@keyframes resultMoguBreathe {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-3px) scale(1.012); }
+}
+
+@media (max-height: 560px) {
+  body.kv-visual-refresh #game .big-cue {
+    top: calc(50% - 116px) !important;
+    min-height: 60px;
+    padding: 9px 18px !important;
+  }
+
+  body.kv-visual-refresh #pauseModal {
+    padding:
+      calc(var(--play-safe-top) + 8px)
+      6px
+      calc(var(--play-safe-bottom) + 8px) !important;
+  }
+
+  body.kv-visual-refresh #pauseModal .pause-card {
+    max-height: calc(100dvh - var(--play-safe-top) - var(--play-safe-bottom) - 16px);
+    padding: 13px 14px 12px !important;
+    gap: 6px;
+  }
+
+  body.kv-visual-refresh #pauseModal .pause-card::before {
+    border-image-width: 15px !important;
+  }
+
+  .pause-card__hero {
+    min-height: 79px;
+    grid-template-columns: minmax(0, 1fr) 80px;
+  }
+
+  .pause-card__copy {
+    padding: 1px 0 7px 5px;
+  }
+
+  body.kv-visual-refresh #pauseModal .pause-card h2 {
+    margin-bottom: 5px;
+    font-size: 18px;
+  }
+
+  body.kv-visual-refresh #pauseModal #pauseSummary {
+    font-size: 8.5px;
+  }
+
+  .pause-card__mogu {
+    width: 79px;
+    height: 79px;
+  }
+
+  body.kv-visual-refresh #pauseModal .pause-skill,
+  body.kv-visual-refresh #pauseModal .pause-skills > .item {
+    min-height: 47px;
+    padding: 5px 7px !important;
+  }
+
+  body.kv-visual-refresh #pauseModal .pause-skill {
+    grid-template-columns: 36px minmax(0, 1fr);
+  }
+
+  body.kv-visual-refresh #pauseModal .pause-skill .ico {
+    width: 34px;
+    height: 34px;
+  }
+
+  body.kv-visual-refresh #pauseModal .pause-card__actions button {
+    min-height: 44px;
+  }
+
+  body.kv-visual-refresh #result .result-card {
+    padding: 7px 8px 9px !important;
+    gap: 6px;
+  }
+
+  .result-hero {
+    min-height: 151px;
+    padding: 8px 142px 0 8px;
+    display: block;
+    text-align: left;
+  }
+
+  body.kv-visual-refresh #result .result-card h2 {
+    max-width: 205px;
+    margin-top: 4px;
+    font-size: 21px;
+  }
+
+  body.kv-visual-refresh #result .comment {
+    max-width: 205px;
+    font-size: 10px;
+    line-height: 1.38;
+  }
+
+  body.kv-visual-refresh #result #resultMogu.result-mogu {
+    position: absolute !important;
+    right: -2px !important;
+    top: 0 !important;
+    width: 151px !important;
+    height: 151px !important;
+    margin: 0 !important;
+  }
+
+  .result-outcome {
+    padding: 13px 13px 12px;
+  }
+
+  .result-outcome::before {
+    border-image-width: 14px;
+  }
+
+  body.kv-visual-refresh #result .stat--primary {
+    min-height: 52px;
+    padding: 6px !important;
+  }
+
+  body.kv-visual-refresh #result .stat--primary b {
+    font-size: 18px;
+  }
+
+  .result-detail {
+    margin-top: 6px;
+  }
+
+  .result-detail summary {
+    min-height: 36px;
+  }
+
+  body.kv-visual-refresh #result #resultBadges.badges {
+    margin: 6px 0;
+  }
+
+  body.kv-visual-refresh #result .result-actions button {
+    min-height: 44px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.kv-visual-refresh #result #resultMogu.result-mogu {
+    animation: none !important;
+  }
+}

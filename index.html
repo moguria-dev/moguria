@@ -9,6 +9,7 @@
  <link rel="stylesheet" href="css/moguria-kv-visual-refresh.css?v=20260613-asset-rich" />
  <link rel="stylesheet" href="css/moguria-final-ui.css?v=20260803-home-layout-2" />
  <link rel="stylesheet" href="css/moguria-play-ui.css?v=20260803-play-ui-3" />
+ <link rel="stylesheet" href="css/moguria-battle-world.css?v=20260803-battle-world-1" />
 </head>
 <body>
  <div id="app">
@@ -103,24 +104,38 @@
  </div>
  <div id="pauseModal" class="modal hidden">
  <div class="modal-card pause-card">
+ <header class="pause-card__hero">
+ <div class="pause-card__copy">
+ <p class="eyebrow">PAUSE</p>
  <h2>少し休憩しよう</h2>
  <p id="pauseSummary">Mogu、今の力を確認しているみたい。</p>
+ </div>
+ <img class="pause-card__mogu" src="assets/images/battle-v2/pause_mogu.webp" alt="" />
+ </header>
  <div id="pauseSkills" class="pause-skills"></div>
+ <footer class="pause-card__actions">
  <button id="resumeBtn" class="primary">冒険に戻る</button>
  <button id="pauseGiveupBtn">ホームへ帰る</button>
+ </footer>
  </div>
  </div>
  </section>
  <section id="result" class="screen">
  <div class="result-card glass">
+ <header class="result-hero">
  <p class="eyebrow">今回の冒険</p>
  <h2 id="resultTitle">もぐもぐの旅</h2>
  <p id="resultComment" class="comment">今日はよくがんばったね…</p>
  <div id="resultMogu" class="mogu result-mogu"><span class="ear l"></span><span class="ear r"></span><span class="face">•ᴥ•</span><span class="aura"></span></div>
+ </header>
+ <section class="result-outcome" aria-label="冒険の記録">
  <div id="resultStats" class="stats-grid"></div>
  <div id="resultBadges" class="badges"></div>
+ <footer class="result-actions">
  <button id="againBtn" class="primary">もう一回潜る</button>
  <button id="homeBtn">ホームへ</button>
+ </footer>
+ </section>
  </div>
  </section>
  <section id="overlay" class="overlay hidden">
@@ -154,7 +169,7 @@
  <script src="js/platform.js"></script>
  <script src="js/security.js"></script>
  <script src="js/main.js"></script>
- <script src="js/moguria-kv-visual-refresh.js?v=20260803-play-ui-3"></script>
+ <script src="js/moguria-kv-visual-refresh.js?v=20260803-battle-world-1"></script>
  <script src="js/moguria-final-ui.js?v=20260803-home-v2"></script>
 </body>
 </html>

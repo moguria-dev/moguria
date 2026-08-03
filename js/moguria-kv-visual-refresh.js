@@ -7,19 +7,23 @@
 
   var TAU = Math.PI * 2;
   var ASSET_VERSION = "?v=20260613-asset-rich";
-  var PLAY_ASSET_VERSION = "?v=20260803-play-ui-3";
+  var PLAY_ASSET_VERSION = "?v=20260803-battle-world-1";
   var SPRITE_BASE = "assets/images/kv-sprites/";
+  var BATTLE_SPRITE_BASE = "assets/images/battle-v2/";
   var ICON_BASE = "assets/images/kv-icons/";
 
+  var battleSpriteNames = {
+    mogu: "player_battle.webp",
+    soft: "enemy_soft.webp",
+    bat: "enemy_bat.webp",
+    stone: "enemy_stone.webp",
+    ghost: "enemy_ghost.webp",
+    rare: "enemy_rare.webp",
+    bossMid: "boss_mid.webp",
+    bossFinal: "boss_final.webp"
+  };
+
   var spriteNames = {
-    mogu: "mogu_player.png",
-    soft: "enemy_soft.png",
-    bat: "enemy_bat.png",
-    stone: "enemy_stone.png",
-    ghost: "enemy_ghost.png",
-    rare: "enemy_rare.png",
-    bossMid: "boss_mid.png",
-    bossFinal: "boss_final.png",
     dropStar: "drop_star.png",
     dropHeal: "drop_heal.png",
     bullet: "bullet_player.png",
@@ -46,11 +50,15 @@
   var lastDecorate = 0;
 
   function loadImages() {
+    Object.keys(battleSpriteNames).forEach(function (key) {
+      var img = new Image();
+      img.src = BATTLE_SPRITE_BASE + battleSpriteNames[key] + PLAY_ASSET_VERSION;
+      sprites[key] = img;
+    });
+
     Object.keys(spriteNames).forEach(function (key) {
       var img = new Image();
-      img.src = key === "mogu"
-        ? "assets/images/home-v2/mogu_home_idle.png" + PLAY_ASSET_VERSION
-        : SPRITE_BASE + spriteNames[key] + ASSET_VERSION;
+      img.src = SPRITE_BASE + spriteNames[key] + ASSET_VERSION;
       sprites[key] = img;
     });
 
