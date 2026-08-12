@@ -1,1 +1,1 @@
-Moguria v3.2.0 — battle-v3
+Moguria v3.2.1 — battle-v3 QA hardening

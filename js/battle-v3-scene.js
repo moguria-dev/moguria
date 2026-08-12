@@ -14,12 +14,12 @@
   const MAX_COMPANIONS = 6;
 
   const DEFAULT_ASSETS = Object.freeze({
-    manifest: Object.freeze({ key: 'moguria-v3-atlas-manifest', src: 'assets/images/battle-v3/atlas.json' }),
+    manifest: Object.freeze({ key: 'moguria-v3-atlas-manifest', src: 'assets/images/battle-v3/atlas.json?v=20260812-battle-v3-2' }),
     backgrounds: Object.freeze([
       Object.freeze({ key: 'moguria-v3-bg-far', src: 'assets/images/battle-v3/bg-far.webp', scrollFactor: 0.04, alpha: 1 }),
-      Object.freeze({ key: 'moguria-v3-bg-mid', src: 'assets/images/battle-v3/bg-mid.webp', scrollFactor: 0.18, alpha: 1 }),
-      Object.freeze({ key: 'moguria-v3-bg-ground', src: 'assets/images/battle-v3/bg-ground.webp', scrollFactor: 0.42, alpha: 1 }),
-      Object.freeze({ key: 'moguria-v3-bg-foreground', src: 'assets/images/battle-v3/bg-foreground.webp', scrollFactor: 0.76, alpha: 0.96 })
+      Object.freeze({ key: 'moguria-v3-bg-mid', src: 'assets/images/battle-v3/bg-mid.webp', scrollFactor: 0.18, alpha: 0.34 }),
+      Object.freeze({ key: 'moguria-v3-bg-ground', src: 'assets/images/battle-v3/bg-ground.webp', scrollFactor: 0.42, alpha: 0.48 }),
+      Object.freeze({ key: 'moguria-v3-bg-foreground', src: 'assets/images/battle-v3/bg-foreground.webp', scrollFactor: 0.76, alpha: 0.54 })
     ]),
     sheets: Object.freeze({
       mogu: Object.freeze({ key: 'moguria-v3-mogu', src: 'assets/images/battle-v3/mogu-atlas.png', frameWidth: 256, frameHeight: 256 }),
@@ -33,11 +33,11 @@
   // state or the first frame, which lets art packs arrive independently.
   const DEFAULT_LAYOUTS = Object.freeze({
     mogu: Object.freeze({
-      idle: Object.freeze({ frames: Object.freeze([0, 1, 2, 3]), fps: 7, repeat: -1 }),
-      move: Object.freeze({ frames: Object.freeze([4, 5, 6, 7]), fps: 11, repeat: -1 }),
-      attack: Object.freeze({ frames: Object.freeze([8, 9, 10, 11]), fps: 15, repeat: 0 }),
+      idle: Object.freeze({ frames: Object.freeze([1, 2]), fps: 7, repeat: -1 }),
+      move: Object.freeze({ frames: Object.freeze([5, 6]), fps: 11, repeat: -1 }),
+      attack: Object.freeze({ frames: Object.freeze([9, 10]), fps: 15, repeat: 0 }),
       hurt: Object.freeze({ frames: Object.freeze([12, 13]), fps: 12, repeat: 0 }),
-      skill: Object.freeze({ frames: Object.freeze([8, 9, 10, 11]), fps: 12, repeat: 0 }),
+      skill: Object.freeze({ frames: Object.freeze([9, 10]), fps: 12, repeat: 0 }),
       defeat: Object.freeze({ frames: Object.freeze([14, 15]), fps: 7, repeat: 0 })
     }),
     enemy: Object.freeze({
@@ -378,12 +378,19 @@
     resizeTimer = global.setTimeout(() => {
       resizeTimer = 0;
       if (!phaserGame) return;
-      const width = Math.max(1, global.innerWidth || hostEl?.clientWidth || 390);
-      const height = Math.max(1, global.innerHeight || hostEl?.clientHeight || 844);
+      const { width, height } = layoutSize(hostEl?.parentElement);
       phaserGame.scale?.resize?.(width, height);
       sceneRef?.handleResize?.(width, height);
       configureCanvas();
     }, 16);
+  }
+
+  function layoutSize(parent) {
+    const app = parent?.closest?.('#app') || document.getElementById('app') || parent;
+    const rect = app?.getBoundingClientRect?.();
+    const width = Math.max(1, Math.round(Number(rect?.width) || Number(app?.clientWidth) || Number(global.innerWidth) || 390));
+    const height = Math.max(1, Math.round(Number(rect?.height) || Number(app?.clientHeight) || Number(global.innerHeight) || 844));
+    return { width, height };
   }
 
   function normalizeActorState(value) {
@@ -430,6 +437,9 @@
         this.dropGraphics = null;
         this.effectGraphics = null;
         this.statusGraphics = null;
+        this.floatingTexts = new Map();
+        this.floatingTextIds = new WeakMap();
+        this.floatingTextSerial = 0;
         this.lastState = null;
         this.stateTime = 0;
         this.syncSerial = 0;
@@ -479,7 +489,7 @@
         this.registerAnimations();
         this.createBackgrounds();
         this.createDrawLayers();
-        this.playerSprite = this.createActorSprite('mogu', 'mogu', 96).setDepth(40);
+        this.playerSprite = this.createActorSprite('mogu', 'mogu', 126).setDepth(40);
 
         const camera = this.cameras.main;
         camera.setBackgroundColor?.('#070819');
@@ -578,14 +588,20 @@
       }
 
       createBackgrounds() {
-        const span = this.backgroundSpan();
+        const { width, height } = this.backgroundDisplaySize();
         this.backgroundLayers = this.assets.backgrounds.map((background, index) => {
-          const layer = this.add.tileSprite(0, 0, span, span, background.key)
+          // The source paintings are deliberately portrait and non-tileable.
+          // A viewport-sized overscan avoids repeat seams. Camera-independent
+          // placement plus per-layer offsets supply restrained parallax while
+          // controlled alpha keeps every painted layer visible.
+          const layer = this.add.image(0, 0, background.key)
             .setOrigin(0.5)
-            .setScrollFactor(Number(background.scrollFactor) || 0)
+            .setScrollFactor(0)
             .setDepth(-100 + index)
             .setAlpha(background.alpha == null ? 1 : Number(background.alpha));
           layer.parallaxFactor = Number(background.scrollFactor) || 0;
+          layer.baseAlpha = background.alpha == null ? 1 : Number(background.alpha);
+          layer.setDisplaySize?.(width, height);
           return layer;
         });
       }
@@ -599,13 +615,11 @@
         this.effectGraphics.setBlendMode?.(Phaser.BlendModes?.ADD ?? 1);
       }
 
-      backgroundSpan() {
+      backgroundDisplaySize() {
         const width = Math.max(390, this.scale?.width || global.innerWidth || 390);
         const height = Math.max(844, this.scale?.height || global.innerHeight || 844);
-        const bounds = this.lastState?.mapBounds || { minX: -760, maxX: 760, minY: -760, maxY: 760 };
-        const worldWidth = Math.abs(Number(bounds.maxX) - Number(bounds.minX)) || 1520;
-        const worldHeight = Math.abs(Number(bounds.maxY) - Number(bounds.minY)) || 1520;
-        return Math.max(2200, worldWidth + width * 2, worldHeight + height * 2);
+        const displayWidth = Math.max(width + 80, (height + 80) / 2);
+        return { width: displayWidth, height: displayWidth * 2 };
       }
 
       handleResize(width, height) {
@@ -615,8 +629,8 @@
         const signature = [width, height, bounds.minX, bounds.maxX, bounds.minY, bounds.maxY].map(Number).join(':');
         if (signature === this.resizeSignature) return;
         this.resizeSignature = signature;
-        const span = this.backgroundSpan();
-        for (const layer of this.backgroundLayers) layer.setSize?.(span, span);
+        const display = this.backgroundDisplaySize();
+        for (const layer of this.backgroundLayers) layer.setDisplaySize?.(display.width, display.height);
         this.cameras.main.setBounds?.(
           Number(bounds.minX) - width,
           Number(bounds.minY) - height,
@@ -743,14 +757,17 @@
       }
 
       syncBackgrounds(p) {
-        const x = Number(p.x) || 0;
-        const y = Number(p.y) || 0;
-        for (const layer of this.backgroundLayers) {
+        const x = reducedMotion ? 0 : Number(p.x) || 0;
+        const y = reducedMotion ? 0 : Number(p.y) || 0;
+        const centerX = Math.max(1, Number(this.scale?.width) || 390) / 2;
+        const centerY = Math.max(1, Number(this.scale?.height) || 844) / 2;
+        for (let index = 0; index < this.backgroundLayers.length; index++) {
+          const layer = this.backgroundLayers[index];
           const factor = Number(layer.parallaxFactor) || 0;
-          // scrollFactor produces world parallax; the small tile offset prevents
-          // the background from reading as a viewport-sized static photograph.
-          layer.tilePositionX = x * factor * 0.13;
-          layer.tilePositionY = y * factor * 0.11;
+          layer.setPosition?.(
+            centerX - x * factor * 0.05,
+            centerY - y * factor * 0.035 + index * 2
+          );
         }
       }
 
@@ -759,10 +776,15 @@
         const track = this.sampleMotion('player', p);
         sprite.setPosition(Number(p.x) || 0, Number(p.y) || 0);
         sprite.setFlipX?.(track.facing < 0);
-        sprite.setDisplaySize?.(96, 96);
+        // Atlas cells contain generous transparent breathing room. 126px keeps
+        // the painted Mogu itself near the approved 84–96px visual size while
+        // leaving the authoritative 15px collision radius untouched.
+        sprite.setDisplaySize?.(126, 126);
         sprite.setDepth?.(40 + (Number(p.y) || 0) * 0.001);
         sprite.setAlpha?.((Number(p.invuln) || 0) > 0 && !reducedMotion ? 0.78 : 1);
-        this.setActorAnimation(sprite, 'mogu', this.inferredState('mogu', p, track), this.actorVariant('mogu', p));
+        const stateName = this.inferredState('mogu', p, track);
+        this.setActorAnimation(sprite, 'mogu', stateName, this.actorVariant('mogu', p));
+        this.applyProceduralActorMotion(sprite, 'mogu', p, stateName, 'player');
       }
 
       syncEnemies(state, player) {
@@ -777,7 +799,7 @@
           if (!record || record.role !== role) {
             record?.sprite?.destroy?.();
             const radius = Math.max(10, Number(entity.r) || 16);
-            const sprite = this.createActorSprite(role, id, boss ? radius * 3.85 : radius * 3.15);
+            const sprite = this.createActorSprite(role, id, boss ? radius * 5.15 : radius * 4.35);
             record = { sprite, role, retiring: false };
             this.enemySprites.set(id, record);
           }
@@ -785,13 +807,18 @@
           const sprite = record.sprite;
           const track = this.sampleMotion(`enemy:${id}`, entity);
           const radius = Math.max(10, Number(entity.r) || 16);
-          const size = boss ? Math.max(132, radius * 3.85) : Math.max(48, radius * 3.15);
+          const size = boss ? Math.max(184, radius * 5.15) : Math.max(68, radius * 4.35);
           sprite.setPosition(Number(entity.x) || 0, Number(entity.y) || 0);
           sprite.setDisplaySize?.(size, size);
           sprite.setFlipX?.(!boss && track.facing < 0);
           sprite.setDepth?.(30 + (Number(entity.y) || 0) * 0.001);
           sprite.setAlpha?.((Number(entity.hitFlash) || 0) > 0 ? 0.76 : 1);
-          this.setActorAnimation(sprite, role, this.inferredState(role, entity, track), this.actorVariant(role, entity));
+          if (entity.kind === 'rare') sprite.setTint?.(0xffd978);
+          else if (entity.kind === 'midBoss') sprite.setTint?.(0xd9c4ff);
+          else sprite.clearTint?.();
+          const stateName = this.inferredState(role, entity, track);
+          this.setActorAnimation(sprite, role, stateName, this.actorVariant(role, entity));
+          this.applyProceduralActorMotion(sprite, role, entity, stateName, id);
         }
 
         for (const [id, record] of this.enemySprites.entries()) {
@@ -838,18 +865,19 @@
           const track = this.sampleMotion(`companion:${id}`, visualEntity);
           let sprite = this.companionSprites.get(id);
           if (!sprite) {
-            sprite = this.createActorSprite('companion', id, 44);
+            sprite = this.createActorSprite('companion', id, 60);
             this.companionSprites.set(id, sprite);
           }
           const depthScale = 0.88 + ((Math.sin(phase) + 1) * 0.06);
           sprite.setPosition(x, y);
-          sprite.setDisplaySize?.(44 * depthScale, 44 * depthScale);
+          sprite.setDisplaySize?.(60 * depthScale, 60 * depthScale);
           sprite.setFlipX?.(track.facing < 0);
           sprite.setDepth?.((y >= (Number(p.y) || 0) ? 45 : 35) + y * 0.001);
           const stateName = entity
             ? this.inferredState('companion', entity, track)
             : ((Number(p.summonCd) || 0) > Math.max(0.05, Number(p.summonRate) || 1.1) * 0.58 ? 'attack' : 'move');
           this.setActorAnimation(sprite, 'companion', stateName, this.actorVariant('companion', visualEntity));
+          this.applyProceduralActorMotion(sprite, 'companion', visualEntity, stateName, id);
           nextOrigins.push(Object.freeze({
             id,
             index,
@@ -867,6 +895,25 @@
           this.actorTracks.delete(`companion:${id}`);
         }
         companionOrigins = nextOrigins;
+      }
+
+      applyProceduralActorMotion(sprite, role, entity, stateName, id) {
+        if (!sprite || reducedMotion) {
+          sprite?.setRotation?.(0);
+          return;
+        }
+        const seed = String(id || '').split('').reduce((sum, char) => sum + char.charCodeAt(0), 0) * 0.017;
+        const time = this.stateTime + seed;
+        const boss = role === 'boss';
+        const moving = stateName === 'move';
+        const attacking = stateName === 'attack' || stateName === 'telegraph' || stateName === 'skill';
+        const hurt = stateName === 'hurt';
+        const bob = Math.sin(time * (boss ? 2.5 : moving ? 8.2 : 3.8));
+        const baseY = Number(entity?.y) || 0;
+        sprite.y = baseY + bob * (boss ? 3.4 : moving ? 2.8 : 1.7);
+        sprite.setRotation?.(hurt ? Math.sin(time * 34) * 0.045 : attacking ? Math.sin(time * 10) * 0.025 : bob * 0.012);
+        const pulse = attacking ? 1 + Math.max(0, Math.sin(time * 10)) * 0.045 : 1 + bob * (boss ? 0.018 : 0.012);
+        sprite.setScale?.(Math.abs(sprite.scaleX || 1) * pulse, Math.abs(sprite.scaleY || 1) * (2 - pulse));
       }
 
       drawTransientObjects(state, p) {
@@ -932,8 +979,17 @@
             this.statusGraphics.lineStyle(2, 0x9fe5ff, 0.64);
             this.statusGraphics.strokeCircle(x, y, radius + 11);
           }
+          if (enemy.kind === 'rare') {
+            const rarePulse = reducedMotion ? 0 : Math.sin(this.stateTime * 7) * 0.12;
+            this.statusGraphics.lineStyle(3, 0xffdd72, 0.72 + rarePulse);
+            this.statusGraphics.strokeCircle(x, y, radius + 13);
+            this.drawStar(this.statusGraphics, x, y - radius - 18, 7, 3.2, 0xffe68b, 0.96);
+          }
           if ((Number(enemy.maxHp) || 0) > 40) this.drawHpBar(enemy);
         }
+        this.drawPlayerStatus(state, p);
+        this.drawDirectionIndicators(state, p);
+        this.syncFloatingTexts(state);
         if ((Number(p.auraRadius) || 0) > 0) {
           this.statusGraphics.lineStyle(3, 0x9aeeb7, 0.25);
           this.statusGraphics.strokeCircle(Number(p.x) || 0, Number(p.y) || 0, Number(p.auraRadius));
@@ -950,6 +1006,109 @@
             this.effectGraphics.fillStyle(this.colorNumber(particle.color, 0xffed9a), life);
             this.effectGraphics.fillCircle(Number(particle.x) || 0, Number(particle.y) || 0, Math.max(1, Number(particle.r) || 2));
           }
+        }
+      }
+
+      drawPlayerStatus(state, player) {
+        const x = Number(player.x) || 0;
+        const y = Number(player.y) || 0;
+        const pct = Math.max(0, Math.min(1, (Number(player.hp) || 0) / Math.max(1, Number(player.maxHp) || 1)));
+        const width = 64;
+        const top = y - 62;
+        this.statusGraphics.fillStyle(0x070612, 0.72);
+        this.statusGraphics.fillRoundedRect(x - width / 2, top, width, 7, 3);
+        this.statusGraphics.fillStyle(pct < 0.28 ? 0xff7895 : 0x86e495, 0.96);
+        this.statusGraphics.fillRoundedRect(x - width / 2, top, width * pct, 7, 3);
+        this.statusGraphics.lineStyle(1, 0xffefc4, 0.48);
+        this.statusGraphics.strokeRoundedRect(x - width / 2, top, width, 7, 3);
+        if ((Number(state.dangerPulse) || 0) > 0) {
+          this.statusGraphics.lineStyle(3, 0xff7895, Math.min(0.72, Number(state.dangerPulse)));
+          this.statusGraphics.strokeCircle(x, y, 42 + (reducedMotion ? 0 : Math.sin(this.stateTime * 11) * 3));
+        }
+        if ((Number(state.awakenTimer) || 0) > 0 || (Number(state.returnGlow) || 0) > 0) {
+          const strength = Math.min(0.8, Math.max(Number(state.awakenTimer) || 0, Number(state.returnGlow) || 0) / 2.2);
+          this.statusGraphics.lineStyle(4, 0xffe68b, strength);
+          this.statusGraphics.strokeCircle(x, y, 50 + (reducedMotion ? 0 : Math.sin(this.stateTime * 7) * 5));
+          this.drawStar(this.statusGraphics, x, y - 72, 8, 3.6, 0xffe68b, strength);
+        }
+      }
+
+      drawDirectionIndicators(state, player) {
+        const view = this.cameras.main?.worldView;
+        if (!view) return;
+        const margin = 46;
+        const left = Number(view.x) + margin;
+        const right = Number(view.x) + Number(view.width) - margin;
+        const top = Number(view.y) + margin + 44;
+        const bottom = Number(view.y) + Number(view.height) - margin - 72;
+        for (const entity of state.enemies || []) {
+          if (!entity || !['rare', 'boss', 'midBoss'].includes(entity.kind)) continue;
+          const ex = Number(entity.x) || 0;
+          const ey = Number(entity.y) || 0;
+          if (ex >= left && ex <= right && ey >= top && ey <= bottom) continue;
+          const dx = ex - (Number(player.x) || 0);
+          const dy = ey - (Number(player.y) || 0);
+          const length = Math.hypot(dx, dy) || 1;
+          const ux = dx / length;
+          const uy = dy / length;
+          const playerX = Number(player.x) || 0;
+          const playerY = Number(player.y) || 0;
+          const tx = ux === 0 ? Infinity : (ux > 0 ? (right - playerX) / ux : (left - playerX) / ux);
+          const ty = uy === 0 ? Infinity : (uy > 0 ? (bottom - playerY) / uy : (top - playerY) / uy);
+          const distance = Math.max(0, Math.min(Math.abs(tx), Math.abs(ty)));
+          const x = playerX + ux * distance;
+          const y = playerY + uy * distance;
+          const color = entity.kind === 'rare' ? 0xffdf72 : 0xd4a0ff;
+          const size = entity.kind === 'rare' ? 12 : 15;
+          const px = -uy;
+          const py = ux;
+          this.statusGraphics.fillStyle(color, 0.94);
+          this.statusGraphics.fillTriangle(
+            x + ux * size,
+            y + uy * size,
+            x - ux * size * 0.72 + px * size * 0.72,
+            y - uy * size * 0.72 + py * size * 0.72,
+            x - ux * size * 0.72 - px * size * 0.72,
+            y - uy * size * 0.72 - py * size * 0.72
+          );
+          this.statusGraphics.lineStyle(2, 0x171025, 0.78);
+          this.statusGraphics.strokeCircle(x, y, size + 5);
+          if (entity.kind === 'rare') this.drawStar(this.statusGraphics, x, y, 6, 2.8, 0xffffff, 0.94);
+        }
+      }
+
+      syncFloatingTexts(state) {
+        const seen = new Set();
+        for (const fx of state.fx || []) {
+          if (fx?.type !== 'text' || !fx.text) continue;
+          let fallbackId = fx && typeof fx === 'object' ? this.floatingTextIds.get(fx) : null;
+          if (!fallbackId && fx && typeof fx === 'object') {
+            fallbackId = `text_${++this.floatingTextSerial}`;
+            this.floatingTextIds.set(fx, fallbackId);
+          }
+          const id = String(fx.id || fallbackId || `text_${++this.floatingTextSerial}`);
+          seen.add(id);
+          let label = this.floatingTexts.get(id);
+          if (!label) {
+            label = this.add.text(Number(fx.x) || 0, Number(fx.y) || 0, String(fx.text), {
+              fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif',
+              fontSize: '17px',
+              fontStyle: 'bold',
+              color: typeof fx.color === 'string' ? fx.color : '#fff4dc',
+              stroke: '#171025',
+              strokeThickness: 4,
+              align: 'center'
+            }).setOrigin(0.5).setDepth(82);
+            this.floatingTexts.set(id, label);
+          }
+          const life = Math.max(0, Math.min(1, (Number(fx.life) || 0) / 0.55));
+          label.setPosition?.(Number(fx.x) || 0, (Number(fx.y) || 0) - (reducedMotion ? 0 : (1 - life) * 28));
+          label.setAlpha?.(Math.min(1, life * 1.8));
+        }
+        for (const [id, label] of this.floatingTexts.entries()) {
+          if (seen.has(id)) continue;
+          label.destroy?.();
+          this.floatingTexts.delete(id);
         }
       }
 
@@ -972,6 +1131,47 @@
         const y = Number(fx?.y) || 0;
         const radius = Math.max(8, Number(fx?.r) || 24);
         const life = Math.max(0.06, Math.min(1, Number(fx?.life) || 0.2));
+        if (fx?.type === 'text') return;
+        if (fx?.type === 'bossTelegraph') {
+          const rawTargetX = Number(fx.tx);
+          const rawTargetY = Number(fx.ty);
+          const targetX = Number.isFinite(rawTargetX) ? rawTargetX : x;
+          const targetY = Number.isFinite(rawTargetY) ? rawTargetY : y;
+          const maxLife = Math.max(0.06, Number(fx.maxLife) || 1);
+          const progress = Math.max(0, Math.min(1, 1 - (Number(fx.life) || 0) / maxLife));
+          const alpha = 0.32 + progress * 0.56;
+          const pattern = String(fx.pattern || '');
+          if (pattern === 'dash') {
+            const dx = targetX - x;
+            const dy = targetY - y;
+            const length = Math.hypot(dx, dy) || 1;
+            const px = -dy / length * 18;
+            const py = dx / length * 18;
+            this.effectGraphics.lineStyle(4, 0xd6a3ff, alpha);
+            this.effectGraphics.lineBetween(x + px, y + py, targetX + px, targetY + py);
+            this.effectGraphics.lineBetween(x - px, y - py, targetX - px, targetY - py);
+            this.effectGraphics.strokeCircle(targetX, targetY, 24);
+          } else if (pattern === 'slam') {
+            this.effectGraphics.lineStyle(6, 0xd6a3ff, alpha);
+            this.effectGraphics.strokeCircle(x, y, radius);
+            this.effectGraphics.lineStyle(2, 0xffe2a1, alpha * 0.72);
+            this.effectGraphics.strokeCircle(x, y, radius * 0.72);
+          } else if (pattern === 'nova') {
+            this.effectGraphics.lineStyle(5, 0xd6a3ff, alpha);
+            this.effectGraphics.strokeCircle(x, y, radius);
+            for (let ray = 0; ray < 12; ray++) {
+              const angle = ray * TAU / 12;
+              this.effectGraphics.lineBetween(x + Math.cos(angle) * radius * 0.35, y + Math.sin(angle) * radius * 0.35, x + Math.cos(angle) * radius, y + Math.sin(angle) * radius);
+            }
+          } else {
+            const angle = Math.atan2(targetY - y, targetX - x);
+            this.effectGraphics.lineStyle(4, 0xd6a3ff, alpha);
+            for (const offset of [-0.44, -0.22, 0, 0.22, 0.44]) {
+              this.effectGraphics.lineBetween(x, y, x + Math.cos(angle + offset) * 210, y + Math.sin(angle + offset) * 210);
+            }
+          }
+          return;
+        }
         if (fx?.type === 'lightning' || fx?.type === 'meteor' || fx?.type === 'absorb') {
           this.effectGraphics.lineStyle(fx.type === 'lightning' ? 4 : 3, fx.type === 'lightning' ? 0xbfefff : 0xffe39a, Math.min(0.9, life * 2));
           this.effectGraphics.lineBetween(x, y, Number(fx.tx) || x, Number(fx.ty) || y);
@@ -1090,10 +1290,12 @@
         const foreground = this.backgroundLayers[3];
         if (foreground) {
           foreground.setVisible?.(quality !== 'low');
-          foreground.setAlpha?.(quality === 'medium' ? 0.58 : 0.96);
+          foreground.setAlpha?.(quality === 'medium' ? foreground.baseAlpha * 0.72 : foreground.baseAlpha);
         }
-        const mid = this.backgroundLayers[2];
-        if (mid) mid.setAlpha?.(quality === 'low' ? 0.65 : 1);
+        const middle = this.backgroundLayers[1];
+        if (middle) middle.setAlpha?.(quality === 'low' ? middle.baseAlpha * 0.58 : middle.baseAlpha);
+        const ground = this.backgroundLayers[2];
+        if (ground) ground.setAlpha?.(quality === 'low' ? ground.baseAlpha * 0.72 : ground.baseAlpha);
         this.applyAnimationPause(this.lastState?.mode !== 'run');
       }
 
@@ -1136,6 +1338,8 @@
         this.enemySprites.clear();
         this.companionSprites.clear();
         this.actorTracks.clear();
+        for (const label of this.floatingTexts.values()) label.destroy?.();
+        this.floatingTexts.clear();
       }
     };
   }
@@ -1151,6 +1355,7 @@
       ? document.querySelector(options.parent)
       : options.parent || document.getElementById('game');
     if (!parent) return Promise.reject(new Error('Moguria Battle V3 could not find #game.'));
+    const initialLayout = layoutSize(parent);
 
     runtimeOptions = {
       assets: mergeAssets(options.assets),
@@ -1175,8 +1380,8 @@
       phaserGame = new Phaser.Game({
         type: Phaser.AUTO,
         parent: hostEl,
-        width: Math.max(1, global.innerWidth || parent.clientWidth || 390),
-        height: Math.max(1, global.innerHeight || parent.clientHeight || 844),
+        width: initialLayout.width,
+        height: initialLayout.height,
         resolution: safeResolution(),
         transparent: false,
         backgroundColor: '#070819',
@@ -1196,8 +1401,8 @@
         scale: {
           mode: Phaser.Scale?.RESIZE,
           autoCenter: Phaser.Scale?.CENTER_BOTH,
-          width: Math.max(1, global.innerWidth || parent.clientWidth || 390),
-          height: Math.max(1, global.innerHeight || parent.clientHeight || 844)
+          width: initialLayout.width,
+          height: initialLayout.height
         },
         fps: { target: 60, min: 30, smoothStep: true },
         scene: [SceneClass],

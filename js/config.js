@@ -2,7 +2,7 @@
   const freeze = Object.freeze;
 
   window.MoguriaConfig = freeze({
-    version: '3.2.0-battle-v3',
+    version: '3.2.1-battle-v3',
     saveVersion: 3,
     debug: false,
 

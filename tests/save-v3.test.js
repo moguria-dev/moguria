@@ -160,7 +160,16 @@ test('checkpoint survives reload and the reloaded session reuses its runId', () 
     checkpoint: {
       wave: 7,
       time: 98.5,
-      playerSnapshot: { version: 1, numbers: { hp: 63 }, flags: {} }
+      playerSnapshot: { version: 1, numbers: { hp: 63 }, flags: {} },
+      choiceType: 'skill',
+      pendingChoice: {
+        type: 'skill',
+        wave: 7,
+        choiceIds: ['mini_mogu', 'guard_nut', 'quick_berry'],
+        level: 4,
+        exp: 3,
+        nextExp: 29
+      }
     }
   };
   assert.equal(firstPage.updateCheckpoint(started.runId, checkpoint).ok, true);
@@ -173,6 +182,9 @@ test('checkpoint survives reload and the reloaded session reuses its runId', () 
 
   assert.equal(loaded.activeRun.checkpoint.wave, 7);
   assert.equal(loaded.activeRun.checkpoint.playerSnapshot.numbers.hp, 63);
+  assert.equal(loaded.activeRun.checkpoint.choiceType, 'skill');
+  assert.deepEqual(Array.from(loaded.activeRun.checkpoint.pendingChoice.choiceIds), ['mini_mogu', 'guard_nut', 'quick_berry']);
+  assert.equal(loaded.activeRun.checkpoint.pendingChoice.exp, 3);
   assert.equal(resumed.ok, true);
   assert.equal(resumed.reused, true);
   assert.equal(resumed.runId, started.runId);

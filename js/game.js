@@ -1,5 +1,6 @@
 window.MoguriaGame = (() => {
   let canvas, ctx, state;
+  let fxSerial=0;
   let lifecycleBound=false;
   const keys={};
   const input={x:0,y:0,active:false};
@@ -91,9 +92,10 @@ window.MoguriaGame = (() => {
     else if(window.MoguriaMeta) MoguriaMeta.applyEquipmentToPlayer(player);
     state={ mode:'run', runId:String(options.runId||options.activeRun?.runId||''), startedAt:Number(options.activeRun?.startedAt)||Date.now(), p:player, enemies:[], bullets:[], enemyBullets:[], mines:[], fx:[], drops:[], companions:[], scheduled:[], dungeon:MoguriaDungeon.create(checkpoint?.dungeon?.seed||Date.now()), time:0, last:performance.now(), spawnCd:0, floor:1,
       wave:0, maxWave:MoguriaConfig.run.maxWave, timeLimit:MoguriaConfig.run.timeLimit||480, waveState:'ready', waveSpawned:0, waveTarget:0, waveClearTimer:0, cleared:false, timeout:false, introTimer:2.15, bossAlertTimer:0, clearTimer:0, mobEvent:null,
-      stats:{kills:0,maxDamage:0,totalDamage:0,shots:0,crits:0,hitsTaken:0,dodges:0,explosions:0,poisonKills:0,rareKills:0,bossKills:0,combo:0,bestCombo:0}, rerolls:MoguriaConfig.run.rerolls, bans:2, bannedSkills:[], shake:0, hitStop:0, flash:0, particles:[], comboTimer:0, awakenTimer:0, dangerPulse:0, nearMissCd:0, bossPhaseTimer:0, artifactWaves:{}, mapBounds:{...MoguriaConfig.map}, depthCueShown:false, criticalCueCd:0, chainCueCd:0, returnGlow:0, checkpointElapsed:0, hudAt:0, finalizing:false };
+      stats:{kills:0,maxDamage:0,totalDamage:0,shots:0,crits:0,hitsTaken:0,dodges:0,explosions:0,poisonKills:0,rareKills:0,bossKills:0,combo:0,bestCombo:0}, rerolls:MoguriaConfig.run.rerolls, bans:2, bannedSkills:[], pendingChoice:null, shake:0, hitStop:0, flash:0, particles:[], comboTimer:0, awakenTimer:0, dangerPulse:0, nearMissCd:0, bossPhaseTimer:0, artifactWaves:{}, mapBounds:{...MoguriaConfig.map}, depthCueShown:false, criticalCueCd:0, chainCueCd:0, returnGlow:0, checkpointElapsed:0, hudAt:0, finalizing:false };
     if(checkpoint) restoreCheckpoint(checkpoint);
     else { state.p.x=0; state.p.y=0; state.p.hp=state.p.maxHp; }
+    if(state.pendingChoice) restorePendingChoice();
     MoguriaAudio?.play('start');
     pushFx({x:0,y:0,r:92,life:1.0,type:'startGlow'});
     if(options.resume && checkpoint) bigToast('冒険を再開','続きから、もぐろう');
@@ -118,10 +120,16 @@ window.MoguriaGame = (() => {
 
   function checkpointSnapshot(){
     if(!state?.p) return null;
+    const pendingChoice=normalizePendingChoice(state.pendingChoice,state.mode);
+    // A restored run waits briefly at the entrance with state.wave one behind
+    // the wave it will restart. Persist the target wave during that window so
+    // repeated pagehide/reload cycles cannot walk progress backwards.
+    const entranceWave=state.introTimer>0&&state.waveState==='ready'?Math.min(state.maxWave,(Number(state.wave)||0)+1):state.wave;
+    const checkpointWave=pendingChoice?.wave??entranceWave;
     return {
       version:1,
       savedAt:Date.now(),
-      wave:Math.max(0,Math.min(state.maxWave,state.wave||0)),
+      wave:Math.max(0,Math.min(state.maxWave,checkpointWave||0)),
       floor:Math.max(1,Math.min(state.maxWave,state.floor||1)),
       time:Math.max(0,state.time||0),
       player:MoguriaPlayer.snapshot(state.p),
@@ -130,6 +138,8 @@ window.MoguriaGame = (() => {
       bans:state.bans,
       bannedSkills:[...(state.bannedSkills||[])],
       artifactWaves:{...(state.artifactWaves||{})},
+      choiceType:pendingChoice?.type||null,
+      pendingChoice,
       dungeon:{seed:state.dungeon?.seed||0}
     };
   }
@@ -146,18 +156,84 @@ window.MoguriaGame = (() => {
     if(!state || !checkpoint || Number(checkpoint.version)!==1) return false;
     state.time=Math.max(0,Number(checkpoint.time)||0);
     const savedWave=Math.max(0,Math.min(state.maxWave,Math.floor(Number(checkpoint.wave)||0)));
-    // Checkpoints restart the current wave from its entrance. Progress already
-    // recorded on the player and run stats is retained; transient enemies are not.
-    state.wave=Math.max(0,savedWave-1);
-    state.floor=Math.max(1,savedWave||1);
     state.stats={...state.stats,...(checkpoint.stats&&typeof checkpoint.stats==='object'?checkpoint.stats:{})};
-    state.rerolls=Math.max(0,Math.floor(Number(checkpoint.rerolls) || state.rerolls));
+    const savedRerolls=Number(checkpoint.rerolls);
+    if(Number.isFinite(savedRerolls)) state.rerolls=Math.max(0,Math.floor(savedRerolls));
     state.bans=Math.max(0,Math.floor(Number(checkpoint.bans) || 0));
     state.bannedSkills=Array.isArray(checkpoint.bannedSkills)?checkpoint.bannedSkills.filter(x=>typeof x==='string'):[];
     state.artifactWaves=checkpoint.artifactWaves&&typeof checkpoint.artifactWaves==='object'?{...checkpoint.artifactWaves}:{};
-    state.introTimer=.72;
+    state.pendingChoice=normalizePendingChoice(checkpoint.pendingChoice,checkpoint.choiceType);
+    if(!state.pendingChoice) state.pendingChoice=inferLegacyPendingChoice(checkpoint,savedWave);
+    const pendingWave=Math.max(0,Math.min(state.maxWave,Math.floor(Number(state.pendingChoice?.wave)||savedWave)));
+    if(state.pendingChoice?.type==='artifact'){
+      // The artifact modal opens only after this wave is cleared. Resume at the
+      // cleared wave so choosing an artifact advances exactly once.
+      state.wave=pendingWave;
+      state.floor=Math.max(1,pendingWave||1);
+      state.introTimer=0;
+      state.mode='artifact';
+      delete state.artifactWaves[pendingWave];
+    } else {
+      // Ordinary checkpoints (including a pending level-up) restart the current
+      // wave from its entrance. Player progress and run stats remain retained.
+      const restartWave=state.pendingChoice?.type==='skill'?pendingWave:savedWave;
+      state.wave=Math.max(0,restartWave-1);
+      state.floor=Math.max(1,restartWave||1);
+      state.introTimer=.72;
+      if(state.pendingChoice?.type==='skill') state.mode='choice';
+    }
     state.p.x=Math.max(state.mapBounds.minX+state.p.r,Math.min(state.mapBounds.maxX-state.p.r,Number(state.p.x)||0));
     state.p.y=Math.max(state.mapBounds.minY+state.p.r,Math.min(state.mapBounds.maxY-state.p.r,Number(state.p.y)||0));
+    return true;
+  }
+  function normalizePendingChoice(value,fallbackType=''){
+    const source=value&&typeof value==='object'&&!Array.isArray(value)?value:{};
+    let type=source.type||fallbackType;
+    if(type==='choice') type='skill';
+    if(type!=='skill'&&type!=='artifact') return null;
+    const rawIds=Array.isArray(source.choiceIds)?source.choiceIds:(Array.isArray(source.choices)?source.choices:[]);
+    const choiceIds=[...new Set(rawIds.map(entry=>typeof entry==='string'?entry:entry?.id).filter(id=>typeof id==='string'&&id))].slice(0,3);
+    const wave=Math.max(0,Math.min(state?.maxWave||MoguriaConfig.run.maxWave||12,Math.floor(Number(source.wave)||Number(state?.wave)||0)));
+    const pending={type,wave,choiceIds};
+    if(type==='skill'){
+      pending.level=Math.max(1,Math.floor(Number(source.level)||Number(state?.p?.lv)||1));
+      pending.exp=Math.max(0,Number.isFinite(Number(source.exp))?Number(source.exp):(Number(state?.p?.exp)||0));
+      pending.nextExp=Math.max(1,Number.isFinite(Number(source.nextExp))?Number(source.nextExp):(Number(state?.p?.nextExp)||1));
+    }
+    return pending;
+  }
+  function inferLegacyPendingChoice(checkpoint,savedWave){
+    // v3 checkpoints created before pendingChoice existed can still be repaired.
+    // At each artifact gate the old code marked the wave before the player chose.
+    const artifactTarget=savedWave===3?1:savedWave===7?2:0;
+    if(artifactTarget && checkpoint.artifactWaves?.[savedWave] && (state.p.artifacts?.length||0)<artifactTarget){
+      return normalizePendingChoice({type:'artifact',wave:savedWave});
+    }
+    // Every completed level after Lv.1 grants exactly one skill level. A deficit
+    // means the snapshot was taken after leveling but before the card was chosen.
+    const selectedLevels=Object.values(state.p.skillLevels||{}).reduce((sum,value)=>sum+Math.max(0,Math.floor(Number(value)||0)),0);
+    if(selectedLevels<Math.max(0,(Number(state.p.lv)||1)-1)){
+      return normalizePendingChoice({type:'skill',wave:savedWave,level:state.p.lv,exp:state.p.exp,nextExp:state.p.nextExp});
+    }
+    return null;
+  }
+  function rememberPendingChoice(type,wave,choices){
+    state.pendingChoice=normalizePendingChoice({
+      type,
+      wave,
+      choiceIds:(choices||[]).map(choice=>choice?.id).filter(Boolean),
+      level:state.p?.lv,
+      exp:state.p?.exp,
+      nextExp:state.p?.nextExp
+    });
+    return state.pendingChoice;
+  }
+  function restorePendingChoice(){
+    const pending=normalizePendingChoice(state?.pendingChoice);
+    if(!pending) return false;
+    state.pendingChoice=pending;
+    if(pending.type==='artifact') openArtifactChoice(pending.wave,pending.choiceIds);
+    else levelUp({resume:true,choiceIds:pending.choiceIds,wave:pending.wave});
     return true;
   }
   function scheduleAction(delay,fn){
@@ -227,6 +303,8 @@ window.MoguriaGame = (() => {
   function pushFx(f){
     if(!state || !state.fx) return;
     if(reduceFx() && (f.type==='boom' || f.type==='waveClear' || f.type==='eatGlow') && Math.random()<.28) return;
+    if(!f.id) f.id=`fx_${++fxSerial}`;
+    if(!f.createdAt) f.createdAt=state.time||0;
     state.fx.push(f);
     if(state.fx.length>fxLimit()) state.fx.splice(0,state.fx.length-fxLimit());
   }
@@ -307,16 +385,22 @@ window.MoguriaGame = (() => {
     if(!state || state.mode!=='run') return;
     pushFx({x:state.p.x,y:state.p.y,r:96,life:.72,type:'waveClear'}); sparkleBurst(state.p.x,state.p.y,20,'#fff0a6');
     if((state.wave===3 || state.wave===7) && !state.artifactWaves[state.wave]){
-      state.artifactWaves[state.wave]=true;
       openArtifactChoice(state.wave);
       return;
     }
     startNextWave();
     persistCheckpoint('wave');
   }
-  function openArtifactChoice(wave){
+  function openArtifactChoice(wave,savedChoiceIds=[]){
     state.mode='artifact';
-    const choices=MoguriaSkills.weightedArtifactChoices(3,state.p.artifacts);
+    const available=new Map(MoguriaSkills.artifacts.filter(a=>!state.p.artifacts.some(owned=>owned.id===a.id)).map(a=>[a.id,a]));
+    const choices=[];
+    for(const id of savedChoiceIds||[]){ const choice=available.get(id); if(choice&&!choices.some(a=>a.id===id)) choices.push(choice); }
+    for(const choice of MoguriaSkills.weightedArtifactChoices(3,state.p.artifacts)){
+      if(choices.length>=3) break;
+      if(!choices.some(a=>a.id===choice.id)) choices.push(choice);
+    }
+    rememberPendingChoice('artifact',wave,choices);
     const wrap=document.getElementById('artifactChoices');
     wrap.innerHTML='';
     for(const a of choices){
@@ -336,6 +420,8 @@ window.MoguriaGame = (() => {
         MoguriaAudio?.play('artifact');
         state.p.artifacts.push(a);
         a.apply(state.p,state);
+        state.artifactWaves[wave]=true;
+        state.pendingChoice=null;
         state.flash=Math.max(state.flash,.18); sparkleBurst(state.p.x,state.p.y,34,'#ffe27c');
         document.getElementById('artifactModal').classList.add('hidden');
         toast(`${a.name}を手に入れた！`);
@@ -515,9 +601,12 @@ window.MoguriaGame = (() => {
   function startBossAction(e,p){
     const pattern=chooseBossPattern(e);
     const phaseMul=e.phase2?.82:1;
-    e.bossAction={...pattern,stage:'telegraph',timer:pattern.telegraph*phaseMul,elapsed:0,fired:false,targetX:p.x,targetY:p.y};
+    e.bossAction={...pattern,stage:'telegraph',timer:pattern.telegraph*phaseMul,elapsed:0,fired:false,targetX:p.x,targetY:p.y,telegraphFxId:null};
     e.visualState='telegraph';
-    pushFx({x:e.x,y:e.y,tx:p.x,ty:p.y,r:e.r*2.3,life:pattern.telegraph*phaseMul,type:'bossTelegraph',pattern:pattern.id});
+    const telegraphRadius=pattern.id==='slam'?e.r*4.1:pattern.id==='nova'?e.r*3.4:e.r*2.3;
+    const telegraphFx={x:e.x,y:e.y,tx:p.x,ty:p.y,r:telegraphRadius,life:pattern.telegraph*phaseMul,maxLife:pattern.telegraph*phaseMul,type:'bossTelegraph',pattern:pattern.id};
+    pushFx(telegraphFx);
+    e.bossAction.telegraphFxId=telegraphFx.id;
   }
   function updateBossAction(e,p,dt){
     if(!e.bossAction){
@@ -529,7 +618,11 @@ window.MoguriaGame = (() => {
     action.timer-=dt; action.elapsed+=dt;
     if(action.stage==='telegraph'){
       e.visualState='telegraph';
-      if(action.pattern==='dash'||action.id==='dash'){ action.targetX=p.x; action.targetY=p.y; }
+      if(action.pattern==='dash'||action.id==='dash'){
+        action.targetX=p.x; action.targetY=p.y;
+        const telegraphFx=state.fx.find(f=>f.id===action.telegraphFxId);
+        if(telegraphFx){ telegraphFx.x=e.x; telegraphFx.y=e.y; telegraphFx.tx=p.x; telegraphFx.ty=p.y; }
+      }
       if(action.timer<=0){
         action.stage='execute'; action.timer=action.duration; action.elapsed=0; action.fired=false; e.visualState='attack';
         MoguriaAudio?.play('boss'); state.shake=Math.max(state.shake,4);
@@ -751,12 +844,23 @@ window.MoguriaGame = (() => {
     for(const e of state.enemies){ if(e.hp>0 && Math.hypot(e.x-x,e.y-y)<r){ const was=e.hp; hurtEnemy(e,dmg,false,'explosion'); if(was>0 && e.hp<=0 && chain && state.p.chainExplosion) scheduleAction(.035,()=>explosion(e.x,e.y,r*.82,dmg*.62,false)); } }
   }
   function addFx(x,y,text,color){ pushFx({x,y,text,color,life:.55,type:'text'}); }
-  function levelUp(){
-    state.mode='choice'; state.p.lv++; MoguriaAudio?.play('level'); state.flash=Math.max(state.flash,.16); sparkleBurst(state.p.x,state.p.y,30,'#fff0a6');
-    // レベルアップ頻度は少し重めに。1回の「食べる」に価値を出す。
-    state.p.nextExp = Math.floor(MoguriaConfig.exp.base + Math.pow(state.p.lv, MoguriaConfig.exp.power) * MoguriaConfig.exp.scale); if(state.p.expDiscount>0){ state.p.nextExp=Math.floor(state.p.nextExp*MoguriaConfig.exp.discountRate); state.p.expDiscount--; }
+  function levelUp(options={}){
+    const resume=!!options.resume;
+    state.mode='choice';
+    if(!resume){
+      state.p.lv++; MoguriaAudio?.play('level'); state.flash=Math.max(state.flash,.16); sparkleBurst(state.p.x,state.p.y,30,'#fff0a6');
+      // レベルアップ頻度は少し重めに。1回の「食べる」に価値を出す。
+      state.p.nextExp = Math.floor(MoguriaConfig.exp.base + Math.pow(state.p.lv, MoguriaConfig.exp.power) * MoguriaConfig.exp.scale); if(state.p.expDiscount>0){ state.p.nextExp=Math.floor(state.p.nextExp*MoguriaConfig.exp.discountRate); state.p.expDiscount--; }
+    }
     updateHud();
-    let choices=MoguriaSkills.weightedChoices(3,state.p,state.bannedSkills);
+    const available=new Map(MoguriaSkills.skills.filter(s=>(state.p.skillLevels?.[s.id]||0)<(MoguriaSkills.MAX_SKILL_LEVEL||5)&&!state.bannedSkills.includes(s.id)).map(s=>[s.id,s]));
+    let choices=[];
+    for(const id of options.choiceIds||[]){ const choice=available.get(id); if(choice&&!choices.some(s=>s.id===id)) choices.push(choice); }
+    for(const choice of MoguriaSkills.weightedChoices(3,state.p,state.bannedSkills)){
+      if(choices.length>=3) break;
+      if(!choices.some(s=>s.id===choice.id)) choices.push(choice);
+    }
+    rememberPendingChoice('skill',options.wave??state.wave,choices);
     const wrap=document.getElementById('skillChoices');
     const rerollBtn=document.getElementById('rerollBtn');
     const rerollCount=document.getElementById('rerollCount');
@@ -773,7 +877,7 @@ window.MoguriaGame = (() => {
         const currentLv = state.p.skillLevels?.[s.id] || 0;
         btn.innerHTML=`<div class="skill-head"><span class="skill-icon" data-kv-kind="${visualKind}" aria-hidden="true">${s.icon||'🍽️'}</span><b>${s.name}<small class="skill-lv">Lv.${currentLv}→${currentLv+1}</small></b></div><span>${s.desc}</span><em>${s.tags.map(t=>`<i class="tag ${tagClass(t)}">${t}</i>`).join('')}</em><button class="ban-skill" type="button">封印 ${state.bans}</button>`;
         const banBtn=btn.querySelector('.ban-skill');
-        if(banBtn){ banBtn.disabled=state.bans<=0; banBtn.addEventListener('click',(ev)=>{ ev.preventDefault(); ev.stopPropagation(); if(!state||state.mode!=='choice'||state.bans<=0) return; state.bans--; state.bannedSkills.push(s.id); MoguriaAudio?.play('select'); choices=MoguriaSkills.weightedChoices(3,state.p,state.bannedSkills); renderChoices(); }); }
+        if(banBtn){ banBtn.disabled=state.bans<=0; banBtn.addEventListener('click',(ev)=>{ ev.preventDefault(); ev.stopPropagation(); if(!state||state.mode!=='choice'||state.bans<=0) return; state.bans--; state.bannedSkills.push(s.id); MoguriaAudio?.play('select'); choices=MoguriaSkills.weightedChoices(3,state.p,state.bannedSkills); rememberPendingChoice('skill',state.pendingChoice?.wave??state.wave,choices); renderChoices(); }); }
         let chosen=false;
         const choose=(ev)=>{
           if(ev){ ev.preventDefault(); ev.stopPropagation(); }
@@ -784,6 +888,7 @@ window.MoguriaGame = (() => {
           state.p.skillLevels[s.id]=(state.p.skillLevels[s.id]||0)+1;
           if(!state.p.skills.find(x=>x.id===s.id)) state.p.skills.push(s);
           s.apply(state.p);
+          state.pendingChoice=null;
           const fused = MoguriaSkills.checkFusions?.(state.p) || [];
           state.flash=Math.max(state.flash,.18); sparkleBurst(state.p.x,state.p.y,26,s.rarity==='legendary'?'#ffd15c':s.rarity==='rare'?'#d9b3ff':'#fff0a6');
           pushFx({x:state.p.x,y:state.p.y,r:72,life:.48,type:'eatGlow'});
@@ -792,6 +897,7 @@ window.MoguriaGame = (() => {
           document.getElementById('levelModal').classList.add('hidden');
           state.mode='run';
           state.last=performance.now();
+          persistCheckpoint('skill');
           loop(state.last);
         };
         btn.addEventListener('click', choose);
@@ -805,6 +911,7 @@ window.MoguriaGame = (() => {
         if(!state || state.mode!=='choice' || state.rerolls<=0) return;
         state.rerolls--;
         choices=MoguriaSkills.weightedChoices(3,state.p,state.bannedSkills);
+        rememberPendingChoice('skill',state.pendingChoice?.wave??state.wave,choices);
         renderChoices();
       };
     }
