@@ -10,6 +10,7 @@
  <link rel="stylesheet" href="css/moguria-final-ui.css?v=20260803-home-layout-2" />
  <link rel="stylesheet" href="css/moguria-play-ui.css?v=20260812-battle-v3-2" />
  <link rel="stylesheet" href="css/moguria-battle-world.css?v=20260812-battle-v3-2" />
+ <link rel="stylesheet" href="css/moguria-meta-ui.css?v=20260813-meta-ui-1" />
 </head>
 <body class="moguria-booting">
  <section id="startupLoader" class="startup-loader" aria-labelledby="startupLoaderTitle" aria-describedby="startupProgressText" aria-busy="true">
@@ -155,11 +156,21 @@
  </section>
  </div>
  </section>
- <section id="overlay" class="overlay hidden">
- <div class="panel glass">
- <button id="closeOverlay" class="close">×</button>
+ <section id="overlay" class="overlay meta-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="overlayTitle" aria-describedby="overlaySubtitle">
+ <div class="panel glass meta-shell">
+ <header class="meta-shell__header">
+ <div class="meta-shell__identity">
+ <span class="meta-shell__icon" aria-hidden="true"><img id="overlayIcon" src="assets/images/home-v2/icon_dex.png" alt="" /></span>
+ <div class="meta-shell__heading">
+ <p id="overlayEyebrow" class="meta-shell__eyebrow">COLLECTION</p>
  <h2 id="overlayTitle">Mogu図鑑</h2>
- <div id="overlayBody"></div>
+ <p id="overlaySubtitle" class="meta-shell__subtitle">見つけた光を、ここに残そう。</p>
+ </div>
+ </div>
+ <button id="closeOverlay" class="close meta-shell__close" type="button" aria-label="ホームへ戻る"><span aria-hidden="true">×</span></button>
+ </header>
+ <div id="metaNotice" class="meta-notice" role="status" aria-live="polite" hidden></div>
+ <div id="overlayBody" class="meta-shell__body"></div>
  </div>
  </section>
  </div>
@@ -177,7 +188,7 @@
  <script src="js/audio.js"></script>
  <script src="js/battle-v3-loader.js?v=20260813-mogu-rig-1"></script>
  <script src="js/game.js?v=20260812-battle-motion-2"></script>
- <script src="js/ui.js"></script>
+ <script src="js/ui.js?v=20260813-meta-ui-1"></script>
  <script src="js/assetManager.js?v=20260812-startup-loader-1"></script>
  <script src="js/performance.js"></script>
  <script src="js/network.js"></script>

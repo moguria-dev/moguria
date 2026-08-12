@@ -1,10 +1,45 @@
 window.MoguriaUI = (() => {
   let initialized = false;
+  let lastFocused = null;
+  let noticeTimer = 0;
 
   const ENTITY = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
   const esc = (value) => String(value ?? '').replace(/[&<>"']/g, ch => ENTITY[ch]);
   const attr = esc;
   const asArray = (value) => Array.isArray(value) ? value : [];
+
+  const META_VIEWS = {
+    dex: {
+      title: 'Mogu図鑑',
+      eyebrow: 'COLLECTION',
+      subtitle: '見つけた光を、ここに残そう。',
+      icon: 'assets/images/home-v2/icon_dex.png'
+    },
+    logs: {
+      title: '冒険記録',
+      eyebrow: 'JOURNEY LOG',
+      subtitle: '小さな一歩も、星の記憶になる。',
+      icon: 'assets/images/home-v2/icon_logs.png'
+    },
+    equipment: {
+      title: '装備',
+      eyebrow: 'WARDROBE',
+      subtitle: '見つけた力を、Moguに結ぼう。',
+      icon: 'assets/images/home-v2/icon_equip.png'
+    },
+    gacha: {
+      title: 'もぐガチャ',
+      eyebrow: 'STAR WELL',
+      subtitle: '星の泉へ、ひとつ光を預けよう。',
+      icon: 'assets/images/home-v2/icon_gacha.png'
+    },
+    outing: {
+      title: 'おでかけ',
+      eyebrow: 'EXPEDITION',
+      subtitle: '今夜は、どの光を探しにいく？',
+      icon: 'assets/images/home-v2/icon_outing.png'
+    }
+  };
 
   function show(id){
     const target = document.getElementById(id);
@@ -18,18 +53,79 @@ window.MoguriaUI = (() => {
     return asArray(items).map(x => `<span class="badge">${esc(x)}</span>`).join('');
   }
 
-  function overlay(title, html){
+  function coinMark(value, id = ''){
+    return `<span class="meta-coin"${id ? ` id="${attr(id)}"` : ''}><img src="assets/images/home-v2/currency_coin.png" alt="" /><span>MoguCoin</span><b>${esc(value || 0)}</b></span>`;
+  }
+
+  function overlay(view, html){
+    const config = META_VIEWS[view] || META_VIEWS.dex;
     const titleEl = document.getElementById('overlayTitle');
+    const eyebrowEl = document.getElementById('overlayEyebrow');
+    const subtitleEl = document.getElementById('overlaySubtitle');
+    const iconEl = document.getElementById('overlayIcon');
     const bodyEl = document.getElementById('overlayBody');
     const overlayEl = document.getElementById('overlay');
+    const noticeEl = document.getElementById('metaNotice');
     if (!titleEl || !bodyEl || !overlayEl) return;
-    titleEl.textContent = title;
+
+    if (overlayEl.classList.contains('hidden')) {
+      lastFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    }
+    titleEl.textContent = config.title;
+    if (eyebrowEl) eyebrowEl.textContent = config.eyebrow;
+    if (subtitleEl) subtitleEl.textContent = config.subtitle;
+    if (iconEl) iconEl.src = config.icon;
     bodyEl.innerHTML = html;
+    bodyEl.scrollTop = 0;
+    overlayEl.dataset.view = view;
     overlayEl.classList.remove('hidden');
+    if (noticeEl) {
+      noticeEl.hidden = true;
+      noticeEl.textContent = '';
+      noticeEl.removeAttribute('data-tone');
+    }
+    requestAnimationFrame(() => document.getElementById('closeOverlay')?.focus());
+  }
+
+  function closeMetaOverlay(){
+    const overlayEl = document.getElementById('overlay');
+    if (!overlayEl || overlayEl.classList.contains('hidden')) return;
+    overlayEl.classList.add('hidden');
+    delete overlayEl.dataset.view;
+    if (lastFocused?.isConnected) lastFocused.focus();
+  }
+
+  function showNotice(message, tone = 'info'){
+    const noticeEl = document.getElementById('metaNotice');
+    if (!noticeEl) return;
+    window.clearTimeout(noticeTimer);
+    noticeEl.textContent = message;
+    noticeEl.dataset.tone = tone;
+    noticeEl.hidden = false;
+    noticeTimer = window.setTimeout(() => { noticeEl.hidden = true; }, 2800);
   }
 
   function rarityClass(r){
     return 'rarity-' + attr(r || 'common');
+  }
+
+  function rarityName(r){
+    return window.MoguriaMeta?.RARITY_LABELS?.[r] || String(r || 'C').toUpperCase();
+  }
+
+  function emptyState(icon, title, text){
+    return `<div class="meta-empty"><span aria-hidden="true">${esc(icon)}</span><b>${esc(title)}</b><p>${esc(text)}</p></div>`;
+  }
+
+  function formatRunDate(value){
+    const date = new Date(value || Date.now());
+    if (Number.isNaN(date.getTime())) return '日時不明';
+    return new Intl.DateTimeFormat('ja-JP', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    }).format(date);
   }
 
   function showResult(run = {}){
@@ -69,70 +165,315 @@ window.MoguriaUI = (() => {
     const save = window.MoguriaSave.load();
     const artifacts = window.MoguriaSkills?.artifacts || [];
     const skills = window.MoguriaSkills?.skills || [];
-
-    const artifactItems = artifacts.map(a => `<div class="item"><b>${esc((save.dex.artifacts || {})[a.id] ? '✓ ' : '？ ')}${esc(a.name)}</b><small>${esc((save.dex.artifacts || {})[a.id] || 0)}回獲得 / ${esc(asArray(a.tags).join('・'))}</small></div>`).join('');
-    const skillItems = skills.map(s => `<div class="item"><b>${esc(save.dex.skills[s.id] ? '✓ ' : '？ ')}${esc(s.name)}</b><small>${esc(save.dex.skills[s.id] || 0)}回食べた / ${esc(asArray(s.tags).join('・'))}</small></div>`).join('');
+    const artifactCount = artifacts.filter(a => (save.dex.artifacts || {})[a.id]).length;
+    const skillCount = skills.filter(s => (save.dex.skills || {})[s.id]).length;
+    const discovered = artifactCount + skillCount;
+    const total = artifacts.length + skills.length;
+    const progress = total ? Math.round(discovered / total * 100) : 0;
     const syn = Object.keys(save.dex.synergies || {});
     const titles = Object.keys(save.dex.titles || {});
 
-    overlay('Mogu図鑑', `<h3>アーティファクト</h3><div class="list">${artifactItems}</div><h3>食べ物</h3><div class="list">${skillItems}</div><h3>発見シナジー</h3><div class="list">${syn.length ? syn.map(x => `<div class="item"><b>${esc(x)}</b><small>発見済み</small></div>`).join('') : '<div class="item">まだ未発見。いろいろ食べてみよう。</div>'}</div><h3>二つ名</h3><div class="badges">${titles.length ? badgeList(titles) : '<span class="badge">小さな冒険者</span>'}</div>`);
+    overlay('dex', `
+      <section class="meta-dex__progress">
+        <div class="meta-dex__progress-copy">
+          <span>発見のきろく</span>
+          <b>${discovered}<small> / ${total}</small></b>
+        </div>
+        <div class="meta-progress" aria-label="図鑑完成度 ${progress}%"><i style="width:${progress}%"></i></div>
+        <strong>${progress}%</strong>
+      </section>
+      <nav class="meta-tabs" role="tablist" aria-label="図鑑の分類">
+        <button type="button" role="tab" data-dex-tab="artifacts" aria-selected="true">遺物 <b>${artifactCount}</b></button>
+        <button type="button" role="tab" data-dex-tab="foods" aria-selected="false">食べもの <b>${skillCount}</b></button>
+        <button type="button" role="tab" data-dex-tab="synergies" aria-selected="false">シナジー <b>${syn.length}</b></button>
+        <button type="button" role="tab" data-dex-tab="titles" aria-selected="false">二つ名 <b>${titles.length}</b></button>
+      </nav>
+      <section id="dexContent" class="meta-dex__content" role="tabpanel"></section>
+    `);
+
+    const content = document.getElementById('dexContent');
+    const renderEntries = (entries, counts, unit) => `
+      <div class="meta-dex-grid">
+        ${entries.map(entry => {
+          const count = Number(counts[entry.id] || 0);
+          const found = count > 0;
+          const tags = asArray(entry.tags).slice(0, 2).map(tag => `<span>${esc(tag)}</span>`).join('');
+          return `<article class="meta-dex-card ${found ? 'is-found' : 'is-unknown'}">
+            <div class="meta-dex-card__icon" aria-hidden="true">${found ? esc(entry.icon || '✦') : '？'}</div>
+            <div class="meta-dex-card__copy">
+              <small>${found ? `${count}${unit}` : '未発見'}</small>
+              <b>${esc(entry.name)}</b>
+              <div>${tags}</div>
+            </div>
+          </article>`;
+        }).join('')}
+      </div>
+    `;
+
+    const panes = {
+      artifacts: () => renderEntries(artifacts, save.dex.artifacts || {}, '回獲得'),
+      foods: () => renderEntries(skills, save.dex.skills || {}, '回食べた'),
+      synergies: () => syn.length
+        ? `<div class="meta-discovery-list">${syn.map(name => `<div><span>✦</span><b>${esc(name)}</b><small>発見済み</small></div>`).join('')}</div>`
+        : emptyState('✧', 'まだ見つかっていません', '組み合わせを変えて、力のつながりを探してみよう。'),
+      titles: () => titles.length
+        ? `<div class="meta-title-list">${titles.map(name => `<span>${esc(name)}</span>`).join('')}</div>`
+        : emptyState('☆', '最初の二つ名を待っています', '冒険のしかたが、やがてMoguの名前になります。')
+    };
+
+    const selectTab = (tab) => {
+      document.querySelectorAll('[data-dex-tab]').forEach(button => {
+        const selected = button.dataset.dexTab === tab;
+        button.setAttribute('aria-selected', selected ? 'true' : 'false');
+        button.tabIndex = selected ? 0 : -1;
+      });
+      if (content) {
+        content.innerHTML = (panes[tab] || panes.artifacts)();
+      }
+    };
+
+    document.querySelectorAll('[data-dex-tab]').forEach(button => {
+      button.onclick = () => selectTab(button.dataset.dexTab);
+    });
+    selectTab('artifacts');
   }
 
   function showLogs(){
     const save = window.MoguriaSave.load();
-    const html = save.runs && save.runs.length
-      ? save.runs.map((r, i) => {
-          const artifacts = asArray(r.artifacts).map(a => a?.name || '').filter(Boolean).join(' / ');
-          const fusionSkills = asArray(r.skills).filter(s => s?.fusion).map(s => '✦ ' + (s?.name || '')).join(' / ');
+    const runs = asArray(save.runs);
+    const best = save.best || {};
+    const html = runs.length
+      ? runs.map((run, index) => {
+          const artifacts = asArray(run.artifacts).map(a => a?.name || '').filter(Boolean);
+          const fusionSkills = asArray(run.skills).filter(s => s?.fusion).map(s => '✦ ' + (s?.name || ''));
           const badges = [
-            ...asArray(r.titles),
-            ...asArray(r.artifacts).map(a => ' ' + (a?.name || '')),
-            ...asArray(r.skills).filter(s => s?.fusion).map(s => '✦ ' + (s?.name || '')),
-            ...asArray(r.synergies)
+            ...asArray(run.titles),
+            ...asArray(run.synergies),
+            ...artifacts,
+            ...fusionSkills
           ].filter(Boolean);
-          return `<div class="item"><b>#${esc(save.runs.length - i)} ${esc(r.name || '冒険')}</b><small>${esc(new Date(r.date || Date.now()).toLocaleString())} / Lv.${esc(r.lv || 1)} / ${esc(r.kills || 0)}撃破 / 最大DMG ${esc(r.maxDamage || 0)}</small><small>${esc(artifacts)}</small><small>${esc(fusionSkills)}</small><small>${esc(r.comment || '')}</small><div class="badges">${badgeList(badges)}</div></div>`;
+          return `
+            <article class="meta-log-card">
+              <div class="meta-log-card__index"><span>#</span>${esc(runs.length - index)}</div>
+              <div class="meta-log-card__main">
+                <header>
+                  <div><small>${esc(formatRunDate(run.date))}</small><h3>${esc(run.name || 'もぐもぐの旅')}</h3></div>
+                  <span>Lv.${esc(run.lv || 1)}</span>
+                </header>
+                <div class="meta-log-card__stats">
+                  <span><b>${esc(run.floor || run.wave || 1)}</b>到達</span>
+                  <span><b>${esc(run.kills || 0)}</b>撃破</span>
+                  <span><b>${esc(run.maxDamage || 0)}</b>最大DMG</span>
+                </div>
+                <p>${esc(run.comment || '今日の冒険を、星が静かに覚えています。')}</p>
+                ${badges.length ? `<details class="meta-log-card__details"><summary>見つけた力 <b>${badges.length}</b></summary><div class="meta-chip-list">${badgeList(badges)}</div></details>` : ''}
+              </div>
+            </article>
+          `;
         }).join('')
-      : '<div class="item">まだ冒険記録はありません。</div>';
-    overlay('冒険記録', `<div class="list">${html}</div>`);
+      : emptyState('✦', '最初の冒険を待っています', 'ダンジョンから帰ると、ここに旅の記憶が残ります。');
+
+    overlay('logs', `
+      <section class="meta-log-summary">
+        <div><small>冒険した回数</small><b>${runs.length}</b></div>
+        <div><small>最高到達</small><b>${esc(best.floor || 0)}<em>階</em></b></div>
+        <div><small>最高ダメージ</small><b>${esc(best.damage || 0)}</b></div>
+      </section>
+      <section class="meta-section-head"><div><span>JOURNEYS</span><h3>星に残った足あと</h3></div><small>新しい順</small></section>
+      <div class="meta-log-list">${html}</div>
+    `);
   }
 
   function showEquipment(){
     const save = window.MoguriaMeta.load();
-    const slots = window.MoguriaMeta.equipmentSummary().map(x => `<div class="item equip-slot"><b>${esc(x.label)}</b><small>${x.item ? `${esc(x.item.icon)} ${esc(x.item.name)} Lv.${esc(x.item.level || 1)} / ${esc(window.MoguriaMeta.RARITY_LABELS[x.item.rarity])}` : '未装備'}</small></div>`).join('');
-    const inv = save.meta.inventory.length
-      ? save.meta.inventory.map(it => `<div class="item equip-item ${rarityClass(it.rarity)}"><b>${esc(it.icon)} ${esc(it.name)} Lv.${esc(it.level || 1)}</b><small>${esc(window.MoguriaMeta.SLOT_LABELS[it.slot])} / ${esc(window.MoguriaMeta.RARITY_LABELS[it.rarity])} / ${esc(it.desc)}</small><div class="row-actions"><button type="button" data-equip="${attr(it.uid)}">装備</button><button type="button" data-upgrade="${attr(it.uid)}">強化</button></div></div>`).join('')
-      : '<div class="item">まだ装備はありません。もぐガチャで集めよう。</div>';
+    const summary = window.MoguriaMeta.equipmentSummary();
+    const equippedUids = new Set(summary.map(entry => entry.item?.uid).filter(Boolean));
+    const equippedCount = summary.filter(entry => entry.item).length;
+    const slots = summary.map(entry => `
+      <div class="meta-equip-slot ${entry.item ? 'is-filled' : ''}">
+        <span aria-hidden="true">${esc(entry.item?.icon || '✦')}</span>
+        <small>${esc(entry.label)}</small>
+        <b>${entry.item ? `Lv.${esc(entry.item.level || 1)}` : '未装備'}</b>
+      </div>
+    `).join('');
+    const inventory = save.meta.inventory.length
+      ? save.meta.inventory.map(item => {
+          const equipped = equippedUids.has(item.uid);
+          return `
+            <article class="meta-equip-item ${rarityClass(item.rarity)} ${equipped ? 'is-equipped' : ''}">
+              <div class="meta-equip-item__icon" aria-hidden="true">${esc(item.icon)}</div>
+              <div class="meta-equip-item__copy">
+                <div><span>${esc(rarityName(item.rarity))}</span><small>${esc(window.MoguriaMeta.SLOT_LABELS[item.slot])}</small></div>
+                <h3>${esc(item.name)}</h3>
+                <p>${esc(item.desc)}</p>
+              </div>
+              <strong>Lv.${esc(item.level || 1)}</strong>
+              <div class="meta-equip-item__actions">
+                <button type="button" data-equip="${attr(item.uid)}" ${equipped ? 'disabled' : ''}>${equipped ? '装備中' : '装備する'}</button>
+                <button type="button" data-upgrade="${attr(item.uid)}">強化</button>
+              </div>
+            </article>
+          `;
+        }).join('')
+      : emptyState('◇', '持ちものはまだ空っぽ', 'もぐガチャで、最初の装備を見つけよう。');
 
-    overlay('装備', `<div class="meta-head"><b>MoguCoin ${esc(save.meta.coins || 0)}</b><small>装備は5部位。強化は同じ部位の装備を素材にします。</small></div><h3>装備中</h3><div class="list">${slots}</div><h3>持ちもの</h3><div class="list">${inv}</div>`);
+    overlay('equipment', `
+      <section class="meta-equip-stage">
+        <div class="meta-equip-stage__copy">
+          <small>装備中</small>
+          <b>${equippedCount}<span> / ${summary.length}</span></b>
+          <p>小さな力も、組み合わせれば旅の個性になる。</p>
+        </div>
+        <div class="meta-equip-stage__mogu" aria-hidden="true">
+          <i></i>
+          <img src="assets/images/home-v2/mogu_home_idle.png" alt="" />
+        </div>
+        <div class="meta-equip-stage__wallet">${coinMark(save.meta.coins || 0)}</div>
+      </section>
+      <section class="meta-equip-slots" aria-label="装備部位">${slots}</section>
+      <section class="meta-section-head"><div><span>INVENTORY</span><h3>持ちもの</h3></div><small>${save.meta.inventory.length}個</small></section>
+      <div class="meta-equip-list">${inventory}</div>
+    `);
 
     const body = document.getElementById('overlayBody');
-    body.querySelectorAll('[data-equip]').forEach(b => b.onclick = () => { window.MoguriaMeta.equip(b.dataset.equip); showEquipment(); });
-    body.querySelectorAll('[data-upgrade]').forEach(b => b.onclick = () => { const res = window.MoguriaMeta.upgrade(b.dataset.upgrade); if (!res.ok) alert(res.message); showEquipment(); });
+    body.querySelectorAll('[data-equip]').forEach(button => {
+      button.onclick = () => {
+        const item = window.MoguriaMeta.equip(button.dataset.equip);
+        if (!item) {
+          showNotice('装備が見つかりませんでした。', 'error');
+          return;
+        }
+        showEquipment();
+        showNotice(`「${item.name}」を装備しました。`, 'success');
+      };
+    });
+    body.querySelectorAll('[data-upgrade]').forEach(button => {
+      button.onclick = () => {
+        const res = window.MoguriaMeta.upgrade(button.dataset.upgrade);
+        if (!res.ok) {
+          showNotice(res.message, 'error');
+          return;
+        }
+        showEquipment();
+        showNotice(`「${res.item.name}」がLv.${res.item.level}になりました。`, 'success');
+      };
+    });
   }
 
   function showGacha(){
     const save = window.MoguriaMeta.load();
-    const items = window.MoguriaMeta.EQUIPMENT.map(e => `<div class="item ${rarityClass(e.rarity)}"><b>${esc(e.icon)} ${esc(e.name)}</b><small>${esc(window.MoguriaMeta.SLOT_LABELS[e.slot])} / ${esc(window.MoguriaMeta.RARITY_LABELS[e.rarity])} / ${esc(e.desc)}</small></div>`).join('');
-    overlay('もぐガチャ', `<div class="meta-head"><b>MoguCoin ${esc(save.meta.coins || 0)}</b><small>1回 ${esc(window.MoguriaMeta.GACHA_COST)} MC。ハズレ装備も強化素材になります。</small></div><button id="pullGachaBtn" class="primary" type="button">1回もぐる</button><div id="gachaResult" class="gacha-result"></div><h3>出るもの</h3><div class="list">${items}</div>`);
+    const items = window.MoguriaMeta.EQUIPMENT.map(item => `
+      <article class="meta-gacha-item ${rarityClass(item.rarity)}">
+        <span class="meta-gacha-item__rarity">${esc(rarityName(item.rarity))}</span>
+        <div aria-hidden="true">${esc(item.icon)}</div>
+        <b>${esc(item.name)}</b>
+        <small>${esc(window.MoguriaMeta.SLOT_LABELS[item.slot])}</small>
+      </article>
+    `).join('');
 
-    document.getElementById('pullGachaBtn').onclick = () => {
+    overlay('gacha', `
+      <section class="meta-gacha-altar">
+        <div class="meta-gacha-altar__stars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="meta-gacha-altar__machine" aria-hidden="true"><span></span><img src="assets/images/home-v2/icon_gacha.png" alt="" /></div>
+        <p>深い泉へ光を預けると、<br />旅を助ける装備がひとつ浮かびます。</p>
+        ${coinMark(save.meta.coins || 0, 'metaCoinValue')}
+      </section>
+      <section class="meta-gacha-action">
+        <div><small>1回</small><b>${window.MoguriaMeta.GACHA_COST}<span> MC</span></b></div>
+        <button id="pullGachaBtn" class="meta-primary" type="button"><span>星の泉にもぐる</span><small>装備をひとつ見つける</small></button>
+      </section>
+      <div id="gachaResult" class="meta-gacha-result" role="status" aria-live="polite"></div>
+      <section class="meta-section-head"><div><span>DISCOVERIES</span><h3>泉から出るもの</h3></div><small>C · R · E</small></section>
+      <div class="meta-gacha-grid">${items}</div>
+    `);
+
+    const pullButton = document.getElementById('pullGachaBtn');
+    let pulling = false;
+    pullButton.onclick = () => {
+      if (pulling) return;
+      pulling = true;
+      pullButton.disabled = true;
       const res = window.MoguriaMeta.pull();
-      const el = document.getElementById('gachaResult');
+      const resultEl = document.getElementById('gachaResult');
       if (!res.ok) {
-        el.innerHTML = `<div class="item">${esc(res.message)}</div>`;
+        showNotice(res.message, 'error');
+        resultEl.innerHTML = `<div class="meta-gacha-result__message">星の泉は、もう少しMoguCoinを待っているみたい。</div>`;
+        pulling = false;
+        pullButton.disabled = false;
         return;
       }
       window.MoguriaAudio?.play?.('gacha');
-      el.innerHTML = `<div class="gacha-orb ${rarityClass(res.item.rarity)}">✦</div><div class="item ${rarityClass(res.item.rarity)} gacha-pop"><b>${esc(res.item.icon)} ${esc(res.item.name)}</b><small>${esc(res.item.desc)}</small></div>`;
+      resultEl.innerHTML = `
+        <article class="meta-gacha-reveal ${rarityClass(res.item.rarity)}">
+          <span class="meta-gacha-reveal__light" aria-hidden="true"></span>
+          <small>${esc(rarityName(res.item.rarity))} · NEW EQUIPMENT</small>
+          <div aria-hidden="true">${esc(res.item.icon)}</div>
+          <h3>${esc(res.item.name)}</h3>
+          <p>${esc(res.item.desc)}</p>
+        </article>
+      `;
+      const coinEl = document.getElementById('metaCoinValue');
+      if (coinEl) coinEl.querySelector('b').textContent = res.coins;
+      resultEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
       window.MoguriaHome.update();
+      window.setTimeout(() => {
+        pulling = false;
+        pullButton.disabled = false;
+      }, 760);
     };
   }
 
   function showOuting(){
     const save = window.MoguriaMeta.load();
-    const html = window.MoguriaMeta.CHALLENGES.map(c => `<div class="item challenge"><b>${esc(c.icon)} ${esc(c.name)}</b><small>${esc(c.desc)}</small><small>報酬 ${esc(c.reward)} MC</small><button type="button" data-claim="${attr(c.id)}">報酬を受け取る</button></div>`).join('');
-    overlay('おでかけ', `<div class="meta-head"><b>MoguCoin ${esc(save.meta.coins || 0)}</b><small>特殊な遊びと報酬をまとめた入口です。</small></div><div class="list">${html}</div>`);
-    document.getElementById('overlayBody').querySelectorAll('[data-claim]').forEach(b => b.onclick = () => { const res = window.MoguriaMeta.claimChallenge(b.dataset.claim); if (!res.ok) alert(res.message); showOuting(); window.MoguriaHome.update(); });
+    const claimed = save.meta.claimedChallenges || {};
+    const today = new Date().toISOString().slice(0, 10);
+    const typeLabels = { daily: '日替わり', once: '一度きり', idle: '遠征' };
+    const isClaimed = challenge => {
+      const key = challenge.type === 'daily' ? today : challenge.id;
+      return Boolean(claimed[challenge.id + ':' + key]);
+    };
+    const completed = window.MoguriaMeta.CHALLENGES.filter(isClaimed).length;
+    const cards = window.MoguriaMeta.CHALLENGES.map((challenge, index) => {
+      const done = isClaimed(challenge);
+      return `
+        <article class="meta-outing-card meta-outing-card--${index + 1} ${done ? 'is-complete' : ''}">
+          <span class="meta-outing-card__number">0${index + 1}</span>
+          <div class="meta-outing-card__icon" aria-hidden="true">${esc(challenge.icon)}</div>
+          <div class="meta-outing-card__copy">
+            <small>${esc(typeLabels[challenge.type] || 'おでかけ')}</small>
+            <h3>${esc(challenge.name)}</h3>
+            <p>${esc(challenge.desc)}</p>
+            <span class="meta-outing-card__reward"><img src="assets/images/home-v2/currency_coin.png" alt="" />${esc(challenge.reward)} MC</span>
+          </div>
+          <button type="button" ${done ? 'disabled' : `data-claim="${attr(challenge.id)}"`}>
+            <span>${done ? '受け取り済み' : '報酬を受け取る'}</span>
+          </button>
+        </article>
+      `;
+    }).join('');
+
+    overlay('outing', `
+      <section class="meta-outing-map">
+        <div class="meta-outing-map__copy"><small>今夜の行き先</small><b>3つの光が<br />Moguを待っています。</b></div>
+        <img src="assets/images/home-v2/expedition_mogu.png" alt="" />
+        <div class="meta-outing-map__status"><span>完了</span><b>${completed} / ${window.MoguriaMeta.CHALLENGES.length}</b></div>
+      </section>
+      <div class="meta-outing-wallet">${coinMark(save.meta.coins || 0)}</div>
+      <section class="meta-outing-list">${cards}</section>
+    `);
+
+    document.getElementById('overlayBody').querySelectorAll('[data-claim]').forEach(button => {
+      button.onclick = () => {
+        const res = window.MoguriaMeta.claimChallenge(button.dataset.claim);
+        if (!res.ok) {
+          showNotice(res.message, 'error');
+          return;
+        }
+        showOuting();
+        showNotice(`${res.amount} MoguCoinを受け取りました。`, 'success');
+        window.MoguriaHome.update();
+      };
+    });
   }
 
   function init(){
@@ -146,10 +487,16 @@ window.MoguriaUI = (() => {
     if (homeBtn) homeBtn.onclick = () => show('home');
 
     const closeOverlay = document.getElementById('closeOverlay');
-    if (closeOverlay) closeOverlay.onclick = () => document.getElementById('overlay')?.classList.add('hidden');
+    if (closeOverlay) closeOverlay.onclick = closeMetaOverlay;
 
     const overlayEl = document.getElementById('overlay');
-    if (overlayEl) overlayEl.addEventListener('click', e => { if (e.target.id === 'overlay') e.currentTarget.classList.add('hidden'); });
+    if (overlayEl) overlayEl.addEventListener('click', event => {
+      if (event.target.id === 'overlay') closeMetaOverlay();
+    });
+
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape') closeMetaOverlay();
+    });
   }
 
   return { init, show, showResult, showDex, showLogs, showEquipment, showGacha, showOuting };
