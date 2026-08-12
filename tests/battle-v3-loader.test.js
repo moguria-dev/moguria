@@ -9,7 +9,8 @@ const vm = require('node:vm');
 const ROOT = path.resolve(__dirname, '..');
 const LOADER_SOURCE = fs.readFileSync(path.join(ROOT, 'js/battle-v3-loader.js'), 'utf8');
 const ENGINE_SRC = 'vendor/phaser/phaser-arcade-physics-4.2.1.min.js';
-const SCENE_SRC = 'js/battle-v3-scene.js?v=20260812-battle-motion-2';
+const RIG_SRC = 'js/mogu-rig.js?v=20260813-mogu-rig-1';
+const SCENE_SRC = 'js/battle-v3-scene.js?v=20260813-mogu-rig-1';
 
 function createHarness(overrides = {}) {
   let nextTimerId = 0;
@@ -150,15 +151,24 @@ async function flushMicrotasks() {
   for (let index = 0; index < 8; index += 1) await Promise.resolve();
 }
 
-test('prepare loads Phaser and the scene, boots once, and clears all timeout timers', async () => {
+test('prepare loads Phaser, the Mogu rig, and the scene in order, boots once, and clears all timeout timers', async () => {
   const harness = createHarness();
   const renderer = createRenderer();
   const pending = harness.loader.prepare();
+  const duplicatePending = harness.loader.prepare();
 
   const engineScript = harness.script(ENGINE_SRC);
   assert.ok(engineScript);
+  assert.equal(harness.scripts.length, 1);
   harness.context.Phaser = {};
   engineScript.dispatch('load');
+  await flushMicrotasks();
+
+  const rigScript = harness.script(RIG_SRC);
+  assert.ok(rigScript);
+  assert.equal(harness.script(SCENE_SRC), null);
+  harness.context.MoguriaMoguRig = {};
+  rigScript.dispatch('load');
   await flushMicrotasks();
 
   const sceneScript = harness.script(SCENE_SRC);
@@ -166,8 +176,34 @@ test('prepare loads Phaser and the scene, boots once, and clears all timeout tim
   harness.context.MoguriaBattleV3 = renderer;
   sceneScript.dispatch('load');
 
-  assert.equal((await pending).ok, true);
+  const [result, duplicateResult] = await Promise.all([pending, duplicatePending]);
+  assert.equal(result.ok, true);
+  assert.equal(duplicateResult.ok, true);
   assert.equal(renderer.bootCalls, 1);
+  assert.deepEqual(harness.pendingTimerDelays(), []);
+});
+
+test('a rig script without its API falls back to the atlas and still boots the scene', async () => {
+  const harness = createHarness({ Phaser: {} });
+  const renderer = createRenderer();
+  const pending = harness.loader.prepare();
+  await flushMicrotasks();
+
+  const rigScript = harness.script(RIG_SRC);
+  assert.ok(rigScript);
+  rigScript.dispatch('load');
+  await flushMicrotasks();
+
+  const sceneScript = harness.script(SCENE_SRC);
+  assert.ok(sceneScript);
+  harness.context.MoguriaBattleV3 = renderer;
+  sceneScript.dispatch('load');
+  const result = await pending;
+
+  assert.equal(result.ok, true);
+  assert.equal(renderer.bootCalls, 1);
+  assert.equal(harness.script(RIG_SRC), null);
+  assert.ok(harness.warnings.some(args => String(args.join(' ')).includes('atlas fallback')));
   assert.deepEqual(harness.pendingTimerDelays(), []);
 });
 
@@ -217,6 +253,10 @@ test('completed stale script elements are replaced and a failed load can be retr
   retryEngine.dispatch('load');
   await flushMicrotasks();
 
+  harness.context.MoguriaMoguRig = {};
+  harness.script(RIG_SRC).dispatch('load');
+  await flushMicrotasks();
+
   const renderer = createRenderer();
   harness.context.MoguriaBattleV3 = renderer;
   harness.script(SCENE_SRC).dispatch('load');
@@ -226,7 +266,7 @@ test('completed stale script elements are replaced and a failed load can be retr
 
 test('Phaser boot timeout resets the renderer and permits a later retry', async () => {
   const renderer = createRenderer({ boot: () => new Promise(() => {}) });
-  const harness = createHarness({ Phaser: {}, MoguriaBattleV3: renderer });
+  const harness = createHarness({ Phaser: {}, MoguriaMoguRig: {}, MoguriaBattleV3: renderer });
   const firstAttempt = harness.loader.prepare();
   await flushMicrotasks();
 
@@ -251,7 +291,7 @@ test('isReady does not bypass prior asset errors or fallback assets', async () =
     loadErrors: ['assets/images/battle-v3/mogu-atlas.png'],
     fallbackAssets: ['moguria-v3-mogu']
   });
-  const harness = createHarness({ Phaser: {}, MoguriaBattleV3: renderer });
+  const harness = createHarness({ Phaser: {}, MoguriaMoguRig: {}, MoguriaBattleV3: renderer });
 
   const result = await harness.loader.prepare();
 
