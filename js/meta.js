@@ -76,11 +76,13 @@ window.MoguriaMeta = (() => {
     return Math.max(8, Math.floor(10 + (run.wave || run.floor || 1) * 4 + (run.kills || 0) / 6 + (run.cleared ? 70 : 0) + (run.titles || []).length * 6));
   }
 
+  // Existing entry point used by the current battle. Unlike the v2 version,
+  // the returned object reports persistence success and all records commit together.
   function awardFromRun(run){
     const amount = runReward(run);
-    run.coins = amount;
-    addCoins(amount, 'run');
-    return amount;
+    const result = window.MoguriaSave.settleRun(run, { coins: amount });
+    if (result.ok) run.coins = amount;
+    return { ...result, amount };
   }
 
   function pickRarity(){
@@ -155,14 +157,74 @@ window.MoguriaMeta = (() => {
   function applyEquipmentToPlayer(p){
     const equipped = equipmentSummary().map(x => x.item).filter(Boolean);
     for (const item of equipped) {
-      const lv = item.level || 1;
-      if (item.stat.hp) { p.maxHp += item.stat.hp * lv; p.hp += item.stat.hp * lv; }
-      if (item.stat.atk) p.damage += item.stat.atk * lv;
-      if (item.stat.speed) p.speed += 3 * item.stat.speed;
+      const rawLevel = Number(item.level);
+      const lv = Number.isFinite(rawLevel) ? Math.max(1, Math.floor(rawLevel)) : 1;
+      const stat = item.stat && typeof item.stat === 'object' ? item.stat : {};
+      const points = key => {
+        const value = Number(stat[key]);
+        return (Number.isFinite(value) ? Math.max(0, value) : 0) * lv;
+      };
+      const add = (key, amount) => { p[key] = (Number(p[key]) || 0) + amount; };
+
+      // Every equipment stat scales with item level and targets properties the
+      // current battle already consumes; no parallel, display-only stats.
+      const hp = points('hp');
+      if (hp) { add('maxHp', hp); add('hp', hp); }
+
+      const attack = points('atk');
+      if (attack) add('baseDamage', attack);
+
+      const speed = points('speed');
+      if (speed) add('speed', speed * 3);
+
+      const dodge = Math.min(.18, points('dodge') * .015);
+      if (dodge) add('dodge', dodge);
+
+      const armor = points('armor') + points('guard');
+      if (armor) add('armor', armor);
+
+      const crit = Math.min(.2, points('crit') * .015);
+      if (crit) add('crit', crit);
+
+      const poison = points('poison');
+      if (poison) { add('poisonChance', poison * .012); add('poisonPower', poison * .5); }
+
+      const boom = points('boom');
+      if (boom) {
+        add('explosionPower', boom * 2);
+        add('explosionRadius', boom * 3);
+        add('killExplodeChance', Math.min(.12, boom * .01));
+      }
+
+      const summon = points('summon');
+      if (summon) {
+        add('summons', summon);
+        p.summonRate = Math.max(.45, (Number(p.summonRate) || 1.1) * Math.pow(.98, summon));
+      }
+
+      const lightning = points('lightning');
+      if (lightning) {
+        add('lightningJumps', Math.ceil(lightning / 2));
+        p.lightningRate = Math.max(2.2, (Number(p.lightningRate) || 3.8) - lightning * .08);
+      }
+
+      const auto = points('auto');
+      if (auto) p.attackRate = Math.max(.2, (Number(p.attackRate) || .65) * Math.pow(.97, auto));
+
+      const aura = points('aura');
+      if (aura) { add('auraDamage', aura * .5); add('auraRadius', aura * 4); }
+
+      const belly = points('belly');
+      if (belly) {
+        add('maxHp', belly * 2);
+        add('hp', belly * 2);
+        add('regen', Math.min(.5, belly * .04));
+      }
+
       p.equipmentVisual = p.equipmentVisual || {};
       p.equipmentVisual[item.slot] = item.icon;
     }
   }
 
-  return { EQUIPMENT, CHALLENGES, SLOT_LABELS, RARITY_LABELS, GACHA_COST, normalize, load, save, addCoins, awardFromRun, pull, equip, upgrade, claimChallenge, equipmentSummary, applyEquipmentToPlayer };
+  return { EQUIPMENT, CHALLENGES, SLOT_LABELS, RARITY_LABELS, GACHA_COST, normalize, load, save, addCoins, runReward, awardFromRun, pull, equip, upgrade, claimChallenge, equipmentSummary, applyEquipmentToPlayer };
 })();

@@ -56,18 +56,8 @@
   var lastWorldTransform = "";
 
   function loadImages() {
-    Object.keys(battleSpriteNames).forEach(function (key) {
-      var img = new Image();
-      img.src = BATTLE_SPRITE_BASE + battleSpriteNames[key] + PLAY_ASSET_VERSION;
-      sprites[key] = img;
-    });
-
-    Object.keys(spriteNames).forEach(function (key) {
-      var img = new Image();
-      img.src = SPRITE_BASE + spriteNames[key] + ASSET_VERSION;
-      sprites[key] = img;
-    });
-
+    // Battle-v3 owns every combat image and loads its pack only on entry.
+    // Keep this visual refresh focused on DOM UI decoration at startup.
     Object.keys(iconNames).forEach(function (key) {
       var img = new Image();
       img.src = ICON_BASE + iconNames[key] + ASSET_VERSION;
@@ -87,10 +77,8 @@
       });
     }
 
-    ensureGameOverlay();
     decorateAll();
     observeUi();
-    requestAnimationFrame(loop);
   }
 
   function ensureGameOverlay() {
@@ -185,11 +173,6 @@
       if (b) b.insertBefore(mark, b.firstChild);
       else item.insertBefore(mark, item.firstChild);
     });
-  }
-
-  function loop() {
-    drawGameOverlay();
-    requestAnimationFrame(loop);
   }
 
   function drawGameOverlay() {
@@ -603,6 +586,12 @@
 
   window.MoguriaKVVisualRefresh = {
     init: init,
-    decorateAll: decorateAll
+    decorateAll: decorateAll,
+    setBattleOverlayEnabled: function (enabled) {
+      // Legacy hook retained for callers; battle-v3 never re-enables it.
+      if (overlayCanvas) overlayCanvas.remove();
+      if (worldLayer) worldLayer.remove();
+      overlayCanvas = overlayCtx = worldLayer = null;
+    }
   };
 })();

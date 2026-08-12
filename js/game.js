@@ -1,12 +1,32 @@
 window.MoguriaGame = (() => {
-  let canvas, ctx, state, raf;
+  let canvas, ctx, state;
+  let lifecycleBound=false;
   const keys={};
   const input={x:0,y:0,active:false};
+  const BOSS_PATTERNS={
+    midBoss:[
+      {id:'starVolley',telegraph:.72,duration:.72,recover:.82},
+      {id:'dash',telegraph:.58,duration:.46,recover:.88}
+    ],
+    boss:[
+      {id:'nova',telegraph:.88,duration:.9,recover:.78},
+      {id:'slam',telegraph:1.02,duration:.24,recover:1.0},
+      {id:'dash',telegraph:.64,duration:.54,recover:.78}
+    ]
+  };
   function init(){
-    canvas=document.getElementById('gameCanvas'); ctx=canvas.getContext('2d'); resize(); addEventListener('resize',resize);
+    canvas=document.getElementById('gameCanvas'); ctx=canvas.getContext('2d'); resize();
     setupStick(); document.getElementById('giveupBtn').onclick=()=>endRun(true); document.getElementById('pauseBtn').onclick=()=>pauseRun(); document.getElementById('resumeBtn').onclick=()=>resumeRun(); document.getElementById('pauseGiveupBtn').onclick=()=>{ document.getElementById('pauseModal').classList.add('hidden'); endRun(true); };
+    if(!lifecycleBound){
+      lifecycleBound=true;
+      document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='hidden') persistCheckpoint('visibility'); });
+      addEventListener('pagehide',()=>persistCheckpoint('pagehide'));
+    }
   }
-  function resize(){ canvas.width=Math.floor(innerWidth*devicePixelRatio); canvas.height=Math.floor(innerHeight*devicePixelRatio); ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0); }
+  // battle-v3 owns the only full-size render surface. Keep the legacy canvas at
+  // one pixel so older drawing helpers remain parse-compatible without a large
+  // hidden DPR allocation.
+  function resize(){ canvas.width=1; canvas.height=1; }
   function setupStick(){
     const game=document.getElementById('game'), stick=document.getElementById('stick'), knob=document.getElementById('knob');
     let activePointer=null;
@@ -62,26 +82,115 @@ window.MoguriaGame = (() => {
     centerKnob();
     addEventListener('keydown',e=>keys[e.key]=true); addEventListener('keyup',e=>keys[e.key]=false);
   }
-  function start(){
-    cancelAnimationFrame(raf);
-    state={ mode:'run', p:MoguriaPlayer.create(), enemies:[], bullets:[], enemyBullets:[], mines:[], fx:[], drops:[], dungeon:MoguriaDungeon.create(Date.now()), time:0, last:performance.now(), spawnCd:0, floor:1,
+  function start(options={}){
+    window.MoguriaBattleV3?.stop?.();
+    window.MoguriaPerformance?.start?.();
+    const checkpoint=options.activeRun?.checkpoint && typeof options.activeRun.checkpoint==='object' ? options.activeRun.checkpoint : null;
+    let player=MoguriaPlayer.create();
+    if(checkpoint?.player) player=MoguriaPlayer.restore(checkpoint.player,player);
+    else if(window.MoguriaMeta) MoguriaMeta.applyEquipmentToPlayer(player);
+    state={ mode:'run', runId:String(options.runId||options.activeRun?.runId||''), startedAt:Number(options.activeRun?.startedAt)||Date.now(), p:player, enemies:[], bullets:[], enemyBullets:[], mines:[], fx:[], drops:[], companions:[], scheduled:[], dungeon:MoguriaDungeon.create(checkpoint?.dungeon?.seed||Date.now()), time:0, last:performance.now(), spawnCd:0, floor:1,
       wave:0, maxWave:MoguriaConfig.run.maxWave, timeLimit:MoguriaConfig.run.timeLimit||480, waveState:'ready', waveSpawned:0, waveTarget:0, waveClearTimer:0, cleared:false, timeout:false, introTimer:2.15, bossAlertTimer:0, clearTimer:0, mobEvent:null,
-      stats:{kills:0,maxDamage:0,totalDamage:0,shots:0,crits:0,hitsTaken:0,dodges:0,explosions:0,poisonKills:0,rareKills:0,bossKills:0,combo:0,bestCombo:0}, rerolls:MoguriaConfig.run.rerolls, bans:2, bannedSkills:[], shake:0, hitStop:0, flash:0, particles:[], comboTimer:0, awakenTimer:0, dangerPulse:0, nearMissCd:0, bossPhaseTimer:0, artifactWaves:{}, mapBounds:{...MoguriaConfig.map}, depthCueShown:false, criticalCueCd:0, chainCueCd:0, returnGlow:0 };
-    if(window.MoguriaMeta) MoguriaMeta.applyEquipmentToPlayer(state.p);
-    state.p.x=0; state.p.y=0; state.p.hp=state.p.maxHp;
+      stats:{kills:0,maxDamage:0,totalDamage:0,shots:0,crits:0,hitsTaken:0,dodges:0,explosions:0,poisonKills:0,rareKills:0,bossKills:0,combo:0,bestCombo:0}, rerolls:MoguriaConfig.run.rerolls, bans:2, bannedSkills:[], shake:0, hitStop:0, flash:0, particles:[], comboTimer:0, awakenTimer:0, dangerPulse:0, nearMissCd:0, bossPhaseTimer:0, artifactWaves:{}, mapBounds:{...MoguriaConfig.map}, depthCueShown:false, criticalCueCd:0, chainCueCd:0, returnGlow:0, checkpointElapsed:0, hudAt:0, finalizing:false };
+    if(checkpoint) restoreCheckpoint(checkpoint);
+    else { state.p.x=0; state.p.y=0; state.p.hp=state.p.maxHp; }
     MoguriaAudio?.play('start');
     pushFx({x:0,y:0,r:92,life:1.0,type:'startGlow'});
-    if(document.body.classList.contains('kv-visual-refresh')) bigToast('もぐ、いくよ','画面下をなぞって移動');
-    loop(performance.now());
+    if(options.resume && checkpoint) bigToast('冒険を再開','続きから、もぐろう');
+    else bigToast('もぐ、いくよ','画面下をなぞって移動');
+    updateHud(true);
+    const renderer=window.MoguriaBattleV3;
+    if(!renderer?.start) return failStartAfterSession('戦闘画面を開始できませんでした。');
+    Promise.resolve(renderer.start(state,{step:battleStep})).then(()=>renderer.sync?.(state)).catch(error=>{
+      console.error('[MoguriaGame] battle-v3 start failed',error);
+      failStartAfterSession('戦闘画面を開始できませんでした。もう一度ためしてね。');
+    });
+  }
+  function failStartAfterSession(message){
+    persistCheckpoint('renderer-failed');
+    window.MoguriaPerformance?.stop?.();
+    window.MoguriaBattleV3?.stop?.();
+    if(state) state.mode='pause';
+    MoguriaUI?.show?.('home');
+    const line=document.getElementById('homeLine'); if(line) line.textContent=message;
+    return false;
+  }
+
+  function checkpointSnapshot(){
+    if(!state?.p) return null;
+    return {
+      version:1,
+      savedAt:Date.now(),
+      wave:Math.max(0,Math.min(state.maxWave,state.wave||0)),
+      floor:Math.max(1,Math.min(state.maxWave,state.floor||1)),
+      time:Math.max(0,state.time||0),
+      player:MoguriaPlayer.snapshot(state.p),
+      stats:{...state.stats},
+      rerolls:state.rerolls,
+      bans:state.bans,
+      bannedSkills:[...(state.bannedSkills||[])],
+      artifactWaves:{...(state.artifactWaves||{})},
+      dungeon:{seed:state.dungeon?.seed||0}
+    };
+  }
+  function persistCheckpoint(reason='interval'){
+    if(!state?.runId || !state.p || ['ended','finalizing','settlementError'].includes(state.mode)) return {ok:false,reason:'not-active'};
+    const checkpoint=checkpointSnapshot();
+    if(!checkpoint) return {ok:false,reason:'no-state'};
+    const result=window.MoguriaSave?.updateCheckpoint?.(state.runId,{checkpoint,checkpointReason:reason});
+    if(result?.ok) state.checkpointElapsed=0;
+    else if(result?.reason==='save-failed') state.saveWarning=true;
+    return result||{ok:false,reason:'save-api-missing'};
+  }
+  function restoreCheckpoint(checkpoint){
+    if(!state || !checkpoint || Number(checkpoint.version)!==1) return false;
+    state.time=Math.max(0,Number(checkpoint.time)||0);
+    const savedWave=Math.max(0,Math.min(state.maxWave,Math.floor(Number(checkpoint.wave)||0)));
+    // Checkpoints restart the current wave from its entrance. Progress already
+    // recorded on the player and run stats is retained; transient enemies are not.
+    state.wave=Math.max(0,savedWave-1);
+    state.floor=Math.max(1,savedWave||1);
+    state.stats={...state.stats,...(checkpoint.stats&&typeof checkpoint.stats==='object'?checkpoint.stats:{})};
+    state.rerolls=Math.max(0,Math.floor(Number(checkpoint.rerolls) || state.rerolls));
+    state.bans=Math.max(0,Math.floor(Number(checkpoint.bans) || 0));
+    state.bannedSkills=Array.isArray(checkpoint.bannedSkills)?checkpoint.bannedSkills.filter(x=>typeof x==='string'):[];
+    state.artifactWaves=checkpoint.artifactWaves&&typeof checkpoint.artifactWaves==='object'?{...checkpoint.artifactWaves}:{};
+    state.introTimer=.72;
+    state.p.x=Math.max(state.mapBounds.minX+state.p.r,Math.min(state.mapBounds.maxX-state.p.r,Number(state.p.x)||0));
+    state.p.y=Math.max(state.mapBounds.minY+state.p.r,Math.min(state.mapBounds.maxY-state.p.r,Number(state.p.y)||0));
+    return true;
+  }
+  function scheduleAction(delay,fn){
+    if(!state || typeof fn!=='function') return;
+    state.scheduled.push({remaining:Math.max(0,Number(delay)||0),runId:state.runId,fn});
+  }
+  function updateScheduled(dt){
+    if(!state?.scheduled?.length) return;
+    const pending=[];
+    for(const item of state.scheduled){
+      item.remaining-=dt;
+      if(item.remaining<=0){
+        if(item.runId===state.runId && state.mode==='run') item.fn();
+      } else pending.push(item);
+    }
+    state.scheduled=pending;
   }
 
   function pauseRun(){
     if(!state || state.mode!=='run') return;
-    state.mode='pause'; cancelAnimationFrame(raf); renderPause(); document.getElementById('pauseModal').classList.remove('hidden');
+    persistCheckpoint('pause'); state.mode='pause'; renderPause();
+    const resume=document.getElementById('resumeBtn'); if(resume) resume.textContent='冒険に戻る';
+    document.getElementById('pauseModal').classList.remove('hidden');
   }
   function resumeRun(){
-    if(!state || state.mode!=='pause') return;
-    document.getElementById('pauseModal').classList.add('hidden'); state.mode='run'; state.last=performance.now(); loop(state.last);
+    if(!state) return;
+    if(state.mode==='settlementError'){
+      document.getElementById('pauseModal').classList.add('hidden');
+      settlePendingRun();
+      return;
+    }
+    if(state.mode!=='pause') return;
+    document.getElementById('pauseModal').classList.add('hidden'); state.mode='run'; state.last=performance.now();
   }
   function renderPause(){
     const p=state.p, wrap=document.getElementById('pauseSkills');
@@ -89,6 +198,19 @@ window.MoguriaGame = (() => {
     const artHtml = p.artifacts && p.artifacts.length ? '<h3 class="pause-subhead">アーティファクト</h3>'+p.artifacts.map(a=>`<div class="pause-skill artifact-row"><span class="ico">${a.icon||'🏺'}</span><span><b>${a.name}</b><small>${a.tags.join(' / ')}｜${a.desc}</small></span></div>`).join('') : '';
     if(!p.skills.length){ wrap.innerHTML=artHtml+'<div class="item"><b>まだ何も食べていません</b><small>レベルアップで食べた力がここに並びます。</small></div>'; return; }
     wrap.innerHTML=artHtml+'<h3 class="pause-subhead">食べたスキル</h3>'+p.skills.map(s=>`<div class="pause-skill"><span class="ico">${s.icon||'🍽️'}</span><span><b>${s.name}${s.fusion?' ✦':` Lv.${p.skillLevels?.[s.id]||1}`}</b><small>${s.tags.join(' / ')}｜${s.desc}</small></span></div>`).join('');
+  }
+  function applyDamageToPlayer(rawDamage, invuln=.55){
+    const p=state.p;
+    if(p.devInvincible){ p.invuln=invuln; return 0; }
+    const dmg=Math.max(1,(Number(rawDamage)||1)-p.armor);
+    if(p.shield>0){
+      const before=p.shield;
+      p.shield=Math.max(0,p.shield-dmg);
+      if(before>0 && p.shield<=0 && p.shieldBurst) explosion(p.x,p.y,p.explosionRadius*1.4,45,true);
+    } else p.hp-=dmg;
+    state.stats.hitsTaken++;
+    p.invuln=invuln;
+    return dmg;
   }
   function waveLabel(w){ if(w===7) return '中ボス'; if(w===12) return '大ボス'; return `Wave ${w}`; }
   function toast(text){
@@ -123,6 +245,7 @@ window.MoguriaGame = (() => {
     if(!state) return;
     state.wave++;
     if(state.wave>state.maxWave){
+      state.wave=state.maxWave;
       state.cleared=true; state.clearTimer=2.1; state.returnGlow=2.1; MoguriaAudio?.play('return'); state.flash=Math.max(state.flash,.28); sparkleBurst(state.p.x,state.p.y,42,'#fff0a6'); bigToast('ふわっと帰還！','Mogu、無事に帰れそう…'); return;
     }
     state.waveSpawned=0; state.spawnCd=.2; state.waveClearTimer=0; state.mobEvent=null;
@@ -189,6 +312,7 @@ window.MoguriaGame = (() => {
       return;
     }
     startNextWave();
+    persistCheckpoint('wave');
   }
   function openArtifactChoice(wave){
     state.mode='artifact';
@@ -217,7 +341,8 @@ window.MoguriaGame = (() => {
         toast(`${a.name}を手に入れた！`);
         state.mode='run'; state.last=performance.now();
         startNextWave();
-        loop(state.last);
+        persistCheckpoint('artifact');
+        window.MoguriaBattleV3?.sync?.(state);
       };
       btn.addEventListener('click', choose, {passive:false});
       wrap.appendChild(btn);
@@ -228,11 +353,23 @@ window.MoguriaGame = (() => {
     document.getElementById('artifactModal').classList.remove('hidden');
   }
 
-  function loop(ts){
-    if(!state || state.mode!=='run') return;
-    let dt=Math.min(.033,(ts-state.last)/1000); state.last=ts;
-    if(state.hitStop>0){ state.hitStop-=dt; draw(); raf=requestAnimationFrame(loop); return; }
-    state.time+=dt; update(dt); draw(); raf=requestAnimationFrame(loop);
+  function battleStep(dt){
+    if(!state) return state;
+    window.MoguriaPerformance?.recordFrame?.(dt*1000);
+    if(state.mode!=='run') return state;
+    dt=Math.max(0,Math.min(.033,Number(dt)||0));
+    if(state.hitStop>0){ state.hitStop=Math.max(0,state.hitStop-dt); return state; }
+    state.time+=dt;
+    state.checkpointElapsed=(state.checkpointElapsed||0)+dt;
+    updateScheduled(dt);
+    update(dt);
+    if(state && state.mode==='run' && state.checkpointElapsed>=(MoguriaConfig.performance.checkpointSeconds||20)) persistCheckpoint('interval');
+    return state;
+  }
+  // Compatibility hook for old modal callbacks. Phaser remains the sole frame
+  // owner; this only asks the Scene to reflect the latest state immediately.
+  function loop(){
+    window.MoguriaBattleV3?.sync?.(state);
   }
   function update(dt){
     const p=state.p;
@@ -253,9 +390,11 @@ window.MoguriaGame = (() => {
       return;
     }
     updateWave(dt);
+    if(state.mode!=='run') return;
     if(state.introTimer>0 || state.bossAlertTimer>0 || state.clearTimer>0) { updateHud(); return; }
     if(!state.depthCueShown && state.wave>=9){ state.depthCueShown=true; bigToast('光が少し遠い…','深く潜りすぎている'); state.flash=Math.max(state.flash,.12); }
     updateSpecialAttacks(dt);
+    updateCompanions(dt);
     for(const e of state.enemies){
       const dx=p.x-e.x, dy=p.y-e.y, l=Math.hypot(dx,dy)||1;
       const slowMul = e.slow>0 ? .48 : 1;
@@ -263,7 +402,10 @@ window.MoguriaGame = (() => {
       if((e.kind==='boss'||e.kind==='midBoss') && !e.phase2 && e.hp/e.maxHp<.5){
         e.phase2=true; e.speed*=1.18; e.dmg=Math.ceil(e.dmg*1.2); state.bossPhaseTimer=2.2; state.shake=Math.max(state.shake,8); state.flash=Math.max(state.flash,.16); sparkleBurst(e.x,e.y,34,'#d9b3ff'); pushFx({x:e.x,y:e.y,r:e.r*2.4,life:.9,type:'bossPhase'}); bigToast('空気が変わった…','ボスが光をゆがめている'); MoguriaAudio?.play('phase');
       }
-      if(e.kind==='rare'){
+      const bossHandled=(e.kind==='boss'||e.kind==='midBoss') ? updateBossAction(e,p,dt) : false;
+      if(bossHandled){
+        // The boss state machine owns movement and attacks for this frame.
+      } else if(e.kind==='rare'){
         // レア敵はMoguから逃げ続けず、ふらふら自由に動く。端に張り付いた時だけ中央へ戻る。
         e.wanderTurn=(e.wanderTurn||.8)-dt;
         if(e.wanderTurn<=0){ e.wanderTurn=.45+Math.random()*1.1; e.wanderAngle=(e.wanderAngle||0)+(Math.random()-.5)*1.9; }
@@ -296,21 +438,23 @@ window.MoguriaGame = (() => {
         e.x+=dx/l*e.speed*slowMul*dt; e.y+=dy/l*e.speed*slowMul*dt;
       }
       const mb=state.mapBounds; e.x=Math.max(mb.minX+e.r,Math.min(mb.maxX-e.r,e.x)); e.y=Math.max(mb.minY+e.r,Math.min(mb.maxY-e.r,e.y));
+      const contactDist=Math.hypot(p.x-e.x,p.y-e.y);
       e.hitFlash=Math.max(0,e.hitFlash-dt);
+      if(e.hitFlash>0 && !e.bossAction) e.visualState='hurt';
+      else if(!e.bossAction && e.visualState==='hurt') e.visualState='move';
       if(e.poison>0){ e.poison-=dt; e.poisonTick-=dt; if(e.poisonTick<=0){ e.poisonTick=.5; hurtEnemy(e,p.poisonPower,false,'poison'); } }
-      if(l>=e.r+p.r && l<e.r+p.r+10 && p.invuln<=0 && state.nearMissCd<=0){
+      if(contactDist>=e.r+p.r && contactDist<e.r+p.r+10 && p.invuln<=0 && state.nearMissCd<=0){
         state.nearMissCd=.9; state.hitStop=Math.max(state.hitStop,.018); addFx(p.x,p.y-22,'ぎりっ','#fff0a6'); MoguriaAudio?.play('miss'); pushFx({x:p.x,y:p.y,r:42,life:.26,type:'nearMiss'});
       }
-      if(l<e.r+p.r && p.invuln<=0){
+      if(contactDist<e.r+p.r && p.invuln<=0){
         if(Math.random()<p.dodge){ state.stats.dodges++; p.invuln=.45; if(p.dodgeShot) shootAtNearest(7,true); if(p.dodgeBomb) explosion(p.x,p.y,p.explosionRadius*.8,18,true); }
-        else { let dmg=Math.max(1,e.dmg-p.armor); if(p.shield>0){ const before=p.shield; p.shield=Math.max(0,p.shield-dmg); if(before>0 && p.shield<=0 && p.shieldBurst) explosion(p.x,p.y,p.explosionRadius*1.4,45,true); } else p.hp-=dmg; state.stats.hitsTaken++; if(p.thorns) hurtEnemy(e,p.thorns,false,'thorn'); p.invuln=.55; }
+        else { applyDamageToPlayer(e.dmg,.55); if(p.thorns) hurtEnemy(e,p.thorns,false,'thorn'); }
       }
     }
     separateEnemies(dt);
     if(p.attackCd<=0){ p.attackCd=p.attackRate; shootAtNearest(p.baseDamage*MoguriaPlayer.damageMultiplier(p),false); }
-    if(p.summons>0 && p.summonCd<=0){ p.summonCd=p.summonRate/Math.max(1,p.summons*.75); for(let i=0;i<Math.min(4,p.summons);i++) shootAtNearest(6+p.summons*2,true); }
     for(const b of state.bullets){ b.x+=b.vx*dt; b.y+=b.vy*dt; b.life-=dt; }
-    for(const eb of state.enemyBullets||[]){ eb.x+=eb.vx*dt; eb.y+=eb.vy*dt; eb.life-=dt; if(Math.hypot(eb.x-p.x,eb.y-p.y)<p.r+eb.r && p.invuln<=0){ if(Math.random()<p.dodge){ state.stats.dodges++; p.invuln=.35; } else { let dmg=Math.max(1,eb.dmg-p.armor); if(p.shield>0) p.shield=Math.max(0,p.shield-dmg); else p.hp-=dmg; state.stats.hitsTaken++; p.invuln=.45; } eb.dead=true; } }
+    for(const eb of state.enemyBullets||[]){ eb.x+=eb.vx*dt; eb.y+=eb.vy*dt; eb.life-=dt; if(Math.hypot(eb.x-p.x,eb.y-p.y)<p.r+eb.r && p.invuln<=0){ if(Math.random()<p.dodge){ state.stats.dodges++; p.invuln=.35; } else applyDamageToPlayer(eb.dmg,.45); eb.dead=true; } }
     for(const eb of state.enemyBullets||[]){
       if(!eb.dead && state.nearMissCd<=0 && p.invuln<=0){
         const nd=Math.hypot(eb.x-p.x,eb.y-p.y);
@@ -362,6 +506,76 @@ window.MoguriaGame = (() => {
     if(p.hp>0 && p.hp/p.maxHp<.18 && state.criticalCueCd<=0){ state.criticalCueCd=5.5; state.hitStop=Math.max(state.hitStop,.035); state.dangerPulse=.8; MoguriaAudio?.play('danger'); pushFx({x:p.x,y:p.y,r:74,life:.5,type:'criticalRing'}); }
     if(p.hp<=0) endRun(false); updateHud();
   }
+  function chooseBossPattern(e){
+    const pool=BOSS_PATTERNS[e.kind]||BOSS_PATTERNS.boss;
+    const cursor=Math.max(0,Math.floor(e.patternCursor||0));
+    e.patternCursor=cursor+1;
+    return pool[cursor%pool.length];
+  }
+  function startBossAction(e,p){
+    const pattern=chooseBossPattern(e);
+    const phaseMul=e.phase2?.82:1;
+    e.bossAction={...pattern,stage:'telegraph',timer:pattern.telegraph*phaseMul,elapsed:0,fired:false,targetX:p.x,targetY:p.y};
+    e.visualState='telegraph';
+    pushFx({x:e.x,y:e.y,tx:p.x,ty:p.y,r:e.r*2.3,life:pattern.telegraph*phaseMul,type:'bossTelegraph',pattern:pattern.id});
+  }
+  function updateBossAction(e,p,dt){
+    if(!e.bossAction){
+      e.bossCooldown=(Number(e.bossCooldown)||1.25)-dt;
+      if(e.bossCooldown<=0) startBossAction(e,p);
+      return false;
+    }
+    const action=e.bossAction;
+    action.timer-=dt; action.elapsed+=dt;
+    if(action.stage==='telegraph'){
+      e.visualState='telegraph';
+      if(action.pattern==='dash'||action.id==='dash'){ action.targetX=p.x; action.targetY=p.y; }
+      if(action.timer<=0){
+        action.stage='execute'; action.timer=action.duration; action.elapsed=0; action.fired=false; e.visualState='attack';
+        MoguriaAudio?.play('boss'); state.shake=Math.max(state.shake,4);
+      }
+      return true;
+    }
+    if(action.stage==='execute'){
+      e.visualState='attack';
+      executeBossPattern(e,p,action,dt);
+      if(action.timer<=0){ action.stage='recover'; action.timer=action.recover; action.elapsed=0; e.visualState='recover'; }
+      return true;
+    }
+    e.visualState='recover';
+    if(action.timer<=0){ e.bossAction=null; e.bossCooldown=(e.kind==='boss'?1.28:1.62)*(e.phase2?.82:1); e.visualState='move'; }
+    return true;
+  }
+  function executeBossPattern(e,p,action,dt){
+    const id=action.id||action.pattern;
+    if(id==='dash'){
+      const dx=action.targetX-e.x,dy=action.targetY-e.y,l=Math.hypot(dx,dy)||1;
+      e.x+=dx/l*e.speed*5.4*dt; e.y+=dy/l*e.speed*5.4*dt;
+      if(!action.fired && action.timer<action.duration*.48){ action.fired=true; pushFx({x:e.x,y:e.y,r:e.r*1.5,life:.28,type:'bossImpact'}); }
+      return;
+    }
+    if(id==='starVolley' && !action.fired){
+      action.fired=true;
+      const base=Math.atan2(p.y-e.y,p.x-e.x);
+      for(const offset of [-.44,-.22,0,.22,.44]) addEnemyBullet(e.x,e.y,Math.cos(base+offset)*185,Math.sin(base+offset)*185,e.phase2?13:10);
+      return;
+    }
+    if(id==='nova' && !action.fired){
+      action.fired=true;
+      const count=e.phase2?16:12;
+      for(let i=0;i<count;i++){ const a=i*Math.PI*2/count+(e.phase2?.16:0); addEnemyBullet(e.x,e.y,Math.cos(a)*155,Math.sin(a)*155,e.phase2?15:12); }
+      pushFx({x:e.x,y:e.y,r:e.r*3.4,life:.5,type:'bossImpact'});
+      return;
+    }
+    if(id==='slam' && !action.fired){
+      action.fired=true;
+      const radius=e.r*4.1;
+      pushFx({x:e.x,y:e.y,r:radius,life:.48,type:'bossImpact'});
+      if(Math.hypot(p.x-e.x,p.y-e.y)<radius+p.r && p.invuln<=0){
+        applyDamageToPlayer(e.dmg,.65); state.shake=Math.max(state.shake,9);
+      }
+    }
+  }
   function separateEnemies(dt){
     // 敵が重なると見た目も当たり判定も分かりにくくなるため、軽い押し出しで密集をほぐす。
     const enemies=state.enemies;
@@ -389,30 +603,58 @@ window.MoguriaGame = (() => {
     }
   }
 
-  function shootAtNearest(dmg,summon){
-    const p=state.p; let best=null, bd=999999;
+  function updateCompanions(dt){
+    const p=state.p;
+    const count=Math.max(0,Math.min(6,Math.floor(Number(p.summons)||0)));
+    while(state.companions.length<count){
+      const index=state.companions.length;
+      state.companions.push({id:`friend_${index}_${state.runId}`,x:p.x+(index%2?30:-30),y:p.y+24,r:10,attackCd:index*.12,attackFlash:0,visualState:'move'});
+    }
+    if(state.companions.length>count) state.companions.length=count;
+    const cadence=Math.max(.22,(p.summonRate||1.1)/Math.max(1,count*.75));
+    for(let i=0;i<state.companions.length;i++){
+      const friend=state.companions[i];
+      const angle=state.time*1.35+i*Math.PI*2/Math.max(1,count);
+      const targetX=p.x+Math.cos(angle)*(38+Math.min(20,count*3));
+      const targetY=p.y+24+Math.sin(angle)*22;
+      const follow=1-Math.exp(-dt*7.5);
+      friend.x+=(targetX-friend.x)*follow;
+      friend.y+=(targetY-friend.y)*follow;
+      friend.attackCd-=dt;
+      friend.attackFlash=Math.max(0,(friend.attackFlash||0)-dt);
+      friend.visualState=friend.attackFlash>0?'attack':'move';
+      if(friend.attackCd<=0){
+        friend.attackCd+=cadence;
+        if(shootAtNearest(6+count*2,true,friend)){ friend.attackFlash=.18; friend.visualState='attack'; }
+      }
+    }
+  }
+
+  function shootAtNearest(dmg,summon,origin){
+    const p=state.p, source=origin||p; let best=null, bd=999999;
     const range = summon ? (p.summonRange||MoguriaConfig.combat.summonRange) : (p.attackRange||MoguriaConfig.combat.attackRange);
     for(const e of state.enemies){
       if(e.kind==='rare' && (e.fleeLife||9)<.15) continue;
-      const d=(e.x-p.x)**2+(e.y-p.y)**2;
+      const d=(e.x-source.x)**2+(e.y-source.y)**2;
       if(d<bd){bd=d;best=e;}
     }
     // 画面外や遠すぎる敵を無意識に倒さないよう、Moguが認知できる距離だけ攻撃する。
-    if(!best || bd>range*range) return;
-    const dx=best.x-p.x, dy=best.y-p.y, l=Math.hypot(dx,dy)||1;
+    if(!best || bd>range*range) return false;
+    const dx=best.x-source.x, dy=best.y-source.y, l=Math.hypot(dx,dy)||1;
     const speed=summon?330:380;
     if(!summon && p.fanShot){
       const base=Math.atan2(dy,dx);
       for(const a of [base-.28, base, base+.28]){
-        addBullet(p.x,p.y,Math.cos(a)*speed,Math.sin(a)*speed,dmg*.86,6,false,{pierce:p.pierce,split:p.splitShot});
+        addBullet(source.x,source.y,Math.cos(a)*speed,Math.sin(a)*speed,dmg*.86,6,false,{pierce:p.pierce,split:p.splitShot});
       }
     } else {
-      addBullet(p.x,p.y,dx/l*speed,dy/l*speed,dmg,summon?5:6,summon,{pierce:summon?0:p.pierce,split:(!summon&&p.splitShot)});
+      addBullet(source.x,source.y,dx/l*speed,dy/l*speed,dmg,summon?5:6,summon,{pierce:summon?0:p.pierce,split:(!summon&&p.splitShot),sourceId:source.id});
     }
+    return true;
   }
   function addBullet(x,y,vx,vy,dmg,r,summon,opts={}){
     if(state.bullets.length > (MoguriaConfig.performance.maxProjectiles||80)) return;
-    state.bullets.push({x,y,vx,vy,r,dmg,life:1.7,summon,pierce:opts.pierce||0,split:!!opts.split,splitDepth:opts.splitDepth||0,hitIds:[]});
+    state.bullets.push({x,y,vx,vy,r,dmg,life:1.7,summon,sourceId:opts.sourceId||'',pierce:opts.pierce||0,split:!!opts.split,splitDepth:opts.splitDepth||0,hitIds:[]});
     state.stats.shots++;
   }
   function addEnemyBullet(x,y,vx,vy,dmg){
@@ -442,7 +684,7 @@ window.MoguriaGame = (() => {
         if(candidates.length){
           const e=candidates[Math.floor(Math.random()*candidates.length)];
           pushFx({x:e.x,y:e.y-130,tx:e.x,ty:e.y,life:.38,type:'meteor'});
-          setTimeout(()=>{ if(state && state.mode==='run') explosion(e.x,e.y,state.p.explosionRadius*.95,24+state.p.explosionPower*.35,true); },220);
+          scheduleAction(.22,()=>explosion(e.x,e.y,state.p.explosionRadius*.95,24+state.p.explosionPower*.35,true));
         }
       }
     }
@@ -506,7 +748,7 @@ window.MoguriaGame = (() => {
   }
   function explosion(x,y,r,dmg,chain){
     state.stats.explosions++; MoguriaAudio?.play('boom'); state.shake=Math.max(state.shake,Math.min(10,r/18)); state.hitStop=Math.max(state.hitStop,.025); pushFx({x,y,r,life:.38,type:'boom'}); sparkleBurst(x,y,Math.min(26,Math.floor(r/5)),'#ffcf80');
-    for(const e of state.enemies){ if(e.hp>0 && Math.hypot(e.x-x,e.y-y)<r){ const was=e.hp; hurtEnemy(e,dmg,false,'explosion'); if(was>0 && e.hp<=0 && chain && state.p.chainExplosion) setTimeout(()=>{ if(state&&state.mode==='run') explosion(e.x,e.y,r*.82,dmg*.62,false); },35); } }
+    for(const e of state.enemies){ if(e.hp>0 && Math.hypot(e.x-x,e.y-y)<r){ const was=e.hp; hurtEnemy(e,dmg,false,'explosion'); if(was>0 && e.hp<=0 && chain && state.p.chainExplosion) scheduleAction(.035,()=>explosion(e.x,e.y,r*.82,dmg*.62,false)); } }
   }
   function addFx(x,y,text,color){ pushFx({x,y,text,color,life:.55,type:'text'}); }
   function levelUp(){
@@ -570,14 +812,39 @@ window.MoguriaGame = (() => {
     document.getElementById('levelModal').classList.remove('hidden');
   }
   function endRun(giveup){
-    if(!state) return; cancelAnimationFrame(raf); state.mode='ended';
+    if(!state || state.finalizing || state.mode==='ended') return;
+    state.finalizing=true; state.mode='finalizing';
     const p=state.p, synergies=MoguriaSkills.detectSynergies(p);
-    const run={ date:Date.now(), floor:state.floor, wave:state.wave, cleared:state.cleared, lv:p.lv, survived:Math.floor(state.time), kills:state.stats.kills, maxDamage:state.stats.maxDamage, totalDamage:Math.floor(state.stats.totalDamage), dps:Math.floor(state.stats.totalDamage/Math.max(1,state.time)), critRate:Math.floor((state.stats.crits/Math.max(1,state.stats.shots))*100), dodgeRate:Math.floor((state.stats.dodges/Math.max(1,state.stats.dodges+state.stats.hitsTaken))*100), explosions:state.stats.explosions, bestCombo:state.stats.bestCombo||0, timeout:state.timeout, skills:p.skills.map(s=>({id:s.id,name:s.name,tags:s.tags,rarity:s.rarity,level:p.skillLevels?.[s.id]||1,fusion:!!s.fusion})), artifacts:(p.artifacts||[]).map(a=>({id:a.id,name:a.name,tags:a.tags})), synergies, visual:p.visual, giveup };
+    const run={ runId:state.runId, startedAt:state.startedAt, date:Date.now(), floor:Math.min(state.maxWave,Math.max(1,state.floor||state.wave||1)), wave:Math.min(state.maxWave,Math.max(1,state.wave||1)), cleared:state.cleared, lv:p.lv, survived:Math.floor(state.time), kills:state.stats.kills, maxDamage:state.stats.maxDamage, totalDamage:Math.floor(state.stats.totalDamage), dps:Math.floor(state.stats.totalDamage/Math.max(1,state.time)), critRate:Math.floor((state.stats.crits/Math.max(1,state.stats.shots))*100), dodgeRate:Math.floor((state.stats.dodges/Math.max(1,state.stats.dodges+state.stats.hitsTaken))*100), explosions:state.stats.explosions, bestCombo:state.stats.bestCombo||0, timeout:state.timeout, skills:p.skills.map(s=>({id:s.id,name:s.name,tags:s.tags,rarity:s.rarity,level:p.skillLevels?.[s.id]||1,fusion:!!s.fusion})), artifacts:(p.artifacts||[]).map(a=>({id:a.id,name:a.name,tags:a.tags})), synergies, visual:p.visual, giveup };
     run.name=MoguriaResult.buildName(run); run.comment=giveup?'今日は無理せず帰ってきたね。こういう日も大事。':(run.timeout?'時間いっぱいまでよく潜ったね。次はもっと早く強くなれそう。':MoguriaResult.comment(run)); run.titles=MoguriaResult.titles(run);
-    if(window.MoguriaMeta) MoguriaMeta.awardFromRun(run);
-    const save=MoguriaSave.load(); MoguriaSave.addRun(save,run); MoguriaUI.showResult(run);
+    state.pendingRun=run;
+    settlePendingRun();
   }
-  function updateHud(){
+  function settlePendingRun(){
+    if(!state?.pendingRun) return false;
+    state.mode='finalizing'; state.finalizing=true;
+    const result=window.MoguriaMeta?.awardFromRun?.(state.pendingRun);
+    if(result?.ok || result?.alreadySettled){
+      if(result.amount!=null) state.pendingRun.coins=result.amount;
+      state.mode='ended'; state.finalizing=false;
+      const resume=document.getElementById('resumeBtn'); if(resume) resume.textContent='冒険に戻る';
+      window.MoguriaPerformance?.stop?.();
+      window.MoguriaBattleV3?.stop?.({preserveFrame:true});
+      MoguriaUI.showResult(state.pendingRun);
+      return true;
+    }
+    state.mode='settlementError'; state.finalizing=false;
+    const summary=document.getElementById('pauseSummary');
+    if(summary) summary.textContent='冒険記録を保存できませんでした。空き容量を確認して、保存を再試行してください。';
+    const resume=document.getElementById('resumeBtn');
+    if(resume) resume.textContent='保存を再試行';
+    document.getElementById('pauseModal')?.classList.remove('hidden');
+    return false;
+  }
+  function updateHud(force=false){
+    const now=performance.now();
+    if(!force && now<(state.hudAt||0)) return;
+    state.hudAt=now+90;
     const p=state.p, game=document.getElementById('game');
     document.getElementById('lv').textContent=p.lv;
     document.getElementById('hp').textContent=Math.max(0,Math.floor(p.hp));
@@ -990,11 +1257,12 @@ window.MoguriaGame = (() => {
   }
 
   function getState(){ return state; }
+  function devStep(seconds=.016){ return battleStep(Math.max(0,Math.min(.25,Number(seconds)||.016))); }
   function devAddExp(amount){ if(!state || !state.p) return false; state.p.exp += amount || state.p.nextExp || 50; return true; }
   function devHeal(){ if(!state || !state.p) return false; state.p.hp = state.p.maxHp; return true; }
   function devToggleInvincible(){ if(!state || !state.p) return false; state.p.devInvincible = !state.p.devInvincible; return state.p.devInvincible; }
   function devGoWave(w){ if(!state) return false; state.wave = Math.max(0, Math.min(state.maxWave, Number(w)||1)) - 1; state.enemies.length=0; state.drops.length=0; state.bullets.length=0; if(state.enemyBullets) state.enemyBullets.length=0; if(state.mines) state.mines.length=0; startNextWave(); return true; }
   function devAddSkill(id){ if(!state || !state.p) return false; const sk=MoguriaSkills.skills.find(s=>s.id===id) || MoguriaSkills.skills[0]; state.p.skillLevels=state.p.skillLevels||{}; state.p.skillLevels[sk.id]=(state.p.skillLevels[sk.id]||0)+1; if(!state.p.skills.find(x=>x.id===sk.id)) state.p.skills.push(sk); sk.apply?.(state.p, state); MoguriaSkills.checkFusions?.(state.p); return true; }
   function devAddArtifact(id){ if(!state || !state.p) return false; const art=MoguriaSkills.artifacts.find(a=>a.id===id) || MoguriaSkills.artifacts[0]; state.p.artifacts = state.p.artifacts || []; state.p.artifacts.push(art); art.apply?.(state.p, state); return true; }
-  return { init, start, getState, devAddExp, devHeal, devToggleInvincible, devGoWave, devAddSkill, devAddArtifact };
+  return { init, start, getState, devStep, pauseRun, resumeRun, endRun, persistCheckpoint, devAddExp, devHeal, devToggleInvincible, devGoWave, devAddSkill, devAddArtifact };
 })();

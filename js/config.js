@@ -2,8 +2,8 @@
   const freeze = Object.freeze;
 
   window.MoguriaConfig = freeze({
-    version: '3.1.1-hardening',
-    saveVersion: 2,
+    version: '3.2.0-battle-v3',
+    saveVersion: 3,
     debug: false,
 
     performance: freeze({
@@ -15,6 +15,8 @@
       maxProjectiles: 88,
       maxDrops: 130,
       maxFx: 86,
+      checkpointSeconds: 20,
+      rendererDprMax: 2,
       adaptiveEffects: true
     }),
 

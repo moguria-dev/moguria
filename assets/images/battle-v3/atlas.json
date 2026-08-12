@@ -1,0 +1,127 @@
+{
+  "version": 1,
+  "cellOrigin": "top-left",
+  "frameOrder": "row-major",
+  "atlases": {
+    "mogu": {
+      "image": "mogu-atlas.png",
+      "width": 1024,
+      "height": 1024,
+      "columns": 4,
+      "rows": 4,
+      "cell": {
+        "width": 256,
+        "height": 256
+      },
+      "states": {
+        "idle": [0, 1, 2, 3],
+        "move": [4, 5, 6, 7],
+        "attack": [8, 9, 10, 11],
+        "hit": [12, 13],
+        "defeat": [14, 15]
+      }
+    },
+    "enemy": {
+      "image": "enemy-atlas.png",
+      "width": 1024,
+      "height": 1024,
+      "columns": 4,
+      "rows": 4,
+      "cell": {
+        "width": 256,
+        "height": 256
+      },
+      "states": {
+        "soft": {
+          "idle": 0,
+          "move": 1,
+          "attack": 2,
+          "hit": 3
+        },
+        "bat": {
+          "idle": 4,
+          "move": 5,
+          "attack": 6,
+          "hit": 7
+        },
+        "stone": {
+          "idle": 8,
+          "move": 9,
+          "attack": 10,
+          "hit": 11
+        },
+        "ghost": {
+          "idle": 12,
+          "move": 13,
+          "attack": 14,
+          "hit": 15
+        }
+      }
+    },
+    "companion": {
+      "image": "companion-atlas.png",
+      "width": 1024,
+      "height": 512,
+      "columns": 4,
+      "rows": 2,
+      "cell": {
+        "width": 256,
+        "height": 256
+      },
+      "states": {
+        "idle": [0, 1],
+        "attack": [2, 3],
+        "move": [4, 5],
+        "hit": [6],
+        "celebrate": [7]
+      }
+    },
+    "boss": {
+      "image": "boss-atlas.png",
+      "width": 1024,
+      "height": 512,
+      "columns": 4,
+      "rows": 2,
+      "cell": {
+        "width": 256,
+        "height": 256
+      },
+      "states": {
+        "phase1": {
+          "idle": 0,
+          "windup": 1,
+          "slam": 2,
+          "recover": 3
+        },
+        "phase2": {
+          "idle": 4,
+          "windup": 5,
+          "burst": 6,
+          "enraged": 7
+        }
+      }
+    }
+  },
+  "backgrounds": {
+    "far": {
+      "image": "bg-far.webp",
+      "width": 512,
+      "height": 1024
+    },
+    "mid": {
+      "image": "bg-mid.webp",
+      "width": 512,
+      "height": 1024
+    },
+    "ground": {
+      "image": "bg-ground.webp",
+      "width": 512,
+      "height": 1024
+    },
+    "foreground": {
+      "image": "bg-foreground.webp",
+      "width": 512,
+      "height": 1024
+    }
+  }
+}

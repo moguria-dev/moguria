@@ -2,6 +2,7 @@ window.MoguriaHome = (() => {
   let save;
   let initialized = false;
   let recoveryTimer = null;
+  let startPending = false;
 
   const $ = (id) => document.getElementById(id);
 
@@ -21,23 +22,7 @@ window.MoguriaHome = (() => {
     loadSave();
 
     const startBtn = $('startBtn');
-    if (startBtn) {
-      startBtn.onclick = () => {
-        loadSave();
-        if (save.belly <= 0) {
-          setText('homeLine', 'Mogu、今日はいっぱい食べたみたい…少し休ませてあげよう。');
-          $('homeMogu')?.classList.add('idle');
-          renderStartButton(startBtn, false);
-          return;
-        }
-        save.belly -= 1;
-        save.lastBellyAt = save.lastBellyAt || Date.now();
-        window.MoguriaSave.save(save);
-        update();
-        window.MoguriaUI.show('game');
-        window.MoguriaGame.start();
-      };
-    }
+    if (startBtn) startBtn.onclick = () => beginAdventure(startBtn);
 
     const snackBtn = $('snackBtn');
     if (snackBtn) {
@@ -76,15 +61,75 @@ window.MoguriaHome = (() => {
     }
   }
 
-  function renderStartButton(btn, canStart){
+  async function beginAdventure(startBtn){
+    if (startPending) return;
+
+    loadSave();
+    const existingRun = save.activeRun || null;
+    if (!existingRun && save.belly <= 0) {
+      setText('homeLine', 'Mogu、今日はいっぱい食べたみたい…少し休ませてあげよう。');
+      $('homeMogu')?.classList.add('idle');
+      renderStartButton(startBtn, false, false);
+      return;
+    }
+
+    startPending = true;
+    renderStartButton(startBtn, true, Boolean(existingRun), true);
+
+    try {
+      const loader = window.MoguriaBattleV3Loader;
+      if (loader?.prepare) {
+        const prepared = await loader.prepare();
+        if (prepared?.ok === false) {
+          setText('homeLine', '冒険の準備に失敗しました。通信を確認して、もう一度ためしてね。');
+          return;
+        }
+      }
+
+      // startRun consumes belly and creates activeRun in the same save. Passing
+      // the stored id resumes an interrupted run without consuming it again.
+      const session = window.MoguriaSave.startRun(existingRun
+        ? { runId: existingRun.runId }
+        : { engine: 'battle-v3' });
+
+      if (!session?.ok) {
+        if (session?.reason === 'no-belly') {
+          setText('homeLine', 'Mogu、今日はいっぱい食べたみたい…少し休ませてあげよう。');
+        } else if (session?.reason === 'save-failed') {
+          setText('homeLine', '冒険の準備を保存できませんでした。もう一度ためしてね。');
+        } else {
+          setText('homeLine', '冒険を始められませんでした。もう一度ためしてね。');
+        }
+        return;
+      }
+
+      const activeRun = session.activeRun || session.data?.activeRun || existingRun;
+      const resume = Boolean(session.reused || existingRun);
+      window.MoguriaUI.show('game');
+      window.MoguriaGame.start({ runId: session.runId, activeRun, resume });
+    } catch (error) {
+      console.warn('[MoguriaHome] battle preparation failed', error);
+      setText('homeLine', '冒険の準備に失敗しました。通信を確認して、もう一度ためしてね。');
+    } finally {
+      startPending = false;
+      update();
+    }
+  }
+
+  function renderStartButton(btn, canStart, canResume = false, loading = false){
     if (!btn) return;
     const label = btn.querySelector('b');
     const sub = btn.querySelector('small');
-    if (label) label.textContent = canStart ? 'ダンジョンへ' : 'Moguを休ませる';
-    if (sub) sub.textContent = canStart ? `Wave ${window.MoguriaConfig?.run?.maxWave || 12}` : 'おなかいっぱい';
-    btn.style.filter = canStart ? 'none' : 'grayscale(.25)';
-    btn.setAttribute('aria-disabled', canStart ? 'false' : 'true');
-    btn.setAttribute('aria-label', canStart ? `ダンジョンへ Wave ${window.MoguriaConfig?.run?.maxWave || 12}` : 'Moguを休ませる おなかいっぱい');
+    const maxWave = window.MoguriaConfig?.run?.maxWave || 12;
+    const buttonLabel = loading ? '読み込み中…' : canResume ? '冒険を続ける' : canStart ? 'ダンジョンへ' : 'Moguを休ませる';
+    const buttonSub = loading ? '準備しています' : canResume ? '途中から再開' : canStart ? `Wave ${maxWave}` : 'おなかいっぱい';
+    if (label) label.textContent = buttonLabel;
+    if (sub) sub.textContent = buttonSub;
+    btn.disabled = loading;
+    btn.style.filter = canStart || canResume ? 'none' : 'grayscale(.25)';
+    btn.setAttribute('aria-disabled', loading || (!canStart && !canResume) ? 'true' : 'false');
+    btn.setAttribute('aria-busy', loading ? 'true' : 'false');
+    btn.setAttribute('aria-label', loading ? '冒険を読み込み中' : canResume ? '冒険を続ける 途中から再開' : canStart ? `ダンジョンへ Wave ${maxWave}` : 'Moguを休ませる おなかいっぱい');
   }
 
   function update(){
@@ -96,7 +141,7 @@ window.MoguriaHome = (() => {
     const bellyBar = $('bellyBar');
     if (bellyBar) bellyBar.style.width = `${Math.max(0, Math.min(100, (save.belly / save.maxBelly) * 100))}%`;
 
-    renderStartButton($('startBtn'), save.belly > 0);
+    renderStartButton($('startBtn'), save.belly > 0, Boolean(save.activeRun), startPending);
 
     const coinEl = $('coinText');
     if (coinEl) {

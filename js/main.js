@@ -21,8 +21,6 @@ window.addEventListener('DOMContentLoaded', async () => {
   window.MoguriaPlatform?.init?.();
   window.MoguriaSecurity?.init?.();
   window.MoguriaDebug?.init?.();
-  window.MoguriaPerformance?.start?.();
-
   await moguriaCleanupOldServiceWorker();
 
   try {

@@ -8,12 +8,38 @@ body.kv-visual-refresh #game {
   --battle-glint-x: 0px;
   --battle-glint-y: 0px;
   background-color: #08091b !important;
-  background-image:
-    linear-gradient(180deg, rgba(3, 5, 19, .16), rgba(3, 4, 16, .34)),
-    url("../assets/images/battle-v2/battle_arena.webp?v=20260804-motion-artifact-1") !important;
+  background-image: linear-gradient(180deg, #08091b, #11102a) !important;
   background-position: center center !important;
   background-size: cover !important;
   background-repeat: no-repeat !important;
+}
+
+/* battle-v3 is the only combat renderer. The legacy canvas remains as an
+   emergency DOM anchor but never allocates a drawing surface while v3 runs. */
+#moguriaBattleV3CanvasHost {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  pointer-events: none;
+  background: #08091b;
+}
+
+#moguriaBattleV3CanvasHost canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  pointer-events: none;
+}
+
+body.battle-v3-active #gameCanvas,
+body.battle-v3-active #kvGameVisualOverlay,
+body.battle-v3-active #kvBattleWorldLayer {
+  display: none !important;
+}
+
+body.battle-v3-active #game {
+  background-image: none !important;
 }
 
 body.kv-visual-refresh #kvBattleWorldLayer {

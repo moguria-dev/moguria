@@ -61,12 +61,26 @@
     return a;
   }
 
+  async function loadJson(asset){
+    const src = safeUrl(asset.src);
+    if(!src) return null;
+    try{
+      const res = await fetch(src, { cache: 'no-cache' });
+      if(!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.json();
+    }catch(err){
+      state.errors.push('json load failed: ' + asset.id);
+      return null;
+    }
+  }
+
   async function preloadCritical(){
     const manifest = state.manifest || await loadManifest();
     const critical = manifest.critical || [];
     const tasks = critical.map(asset => {
       if(asset.type === 'image') return loadImage(asset);
       if(asset.type === 'audio') return Promise.resolve(loadAudio(asset));
+      if(asset.type === 'json') return loadJson(asset);
       return Promise.resolve(null);
     });
     await Promise.all(tasks);
@@ -82,8 +96,10 @@
     const pack = (manifest.packs || []).find(p => p.id === packId);
     if(!pack) return { ok:false, reason:'pack not found' };
     const assets = pack.assets || [];
-    await Promise.all(assets.map(asset => asset.type === 'image' ? loadImage(asset) : Promise.resolve(loadAudio(asset))));
-    return { ok:true, stats: stats() };
+    const results = await Promise.all(assets.map(asset => asset.type === 'image' ? loadImage(asset) : asset.type === 'json' ? loadJson(asset) : Promise.resolve(loadAudio(asset))));
+    return results.some((value,index)=>assets[index]?.type==='image' && !value)
+      ? { ok:false, reason:'asset-load-failed', stats:stats() }
+      : { ok:true, stats: stats() };
   }
 
   function stats(){
