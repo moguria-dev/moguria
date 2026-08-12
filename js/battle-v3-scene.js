@@ -12,20 +12,21 @@
   const HOST_ID = 'moguriaBattleV3CanvasHost';
   const TAU = Math.PI * 2;
   const MAX_COMPANIONS = 6;
+  const ASSET_VERSION = '20260812-battle-motion-2';
 
   const DEFAULT_ASSETS = Object.freeze({
-    manifest: Object.freeze({ key: 'moguria-v3-atlas-manifest', src: 'assets/images/battle-v3/atlas.json?v=20260812-battle-motion-1' }),
+    manifest: Object.freeze({ key: 'moguria-v3-atlas-manifest', src: `assets/images/battle-v3/atlas.json?v=${ASSET_VERSION}` }),
     backgrounds: Object.freeze([
-      Object.freeze({ key: 'moguria-v3-bg-far', src: 'assets/images/battle-v3/bg-far.webp', scrollFactor: 0.04, alpha: 1 }),
-      Object.freeze({ key: 'moguria-v3-bg-mid', src: 'assets/images/battle-v3/bg-mid.webp', scrollFactor: 0.18, alpha: 0.34 }),
-      Object.freeze({ key: 'moguria-v3-bg-ground', src: 'assets/images/battle-v3/bg-ground.webp', scrollFactor: 0.42, alpha: 0.48 }),
-      Object.freeze({ key: 'moguria-v3-bg-foreground', src: 'assets/images/battle-v3/bg-foreground.webp', scrollFactor: 0.76, alpha: 0.54 })
+      Object.freeze({ key: 'moguria-v3-bg-far', src: `assets/images/battle-v3/bg-far.webp?v=${ASSET_VERSION}`, scrollFactor: 0.04, alpha: 1 }),
+      Object.freeze({ key: 'moguria-v3-bg-mid', src: `assets/images/battle-v3/bg-mid.webp?v=${ASSET_VERSION}`, scrollFactor: 0.18, alpha: 0.34 }),
+      Object.freeze({ key: 'moguria-v3-bg-ground', src: `assets/images/battle-v3/bg-ground.webp?v=${ASSET_VERSION}`, scrollFactor: 0.42, alpha: 0.48 }),
+      Object.freeze({ key: 'moguria-v3-bg-foreground', src: `assets/images/battle-v3/bg-foreground.webp?v=${ASSET_VERSION}`, scrollFactor: 0.76, alpha: 0.54 })
     ]),
     sheets: Object.freeze({
-      mogu: Object.freeze({ key: 'moguria-v3-mogu', src: 'assets/images/battle-v3/mogu-atlas-hd.png', frameWidth: 320, frameHeight: 320 }),
-      enemy: Object.freeze({ key: 'moguria-v3-enemy', src: 'assets/images/battle-v3/enemy-atlas.png', frameWidth: 256, frameHeight: 256 }),
-      companion: Object.freeze({ key: 'moguria-v3-companion', src: 'assets/images/battle-v3/companion-atlas.png', frameWidth: 256, frameHeight: 256 }),
-      boss: Object.freeze({ key: 'moguria-v3-boss', src: 'assets/images/battle-v3/boss-atlas.png', frameWidth: 256, frameHeight: 256 })
+      mogu: Object.freeze({ key: 'moguria-v3-mogu', src: `assets/images/battle-v3/mogu-atlas-hd-v2.png?v=${ASSET_VERSION}`, frameWidth: 256, frameHeight: 256 }),
+      enemy: Object.freeze({ key: 'moguria-v3-enemy', src: `assets/images/battle-v3/enemy-atlas-v2.png?v=${ASSET_VERSION}`, frameWidth: 192, frameHeight: 192 }),
+      companion: Object.freeze({ key: 'moguria-v3-companion', src: `assets/images/battle-v3/companion-atlas.png?v=${ASSET_VERSION}`, frameWidth: 256, frameHeight: 256 }),
+      boss: Object.freeze({ key: 'moguria-v3-boss', src: `assets/images/battle-v3/boss-atlas-v2.png?v=${ASSET_VERSION}`, frameWidth: 256, frameHeight: 256 })
     })
   });
 
@@ -33,18 +34,18 @@
   // state or the first frame, which lets art packs arrive independently.
   const DEFAULT_LAYOUTS = Object.freeze({
     mogu: Object.freeze({
-      idle: Object.freeze({ frames: Object.freeze([0, 1, 2, 3]), fps: 7, repeat: -1 }),
-      move: Object.freeze({ frames: Object.freeze([4, 5, 6, 7]), fps: 11, repeat: -1 }),
-      attack: Object.freeze({ frames: Object.freeze([8, 9, 10, 11]), fps: 12, repeat: 0 }),
-      hurt: Object.freeze({ frames: Object.freeze([12, 13]), fps: 12, repeat: 0 }),
-      skill: Object.freeze({ frames: Object.freeze([8, 9, 10, 11]), fps: 12, repeat: 0 }),
-      defeat: Object.freeze({ frames: Object.freeze([14, 15]), fps: 7, repeat: 0 })
+      idle: Object.freeze({ frames: Object.freeze([0, 1, 2, 3, 4, 5]), fps: 8, repeat: -1 }),
+      move: Object.freeze({ frames: Object.freeze([6, 7, 8, 9, 10, 11]), fps: 12, repeat: -1 }),
+      attack: Object.freeze({ frames: Object.freeze([12, 13, 14, 15, 16, 17, 18, 19]), fps: 14, repeat: 0 }),
+      hurt: Object.freeze({ frames: Object.freeze([20, 21]), fps: 12, repeat: 0 }),
+      skill: Object.freeze({ frames: Object.freeze([12, 13, 14, 15, 16, 17, 18, 19]), fps: 14, repeat: 0 }),
+      defeat: Object.freeze({ frames: Object.freeze([22, 23]), fps: 7, repeat: 0 })
     }),
     enemy: Object.freeze({
-      idle: Object.freeze({ frames: Object.freeze([0]), fps: 7, repeat: -1 }),
-      move: Object.freeze({ frames: Object.freeze([0, 1]), fps: 9, repeat: -1 }),
-      attack: Object.freeze({ frames: Object.freeze([1, 2, 0]), fps: 12, repeat: 0 }),
-      hurt: Object.freeze({ frames: Object.freeze([3, 0]), fps: 11, repeat: 0 })
+      idle: Object.freeze({ frames: Object.freeze([0, 1]), fps: 7, repeat: -1 }),
+      move: Object.freeze({ frames: Object.freeze([0, 1, 2, 3]), fps: 10, repeat: -1 }),
+      attack: Object.freeze({ frames: Object.freeze([2, 3, 4, 0, 1]), fps: 13, repeat: 0 }),
+      hurt: Object.freeze({ frames: Object.freeze([5, 0, 1]), fps: 11, repeat: 0 })
     }),
     companion: Object.freeze({
       idle: Object.freeze({ frames: Object.freeze([0, 1]), fps: 8, repeat: -1 }),
@@ -54,25 +55,25 @@
       celebrate: Object.freeze({ frames: Object.freeze([7]), fps: 8, repeat: -1 })
     }),
     boss: Object.freeze({
-      idle: Object.freeze({ frames: Object.freeze([0]), fps: 6, repeat: -1 }),
-      move: Object.freeze({ frames: Object.freeze([0, 1]), fps: 7, repeat: -1 }),
-      attack: Object.freeze({ frames: Object.freeze([1, 2, 3]), fps: 9, repeat: 0 }),
-      hurt: Object.freeze({ frames: Object.freeze([3, 0]), fps: 8, repeat: 0 }),
-      telegraph: Object.freeze({ frames: Object.freeze([0, 1]), fps: 7, repeat: -1 }),
-      recover: Object.freeze({ frames: Object.freeze([3, 0]), fps: 7, repeat: 0 })
+      idle: Object.freeze({ frames: Object.freeze([0, 1]), fps: 6, repeat: -1 }),
+      move: Object.freeze({ frames: Object.freeze([0, 1, 2, 3]), fps: 7, repeat: -1 }),
+      attack: Object.freeze({ frames: Object.freeze([2, 3, 4, 5, 6, 7]), fps: 10, repeat: 0 }),
+      hurt: Object.freeze({ frames: Object.freeze([6, 7, 0, 1]), fps: 8, repeat: 0 }),
+      telegraph: Object.freeze({ frames: Object.freeze([0, 1, 2, 3]), fps: 8, repeat: -1 }),
+      recover: Object.freeze({ frames: Object.freeze([6, 7, 0, 1]), fps: 7, repeat: 0 })
     })
   });
 
   const DEFAULT_VARIANT_LAYOUTS = Object.freeze({
     enemy: Object.freeze({
-      soft: Object.freeze({ idle: { frames: [0] }, move: { frames: [0, 1] }, attack: { frames: [1, 2, 0] }, hurt: { frames: [3, 0] } }),
-      bat: Object.freeze({ idle: { frames: [4] }, move: { frames: [4, 5] }, attack: { frames: [5, 6, 4] }, hurt: { frames: [7, 4] } }),
-      stone: Object.freeze({ idle: { frames: [8] }, move: { frames: [8, 9] }, attack: { frames: [9, 10, 8] }, hurt: { frames: [11, 8] } }),
-      ghost: Object.freeze({ idle: { frames: [12] }, move: { frames: [12, 13] }, attack: { frames: [13, 14, 12] }, hurt: { frames: [15, 12] } })
+      soft: Object.freeze({ idle: { frames: [0, 1] }, move: { frames: [0, 1, 2, 3] }, attack: { frames: [2, 3, 4, 0, 1] }, hurt: { frames: [5, 0, 1] } }),
+      bat: Object.freeze({ idle: { frames: [6, 7] }, move: { frames: [6, 7, 8, 9] }, attack: { frames: [8, 9, 10, 6, 7] }, hurt: { frames: [11, 6, 7] } }),
+      stone: Object.freeze({ idle: { frames: [12, 13] }, move: { frames: [12, 13, 14, 15] }, attack: { frames: [14, 15, 16, 12, 13] }, hurt: { frames: [17, 12, 13] } }),
+      ghost: Object.freeze({ idle: { frames: [18, 19] }, move: { frames: [18, 19, 20, 21] }, attack: { frames: [20, 21, 22, 18, 19] }, hurt: { frames: [23, 18, 19] } })
     }),
     boss: Object.freeze({
-      midBoss: Object.freeze({ idle: { frames: [0] }, move: { frames: [0, 1] }, attack: { frames: [1, 2, 3] }, hurt: { frames: [3, 0] }, telegraph: { frames: [0, 1] }, recover: { frames: [3, 0] } }),
-      boss: Object.freeze({ idle: { frames: [4] }, move: { frames: [4, 5] }, attack: { frames: [5, 6, 7] }, hurt: { frames: [7, 4] }, telegraph: { frames: [4, 5] }, recover: { frames: [7, 4] } })
+      midBoss: Object.freeze({ idle: { frames: [0, 1] }, move: { frames: [0, 1, 2, 3] }, attack: { frames: [2, 3, 4, 5, 6, 7] }, hurt: { frames: [6, 7, 0, 1] }, telegraph: { frames: [0, 1, 2, 3] }, recover: { frames: [6, 7, 0, 1] } }),
+      boss: Object.freeze({ idle: { frames: [8, 9] }, move: { frames: [8, 9, 10, 11] }, attack: { frames: [10, 11, 12, 13, 14, 15] }, hurt: { frames: [14, 15, 8, 9] }, telegraph: { frames: [8, 9, 10, 11] }, recover: { frames: [14, 15, 8, 9] } })
     })
   });
 
@@ -239,7 +240,7 @@
           // Each enemy atlas row already contains a readable anticipation,
           // release and neutral pose. Combining those semantic poses produces
           // real frame animation without substituting the hurt drawing.
-          composeManifestState(layout, 'attack', [states.move, states.attack, states.idle], { fps: 12, repeat: 0 });
+          composeManifestState(layout, 'attack', [states.move, states.attack, states.idle], { fps: 13, repeat: 0 });
           composeManifestState(layout, 'hurt', [states.hit ?? states.hurt, states.idle], { fps: 11, repeat: 0 });
           variants.enemy[variant] = layout;
         }
@@ -266,7 +267,7 @@
           const recovery = states.recover ?? states.enraged;
           composeManifestState(layout, 'move', [states.idle, states.windup], { fps: 7, repeat: -1 });
           composeManifestState(layout, 'telegraph', [states.idle, states.windup], { fps: 7, repeat: -1 });
-          composeManifestState(layout, 'attack', [states.windup, release, recovery], { fps: 9, repeat: 0 });
+          composeManifestState(layout, 'attack', [states.windup, release, recovery], { fps: 10, repeat: 0 });
           composeManifestState(layout, 'recover', [recovery, states.idle], { fps: 7, repeat: 0 });
           composeManifestState(layout, 'hurt', [recovery, states.idle], { fps: 8, repeat: 0 });
           variants.boss[semanticVariant] = layout;
@@ -518,7 +519,7 @@
         this.registerAnimations();
         this.createBackgrounds();
         this.createDrawLayers();
-        this.playerSprite = this.createActorSprite('mogu', 'mogu', 126).setDepth(40);
+        this.playerSprite = this.createActorSprite('mogu', 'mogu', 116).setDepth(40);
 
         const camera = this.cameras.main;
         camera.setBackgroundColor?.('#070819');
@@ -609,7 +610,9 @@
                 frames,
                 frameRate: Math.max(1, Number(definition.fps) || 8),
                 repeat: Number.isFinite(definition.repeat) ? definition.repeat : -1,
-                skipMissedFrames: true
+                // A missed attack pose reads as a one-frame image swap. Preserve
+                // every semantic action pose; looping locomotion may catch up.
+                skipMissedFrames: stateName !== 'attack' && stateName !== 'skill'
               });
             }
           }
@@ -664,9 +667,9 @@
       backgroundDisplaySize() {
         const width = Math.max(390, this.scale?.width || global.innerWidth || 390);
         const height = Math.max(844, this.scale?.height || global.innerHeight || 844);
-        // Leave enough non-repeating image outside the viewport for visible
-        // parallax while retaining a safe crop at every map edge.
-        const displayWidth = Math.max(width + 112, (height + 112) / 2);
+        // Leave enough non-repeating image outside the viewport for parallax
+        // that is visible during an ordinary 120px move, not only at map edges.
+        const displayWidth = Math.max(width + 208, (height + 160) / 2);
         return { width: displayWidth, height: displayWidth * 2 };
       }
 
@@ -732,6 +735,7 @@
         const x = Number(entity?.x) || 0;
         const y = Number(entity?.y) || 0;
         const sampleTime = Number.isFinite(this.stateTime) ? this.stateTime : global.performance?.now?.() / 1000 || 0;
+        const attackPresentationSeconds = key === 'player' ? 0.6 : key.startsWith('enemy:') ? 0.42 : 0.18;
         let track = this.actorTracks.get(key);
         if (!track) {
           track = {
@@ -744,7 +748,11 @@
             attackCd: Number(entity?.attackCd) || 0,
             attackUntil: 0,
             attackAnimTimer: Math.max(0, Number(entity?.attackAnimTimer) || Number(entity?.attackVisualTimer) || 0),
-            attackSerial: 0
+            attackSerial: Math.max(0, Number(entity?.attackAnimTimer) || Number(entity?.attackVisualTimer) || 0) > 0 ? 1 : 0,
+            semanticAttackUntil: Math.max(0, Number(entity?.attackAnimTimer) || Number(entity?.attackVisualTimer) || 0) > 0
+              ? sampleTime + attackPresentationSeconds
+              : 0,
+            hurtUntil: (Number(entity?.hitFlash) || 0) > 0 ? sampleTime + 0.28 : 0
           };
           this.actorTracks.set(key, track);
           return track;
@@ -759,7 +767,24 @@
         if (Number.isFinite(attackCd) && attackCd > track.attackCd + 0.2) track.attackUntil = sampleTime + 0.2;
         track.attackCd = Number.isFinite(attackCd) ? attackCd : track.attackCd;
         const attackAnimTimer = Math.max(0, Number(entity?.attackAnimTimer) || Number(entity?.attackVisualTimer) || 0);
-        if (attackAnimTimer > track.attackAnimTimer + 0.05) track.attackSerial += 1;
+        if (attackAnimTimer > track.attackAnimTimer + 0.05) {
+          track.attackSerial += 1;
+          // Core timers denote real hits/shots. Presentation latches let the
+          // corresponding atlas release finish without changing combat time.
+          track.semanticAttackUntil = sampleTime + attackPresentationSeconds;
+        }
+        const hitFlash = Math.max(0, Number(entity?.hitFlash) || 0);
+        if (hitFlash > (track.hitFlash || 0) + 0.01) track.hurtUntil = sampleTime + 0.28;
+        track.hitFlash = hitFlash;
+        const explicitState = explicitActorState(entity);
+        if (explicitState === 'attack' && track.explicitState !== 'attack') {
+          track.attackSerial += 1;
+          // Boss execute windows are combat-authoritative and can be shorter
+          // than the six-pose visual release. Latch presentation only; hit
+          // timing and recovery logic remain entirely in the core simulation.
+          track.semanticAttackUntil = sampleTime + 0.62;
+        }
+        track.explicitState = explicitState;
         track.attackAnimTimer = attackAnimTimer;
         track.x = x;
         track.y = y;
@@ -771,9 +796,10 @@
         const explicit = explicitActorState(entity);
         // Generic move/idle labels must not mask a newly detected enemy attack.
         // Specific actions (hurt, telegraph, attack, recover...) stay authoritative.
+        if (role === 'boss' && track && this.stateTime < (track.semanticAttackUntil || 0)) return 'attack';
         if (explicit && explicit !== 'move' && explicit !== 'idle') return explicit;
         if (role === 'mogu' && (Number(entity?.hp) || 0) <= 0) return 'defeat';
-        if ((Number(entity?.hitFlash) || 0) > 0 || (role === 'mogu' && (Number(entity?.invuln) || 0) > 0.36)) return 'hurt';
+        if ((Number(entity?.hitFlash) || 0) > 0 || (role !== 'mogu' && this.stateTime < (track?.hurtUntil || 0)) || (role === 'mogu' && (Number(entity?.invuln) || 0) > 0.36)) return 'hurt';
         if (role === 'boss') {
           if ((Number(entity?.telegraphTimer) || 0) > 0 || (Number(entity?.warningTimer) || 0) > 0) return 'telegraph';
           if ((Number(entity?.recoverTimer) || 0) > 0 || (Number(entity?.stunTimer) || 0) > 0) return 'recover';
@@ -781,8 +807,9 @@
         if (role === 'mogu') {
           // The core raises this only when a projectile is actually emitted.
           // Cooldown values alone previously made Mogu attack empty space.
-          if (Math.max(0, Number(entity?.attackAnimTimer) || Number(entity?.attackVisualTimer) || 0) > 0) return 'attack';
+          if (Math.max(0, Number(entity?.attackAnimTimer) || Number(entity?.attackVisualTimer) || 0) > 0 || this.stateTime < (track?.semanticAttackUntil || 0)) return 'attack';
         }
+        if (role === 'enemy' && track && this.stateTime < (track.semanticAttackUntil || 0)) return 'attack';
         if (role !== 'mogu' && Math.max(0, Number(entity?.attackAnimTimer) || Number(entity?.attackVisualTimer) || 0) > 0) return 'attack';
         if (role !== 'mogu' && track && this.stateTime < (track.attackUntil || 0)) return 'attack';
         if (entity?.behavior === 'charge' && (Number(entity?.chargeCd) || 0) < 0.43) return 'attack';
@@ -822,8 +849,11 @@
         sprite.moguriaState = marker;
         const key = actorAnimationKey(role, stateName, variant);
         const defaultKey = actorAnimationKey(role, stateName, 'default');
-        if (this.anims.exists?.(key)) sprite.play?.(key, true);
-        else if (this.anims.exists?.(defaultKey)) sprite.play?.(defaultKey, true);
+        // The marker already prevents accidental per-frame restarts. Do not ask
+        // Phaser to ignore a same-key request: attackSerial deliberately clears
+        // the marker when a new projectile must restart the release sequence.
+        if (this.anims.exists?.(key)) sprite.play?.(key, false);
+        else if (this.anims.exists?.(defaultKey)) sprite.play?.(defaultKey, false);
         else {
           const frame = frameNumbers(layout[stateName], Infinity)[0];
           if (Number.isFinite(frame) && sprite.texture?.has?.(frame)) sprite.setFrame?.(frame);
@@ -831,8 +861,10 @@
       }
 
       syncBackgrounds(p) {
-        const x = reducedMotion ? 0 : Number(p.x) || 0;
-        const y = reducedMotion ? 0 : Number(p.y) || 0;
+        // Reduced-motion removes ambient drift, but world movement must still
+        // have spatial feedback. Otherwise Mogu appears to run in place.
+        const x = Number(p.x) || 0;
+        const y = Number(p.y) || 0;
         const centerX = Math.max(1, Number(this.scale?.width) || 390) / 2;
         const centerY = Math.max(1, Number(this.scale?.height) || 844) / 2;
         const bounds = this.lastState?.mapBounds || { minX: -760, maxX: 760, minY: -760, maxY: 760 };
@@ -844,13 +876,15 @@
         for (let index = 0; index < this.backgroundLayers.length; index++) {
           const layer = this.backgroundLayers[index];
           const factor = Number(layer.parallaxFactor) || 0;
-          const strength = Math.max(0.12, Math.min(1, 0.08 + factor / maxFactor * 0.92));
+          const strength = Math.max(0.18, Math.min(1, 0.12 + factor / maxFactor * 0.88));
           const overscanX = Math.max(0, (Number(layer.displayWidth) - centerX * 2) / 2 - 4);
           const overscanY = Math.max(0, (Number(layer.displayHeight) - centerY * 2) / 2 - 4);
-          const driftX = reducedMotion ? 0 : Math.sin(this.stateTime * (0.16 + index * 0.035) + index * 1.17) * (0.025 + index * 0.009);
-          const driftY = reducedMotion ? 0 : Math.cos(this.stateTime * (0.12 + index * 0.028) + index * 0.83) * (0.018 + index * 0.007);
-          const offsetX = overscanX * Math.max(-1, Math.min(1, normalizedX * strength + driftX));
-          const offsetY = overscanY * Math.max(-1, Math.min(1, normalizedY * strength + driftY));
+          const driftX = reducedMotion ? 0 : Math.sin(this.stateTime * (0.16 + index * 0.035) + index * 1.17) * (0.018 + index * 0.007);
+          const driftY = reducedMotion ? 0 : Math.cos(this.stateTime * (0.12 + index * 0.028) + index * 0.83) * (0.014 + index * 0.006);
+          // tanh makes nearby movement immediately legible, yet approaches the
+          // available crop smoothly instead of stopping at a hard clamp.
+          const offsetX = overscanX * Math.tanh(normalizedX * strength * 2.25 + driftX);
+          const offsetY = overscanY * Math.tanh(normalizedY * strength * 2.05 + driftY);
           layer.setPosition?.(
             centerX - offsetX,
             centerY - offsetY
@@ -863,10 +897,10 @@
         const track = this.sampleMotion('player', p);
         sprite.setPosition(Number(p.x) || 0, Number(p.y) || 0);
         sprite.setFlipX?.(track.facing < 0);
-        // Atlas cells contain generous transparent breathing room. 126px keeps
-        // the painted Mogu itself near the approved 84–96px visual size while
-        // leaving the authoritative 15px collision radius untouched.
-        sprite.setDisplaySize?.(126, 126);
+        // V2 cells share an exact baseline and fill more of their 256px cell.
+        // 116px keeps Mogu's painted body near 84–96px and avoids enlarging
+        // edge noise, while the authoritative collision radius stays untouched.
+        sprite.setDisplaySize?.(116, 116);
         sprite.setDepth?.(40 + (Number(p.y) || 0) * 0.001);
         sprite.setAlpha?.((Number(p.invuln) || 0) > 0 && !reducedMotion ? 0.78 : 1);
         const cueRemaining = Number(state.levelUpCue?.remaining) || 0;
@@ -1527,16 +1561,19 @@
       }
 
       applyAnimationPause(paused) {
-        const shouldPause = paused || reducedMotion;
+        // Reduced-motion still permits semantic sprite animation. Only ambient
+        // procedural motion and camera FX are suppressed for that preference.
+        const shouldPause = paused;
         const quality = currentQuality();
-        const qualityScale = quality === 'low' ? 0.72 : quality === 'medium' ? 0.88 : 1;
         const sprites = [this.playerSprite, ...[...this.enemySprites.values()].map(record => record.sprite), ...this.companionSprites.values()];
         const signature = `${shouldPause}:${quality}:${sprites.length}`;
         if (signature === this.animationPauseSignature) return;
         this.animationPauseSignature = signature;
         for (const sprite of sprites) {
           if (!sprite?.anims) continue;
-          sprite.anims.timeScale = shouldPause ? 0 : qualityScale;
+          // Frame count is part of action readability, so quality reductions
+          // must never stretch an attack beyond its core presentation window.
+          sprite.anims.timeScale = shouldPause ? 0 : 1;
           if (shouldPause) sprite.anims.pause?.();
           else sprite.anims.resume?.();
         }
@@ -1553,8 +1590,8 @@
         this.appliedQuality = quality;
         const foreground = this.backgroundLayers[3];
         if (foreground) {
-          foreground.setVisible?.(quality !== 'low');
-          foreground.setAlpha?.(quality === 'medium' ? foreground.baseAlpha * 0.72 : foreground.baseAlpha);
+          foreground.setVisible?.(true);
+          foreground.setAlpha?.(quality === 'low' ? foreground.baseAlpha * 0.5 : quality === 'medium' ? foreground.baseAlpha * 0.72 : foreground.baseAlpha);
         }
         const middle = this.backgroundLayers[1];
         if (middle) middle.setAlpha?.(quality === 'low' ? middle.baseAlpha * 0.58 : middle.baseAlpha);

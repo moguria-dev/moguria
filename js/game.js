@@ -17,7 +17,13 @@ window.MoguriaGame = (() => {
   };
   const LEVEL_UP_CUE_SECONDS=.75;
   const DEFEAT_CUE_SECONDS=.58;
-  const COLLECT_ALL_DROP_CHANCES=Object.freeze({normal:.0015,rare:.01,midBoss:.03,boss:.03});
+  const ATTACK_ANIMATION_SECONDS=Math.max(.58,Number(MoguriaConfig.combat?.attackAnimationSeconds)||.62);
+  const COLLECT_ALL_SCHEDULE=Object.freeze({
+    minWaveGap:Math.max(1,Math.floor(Number(MoguriaConfig.collectAll?.minWaveGap)||2)),
+    maxWaveGap:Math.max(1,Math.floor(Number(MoguriaConfig.collectAll?.maxWaveGap)||4)),
+    minTriggerRatio:Math.max(0,Math.min(1,Number(MoguriaConfig.collectAll?.minTriggerRatio)||.35)),
+    maxTriggerRatio:Math.max(0,Math.min(1,Number(MoguriaConfig.collectAll?.maxTriggerRatio)||.70))
+  });
   function init(){
     canvas=document.getElementById('gameCanvas'); ctx=canvas.getContext('2d'); resize();
     setupStick(); document.getElementById('giveupBtn').onclick=()=>endRun(true); document.getElementById('pauseBtn').onclick=()=>pauseRun(); document.getElementById('resumeBtn').onclick=()=>resumeRun(); document.getElementById('pauseGiveupBtn').onclick=()=>{ document.getElementById('pauseModal').classList.add('hidden'); endRun(true); };
@@ -95,9 +101,10 @@ window.MoguriaGame = (() => {
     else if(window.MoguriaMeta) MoguriaMeta.applyEquipmentToPlayer(player);
     state={ mode:'run', runId:String(options.runId||options.activeRun?.runId||''), startedAt:Number(options.activeRun?.startedAt)||Date.now(), p:player, enemies:[], bullets:[], enemyBullets:[], mines:[], fx:[], drops:[], companions:[], scheduled:[], dungeon:MoguriaDungeon.create(checkpoint?.dungeon?.seed||Date.now()), time:0, last:performance.now(), spawnCd:0, floor:1,
       wave:0, maxWave:MoguriaConfig.run.maxWave, timeLimit:MoguriaConfig.run.timeLimit||480, waveState:'ready', waveSpawned:0, waveTarget:0, waveClearTimer:0, cleared:false, timeout:false, introTimer:2.15, bossAlertTimer:0, clearTimer:0, mobEvent:null,
-      stats:{kills:0,maxDamage:0,totalDamage:0,shots:0,crits:0,hitsTaken:0,dodges:0,explosions:0,poisonKills:0,rareKills:0,bossKills:0,combo:0,bestCombo:0}, rerolls:MoguriaConfig.run.rerolls, bans:2, bannedSkills:[], pendingChoice:null, levelUpCue:null, defeatCue:null, shake:0, hitStop:0, flash:0, particles:[], comboTimer:0, awakenTimer:0, dangerPulse:0, nearMissCd:0, bossPhaseTimer:0, artifactWaves:{}, mapBounds:{...MoguriaConfig.map}, depthCueShown:false, criticalCueCd:0, chainCueCd:0, returnGlow:0, checkpointElapsed:0, hudAt:0, finalizing:false };
+      stats:{kills:0,maxDamage:0,totalDamage:0,shots:0,crits:0,hitsTaken:0,dodges:0,explosions:0,poisonKills:0,rareKills:0,bossKills:0,combo:0,bestCombo:0}, rerolls:MoguriaConfig.run.rerolls, bans:2, bannedSkills:[], pendingChoice:null, levelUpCue:null, defeatCue:null, collectAllSchedule:null, shake:0, hitStop:0, flash:0, particles:[], comboTimer:0, awakenTimer:0, dangerPulse:0, nearMissCd:0, bossPhaseTimer:0, artifactWaves:{}, mapBounds:{...MoguriaConfig.map}, depthCueShown:false, criticalCueCd:0, chainCueCd:0, returnGlow:0, checkpointElapsed:0, hudAt:0, finalizing:false };
     if(checkpoint) restoreCheckpoint(checkpoint);
-    else { state.p.x=0; state.p.y=0; state.p.hp=state.p.maxHp; }
+    else { state.p.x=0; state.p.y=0; state.p.hp=state.p.maxHp; state.collectAllSchedule=createCollectAllSchedule(0); }
+    if(!checkpoint?.collectAllSchedule) persistCheckpoint('collect-all-plan');
     if(state.pendingChoice) restorePendingChoice();
     MoguriaAudio?.play('start');
     pushFx({x:0,y:0,r:92,life:1.0,type:'startGlow'});
@@ -143,6 +150,8 @@ window.MoguriaGame = (() => {
       artifactWaves:{...(state.artifactWaves||{})},
       choiceType:pendingChoice?.type||null,
       pendingChoice,
+      collectAllSchedule:copyCollectAllSchedule(state.collectAllSchedule),
+      collectAllDrop:copyLiveCollectAllDrop(),
       defeated:state.mode==='defeat'||(Number(state.p.hp)||0)<=0,
       dungeon:{seed:state.dungeon?.seed||0}
     };
@@ -166,6 +175,9 @@ window.MoguriaGame = (() => {
     state.bans=Math.max(0,Math.floor(Number(checkpoint.bans) || 0));
     state.bannedSkills=Array.isArray(checkpoint.bannedSkills)?checkpoint.bannedSkills.filter(x=>typeof x==='string'):[];
     state.artifactWaves=checkpoint.artifactWaves&&typeof checkpoint.artifactWaves==='object'?{...checkpoint.artifactWaves}:{};
+    state.collectAllSchedule=normalizeCollectAllSchedule(checkpoint.collectAllSchedule,savedWave)||createCollectAllSchedule(savedWave);
+    const savedCollectAll=normalizeCollectAllDrop(checkpoint.collectAllDrop);
+    if(savedCollectAll) state.drops.push(savedCollectAll);
     state.pendingChoice=normalizePendingChoice(checkpoint.pendingChoice,checkpoint.choiceType);
     if(!state.pendingChoice) state.pendingChoice=inferLegacyPendingChoice(checkpoint,savedWave);
     const pendingWave=Math.max(0,Math.min(state.maxWave,Math.floor(Number(state.pendingChoice?.wave)||savedWave)));
@@ -197,6 +209,75 @@ window.MoguriaGame = (() => {
     state.p.x=Math.max(state.mapBounds.minX+state.p.r,Math.min(state.mapBounds.maxX-state.p.r,Number(state.p.x)||0));
     state.p.y=Math.max(state.mapBounds.minY+state.p.r,Math.min(state.mapBounds.maxY-state.p.r,Number(state.p.y)||0));
     return true;
+  }
+  function randomUnit(){
+    const value=Number(Math.random());
+    return Number.isFinite(value)?Math.max(0,Math.min(.999999999,value)):0;
+  }
+  function collectAllWaveGap(){
+    const min=Math.min(COLLECT_ALL_SCHEDULE.minWaveGap,COLLECT_ALL_SCHEDULE.maxWaveGap);
+    const max=Math.max(COLLECT_ALL_SCHEDULE.minWaveGap,COLLECT_ALL_SCHEDULE.maxWaveGap);
+    return min+Math.floor(randomUnit()*(max-min+1));
+  }
+  function collectAllTriggerRatio(){
+    const min=Math.min(COLLECT_ALL_SCHEDULE.minTriggerRatio,COLLECT_ALL_SCHEDULE.maxTriggerRatio);
+    const max=Math.max(COLLECT_ALL_SCHEDULE.minTriggerRatio,COLLECT_ALL_SCHEDULE.maxTriggerRatio);
+    return min+randomUnit()*(max-min);
+  }
+  function createCollectAllSchedule(baseWave=0,lastSpawnWave=0){
+    const base=Math.max(0,Math.floor(Number(baseWave)||0));
+    return {
+      version:1,
+      nextWave:base+collectAllWaveGap(),
+      triggerRatio:collectAllTriggerRatio(),
+      wave:base,
+      waveKills:0,
+      lastSpawnWave:Math.max(0,Math.floor(Number(lastSpawnWave)||0))
+    };
+  }
+  function normalizeCollectAllSchedule(value,baseWave=0){
+    if(!value||typeof value!=='object'||Array.isArray(value)) return null;
+    const nextWave=Math.floor(Number(value.nextWave));
+    const triggerRatio=Number(value.triggerRatio);
+    if(!Number.isFinite(nextWave)||nextWave<1||!Number.isFinite(triggerRatio)) return null;
+    const minRatio=Math.min(COLLECT_ALL_SCHEDULE.minTriggerRatio,COLLECT_ALL_SCHEDULE.maxTriggerRatio);
+    const maxRatio=Math.max(COLLECT_ALL_SCHEDULE.minTriggerRatio,COLLECT_ALL_SCHEDULE.maxTriggerRatio);
+    return {
+      version:1,
+      nextWave:Math.max(1,nextWave),
+      triggerRatio:Math.max(minRatio,Math.min(maxRatio,triggerRatio)),
+      wave:Math.max(0,Math.min(state?.maxWave||MoguriaConfig.run.maxWave||12,Math.floor(Number(value.wave)||Number(baseWave)||0))),
+      waveKills:Math.max(0,Math.floor(Number(value.waveKills)||0)),
+      lastSpawnWave:Math.max(0,Math.floor(Number(value.lastSpawnWave)||0))
+    };
+  }
+  function copyCollectAllSchedule(value){
+    if(!value) return null;
+    return {
+      version:1,
+      nextWave:value.nextWave,
+      triggerRatio:value.triggerRatio,
+      wave:value.wave,
+      waveKills:value.waveKills,
+      lastSpawnWave:value.lastSpawnWave
+    };
+  }
+  function normalizeCollectAllDrop(value){
+    if(!value||typeof value!=='object'||Array.isArray(value)||value.dead) return null;
+    const x=Number(value.x),y=Number(value.y);
+    if(!Number.isFinite(x)||!Number.isFinite(y)) return null;
+    const bounds=state?.mapBounds||MoguriaConfig.map;
+    return {
+      x:Math.max(Number(bounds.minX)||-760,Math.min(Number(bounds.maxX)||760,x)),
+      y:Math.max(Number(bounds.minY)||-760,Math.min(Number(bounds.maxY)||760,y)),
+      kind:'collectAll',
+      rare:true,
+      spawnedWave:Math.max(0,Math.floor(Number(value.spawnedWave)||0))
+    };
+  }
+  function copyLiveCollectAllDrop(){
+    const drop=state?.drops?.find(item=>item?.kind==='collectAll'&&!item.dead);
+    return drop?normalizeCollectAllDrop(drop):null;
   }
   function normalizePendingChoice(value,fallbackType=''){
     const source=value&&typeof value==='object'&&!Array.isArray(value)?value:{};
@@ -331,6 +412,12 @@ window.MoguriaGame = (() => {
     if(wave>=6) pool.push({id:'tank', label:'かちかち注意報', sub:'とても硬い敵が混ざったよ', extra:4, spawnMul:.95});
     return pool[Math.floor(Math.random()*pool.length)];
   }
+  function beginCollectAllWave(){
+    if(!state.collectAllSchedule) state.collectAllSchedule=createCollectAllSchedule(state.wave);
+    if(state.collectAllSchedule.wave===state.wave) return;
+    state.collectAllSchedule.wave=state.wave;
+    state.collectAllSchedule.waveKills=0;
+  }
   function startNextWave(){
     if(!state) return;
     state.wave++;
@@ -341,6 +428,7 @@ window.MoguriaGame = (() => {
     state.waveSpawned=0; state.spawnCd=.2; state.waveClearTimer=0; state.mobEvent=null;
     if(state.wave===7 || state.wave===12){
       state.waveState='bossAlert'; state.bossAlertTimer=1.75; state.waveTarget=1;
+      beginCollectAllWave();
       MoguriaAudio?.play('boss');
       state.flash=Math.max(state.flash,.22); state.shake=Math.max(state.shake,6);
       bigToast(state.wave===7?'何か大きい気配…':'森の奥がざわざわする…', state.wave===7?'中ボスが来るよ':'大ボスが来るよ');
@@ -350,6 +438,7 @@ window.MoguriaGame = (() => {
     state.mobEvent=chooseMobEvent(state.wave);
     const extra=state.mobEvent ? state.mobEvent.extra : 0;
     state.waveTarget = Math.min(44, 8 + state.wave*3 + extra);
+    beginCollectAllWave();
     toast(`${waveLabel(state.wave)} はじまるよ`);
     if(state.mobEvent) setTimeout(()=>bigToast(state.mobEvent.label,state.mobEvent.sub),260);
   }
@@ -395,6 +484,21 @@ window.MoguriaGame = (() => {
 
   function afterWaveClear(){
     if(!state || state.mode!=='run') return;
+    if(state.wave===state.maxWave){
+      // A collect-all may be scheduled on the final boss. There is no next
+      // combat frame after the return cue in which a distant item can travel,
+      // so consume it at clear and apply its advertised all-drop magnet now.
+      const special=state.drops.find(drop=>drop?.kind==='collectAll'&&!drop.dead);
+      const collectedFinalDrops=Boolean(special);
+      if(special){
+        collectDrop(special,state.p);
+        for(const drop of state.drops){
+          if(!drop?.dead && (drop.kind==='exp'||drop.kind==='heal')) collectDrop(drop,state.p);
+        }
+      }
+      trimRuntimeDrops();
+      if(collectedFinalDrops) persistCheckpoint('collect-all-final-clear');
+    }
     pushFx({x:state.p.x,y:state.p.y,r:96,life:.72,type:'waveClear'}); sparkleBurst(state.p.x,state.p.y,20,'#fff0a6');
     if((state.wave===3 || state.wave===7) && !state.artifactWaves[state.wave]){
       openArtifactChoice(state.wave);
@@ -563,7 +667,7 @@ window.MoguriaGame = (() => {
       }
     }
     separateEnemies(dt);
-    if(p.attackCd<=0){ p.attackCd=p.attackRate; if(shootAtNearest(p.baseDamage*MoguriaPlayer.damageMultiplier(p),false)) p.attackAnimTimer=.38; }
+    if(p.attackCd<=0){ p.attackCd=p.attackRate; if(shootAtNearest(p.baseDamage*MoguriaPlayer.damageMultiplier(p),false)) p.attackAnimTimer=ATTACK_ANIMATION_SECONDS; }
     for(const b of state.bullets){ b.x+=b.vx*dt; b.y+=b.vy*dt; b.life-=dt; }
     for(const eb of state.enemyBullets||[]){ eb.x+=eb.vx*dt; eb.y+=eb.vy*dt; eb.life-=dt; if(Math.hypot(eb.x-p.x,eb.y-p.y)<p.r+eb.r && p.invuln<=0){ if(Math.random()<p.dodge){ state.stats.dodges++; p.invuln=.35; } else applyDamageToPlayer(eb.dmg,.45); eb.dead=true; } }
     for(const eb of state.enemyBullets||[]){
@@ -596,7 +700,7 @@ window.MoguriaGame = (() => {
     }
     state.bullets=state.bullets.filter(b=>b.life>0&&!b.dead);
     updateDrops(dt);
-    state.drops=state.drops.filter(d=>!d.dead).slice(-(MoguriaConfig.performance.maxDrops||120));
+    trimRuntimeDrops();
     state.enemies=state.enemies.filter(e=>e.hp>0 && Math.hypot(e.x-p.x,e.y-p.y)<1800);
     while(p.exp>=p.nextExp){ p.exp-=p.nextExp; levelUp(); return; }
     for(const f of state.fx) f.life-=dt; state.fx=state.fx.filter(f=>f.life>0); if(state.fx.length>fxLimit()) state.fx.splice(0,state.fx.length-fxLimit());
@@ -852,14 +956,37 @@ window.MoguriaGame = (() => {
     addFx(e.x,e.y,Math.floor(dmg)+(crit?'!':''),crit?'#ffe27c':'#fff');
     if(e.hp<=0) killEnemy(e,source);
   }
-  function collectAllDropChance(kind){
-    return COLLECT_ALL_DROP_CHANCES[kind]??COLLECT_ALL_DROP_CHANCES.normal;
+  function advanceCollectAllSchedule(schedule,fromWave,spawned){
+    const wave=Math.max(0,Math.floor(Number(fromWave)||0));
+    if(spawned) schedule.lastSpawnWave=wave;
+    schedule.nextWave=wave+collectAllWaveGap();
+    schedule.triggerRatio=collectAllTriggerRatio();
   }
-  function maybeDropCollectAll(e){
-    if(!state || state.drops.some(drop=>drop.kind==='collectAll'&&!drop.dead)) return false;
-    if(Math.random()>=collectAllDropChance(e?.kind)) return false;
-    state.drops.push({x:e.x+(Math.random()*24-12),y:e.y+(Math.random()*24-12),kind:'collectAll',rare:true});
-    return true;
+  function recordCollectAllDefeat(e){
+    if(!state) return false;
+    beginCollectAllWave();
+    const schedule=state.collectAllSchedule;
+    schedule.waveKills+=1;
+    if(state.wave<schedule.nextWave) return false;
+    const waveTarget=Math.max(1,Math.floor(Number(state.waveTarget)||1));
+    const triggerKill=Math.max(1,Math.min(waveTarget,Math.ceil(waveTarget*schedule.triggerRatio)));
+    if(schedule.waveKills<triggerKill) return false;
+
+    const alreadyLive=state.drops.some(drop=>drop.kind==='collectAll'&&!drop.dead);
+    if(!alreadyLive){
+      state.drops.push({
+        x:(Number(e?.x)||0)+(randomUnit()*24-12),
+        y:(Number(e?.y)||0)+(randomUnit()*24-12),
+        kind:'collectAll',
+        rare:true,
+        spawnedWave:state.wave
+      });
+    }
+    // A due trigger is consumed even while the previous special is still live.
+    // This guarantees one item at most and keeps future gaps bounded.
+    advanceCollectAllSchedule(schedule,state.wave,!alreadyLive);
+    persistCheckpoint(alreadyLive?'collect-all-skipped':'collect-all-spawned');
+    return !alreadyLive;
   }
   function collectDrop(drop,p){
     if(drop.kind==='collectAll'){
@@ -872,6 +999,9 @@ window.MoguriaGame = (() => {
       pushFx({x:drop.x,y:drop.y,r:110,life:.72,type:'waveClear'});
       addFx(drop.x,drop.y,'ぜんぶあつまれ！','#dffcff');
       MoguriaAudio?.play('rare');
+      // Persist after marking the live special dead. Reloading can therefore
+      // never recreate an item that was already picked up.
+      persistCheckpoint('collect-all-picked');
       return;
     }
     if(drop.kind==='heal'){
@@ -911,6 +1041,15 @@ window.MoguriaGame = (() => {
       if(Math.hypot(p.x-drop.x,p.y-drop.y)<30) collectDrop(drop,p);
     }
   }
+  function trimRuntimeDrops(){
+    const active=state.drops.filter(drop=>drop&&!drop.dead);
+    const special=active.find(drop=>drop.kind==='collectAll')||null;
+    const regular=active.filter(drop=>drop.kind!=='collectAll');
+    const configuredLimit=Number(MoguriaConfig.performance.maxDrops);
+    const limit=Number.isFinite(configuredLimit)?Math.max(0,Math.floor(configuredLimit)):120;
+    state.drops=limit?regular.slice(-limit):[];
+    if(special) state.drops.push(special);
+  }
   function killEnemy(e,source){
     const p=state.p; state.stats.kills++; state.stats.combo=(state.stats.combo||0)+1; state.stats.bestCombo=Math.max(state.stats.bestCombo||0,state.stats.combo||0); state.comboTimer=1.55; MoguriaAudio?.play('kill'); if(source==='poison') state.stats.poisonKills++; if(e.kind==='rare'){ state.stats.rareKills++; pushFx({x:e.x,y:e.y,r:82,life:.9,type:'rareBurst'}); sparkleBurst(e.x,e.y,38,'#ffd15c'); }
     if((state.stats.combo>=10 && state.stats.combo%10===0) && state.chainCueCd<=0){ state.chainCueCd=.9; MoguriaAudio?.play('chain'); pushFx({x:p.x,y:p.y,r:92+state.stats.combo*2.2,life:.52,type:'megaChain'}); }
@@ -921,7 +1060,7 @@ window.MoguriaGame = (() => {
     if(Math.random()<((e.kind==='boss'||e.kind==='midBoss') ? .75 : e.kind==='rare' ? .45 : .075)){
       state.drops.push({x:e.x+(Math.random()*32-16),y:e.y+(Math.random()*32-16),kind:'heal',heal:e.kind==='normal'?18:34,rare:e.kind!=='normal'});
     }
-    maybeDropCollectAll(e);
+    recordCollectAllDefeat(e);
     if(p.lifesteal) p.hp=Math.min(p.maxHp,p.hp+p.lifesteal);
     if(e.splitOnDeath && e.kind==='normal'){ for(let i=0;i<2;i++){ const child={...e,id:Date.now()+Math.random(),name:'ちびぷに',maxHp:18,hp:18,r:10,dmg:6,exp:3,speed:58,splitOnDeath:false,behavior:'swarm',x:e.x+(i?18:-18),y:e.y+(Math.random()*16-8),kind:'normal',poison:0,poisonTick:0,slow:0,hitFlash:0}; state.enemies.push(child); } }
     if(Math.random()<p.killExplodeChance || (p.toxicBurst && e.poison>0)){ explosion(e.x,e.y,p.explosionRadius,p.explosionPower,true); }

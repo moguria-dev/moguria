@@ -9,16 +9,27 @@ const vm = require('node:vm');
 const ROOT = path.resolve(__dirname, '..');
 const SOURCE = fs.readFileSync(path.join(ROOT, 'js/battle-v3-scene.js'), 'utf8');
 
+function pngDimensions(bytes) {
+  assert.equal(bytes.toString('ascii', 1, 4), 'PNG');
+  return {
+    width: bytes.readUInt32BE(16),
+    height: bytes.readUInt32BE(20),
+    colorType: bytes[25]
+  };
+}
+
 function chainableLayer(key) {
   return {
     key,
     alpha: 1,
+    visible: true,
     displayWidth: 0,
     displayHeight: 0,
     setOrigin() { return this; },
     setScrollFactor(value) { this.scrollFactor = value; return this; },
     setDepth(value) { this.depth = value; return this; },
     setAlpha(value) { this.alpha = value; return this; },
+    setVisible(value) { this.visible = value; return this; },
     setDisplaySize(width, height) { this.displayWidth = width; this.displayHeight = height; return this; },
     setPosition(x, y) { this.x = x; this.y = y; return this; }
   };
@@ -46,6 +57,11 @@ function createHarness(options = {}) {
   const appHeight = options.appHeight ?? 844;
   const parentWidth = options.parentWidth ?? 0;
   const parentHeight = options.parentHeight ?? 0;
+  const mediaQuery = {
+    matches: Boolean(options.reducedMotion),
+    addEventListener() {},
+    removeEventListener() {}
+  };
   const app = {
     clientWidth: appWidth,
     clientHeight: appHeight,
@@ -86,7 +102,11 @@ function createHarness(options = {}) {
     clearTimeout,
     addEventListener() {},
     removeEventListener() {},
-    MoguriaPerformance: { getQuality: () => 'high' },
+    MoguriaPerformance: { getQuality: () => options.quality || 'high' },
+    matchMedia(query) {
+      assert.equal(query, '(prefers-reduced-motion: reduce)');
+      return mediaQuery;
+    },
     document: {
       body: {
         classList: {
@@ -192,7 +212,7 @@ test('visible battle uses the same PC and mobile dimensions as its DOM HUD', () 
   }
 });
 
-test('backgrounds use one oversized non-repeating image per visible depth layer', () => {
+test('backgrounds show ordered parallax during an ordinary 120px move', () => {
   const harness = createHarness();
   harness.context.MoguriaBattleV3.boot({ parent: harness.parent });
   const scene = harness.makeScene();
@@ -201,39 +221,49 @@ test('backgrounds use one oversized non-repeating image per visible depth layer'
 
   assert.equal(harness.imageCalls.length, 4);
   assert.deepEqual(harness.imageCalls.map(layer => layer.alpha), [1, 0.34, 0.48, 0.54]);
-  assert.ok(harness.imageCalls.every(layer => layer.displayWidth === 542));
+  assert.ok(harness.imageCalls.every(layer => layer.displayWidth === 638));
   assert.ok(harness.imageCalls.every(layer => layer.displayHeight === layer.displayWidth * 2));
-  scene.stateTime = 0;
+  scene.stateTime = 1.5;
   scene.syncBackgrounds({ x: 0, y: 0 });
   const centered = harness.imageCalls.map(layer => ({ x: layer.x, y: layer.y }));
-  scene.stateTime = 1.5;
-  scene.syncBackgrounds({ x: 740, y: -740 });
+  scene.syncBackgrounds({ x: 120, y: 0 });
   const moved = harness.imageCalls.map(layer => ({ x: layer.x, y: layer.y }));
+  const travel = moved.map((position, index) => Math.abs(position.x - centered[index].x));
   assert.ok(moved.every((position, index) => position.x !== centered[index].x || position.y !== centered[index].y));
-  assert.ok(Math.abs(moved[3].x - centered[3].x) > Math.abs(moved[0].x - centered[0].x));
-  assert.ok(moved.every(position => Math.abs(position.x - 215) <= 52.01));
-  assert.ok(moved.every(position => Math.abs(position.y - 422) <= 116.01));
-  assert.deepEqual(Array.from(scene.layouts.mogu.idle.frames), [0, 1, 2, 3]);
-  assert.deepEqual(Array.from(scene.layouts.mogu.move.frames), [4, 5, 6, 7]);
-  assert.deepEqual(Array.from(scene.layouts.mogu.attack.frames), [8, 9, 10, 11]);
-  assert.equal(scene.assets.sheets.mogu.src, 'assets/images/battle-v3/mogu-atlas-hd.png');
-  assert.equal(scene.assets.sheets.mogu.frameWidth, 320);
+  assert.ok(travel[0] > 5, `far layer only moved ${travel[0]}px`);
+  assert.ok(travel[1] > 9, `mid layer only moved ${travel[1]}px`);
+  assert.ok(travel[2] > 17, `ground layer only moved ${travel[2]}px`);
+  assert.ok(travel[3] > 28, `foreground layer only moved ${travel[3]}px`);
+  assert.ok(travel.every((value, index) => index === 0 || value > travel[index - 1]));
+  assert.deepEqual(Array.from(scene.layouts.mogu.idle.frames), [0, 1, 2, 3, 4, 5]);
+  assert.deepEqual(Array.from(scene.layouts.mogu.move.frames), [6, 7, 8, 9, 10, 11]);
+  assert.deepEqual(Array.from(scene.layouts.mogu.attack.frames), [12, 13, 14, 15, 16, 17, 18, 19]);
+  assert.match(scene.assets.sheets.mogu.src, /mogu-atlas-hd-v2\.png\?v=20260812-battle-motion-2$/);
+  assert.equal(scene.assets.sheets.mogu.frameWidth, 256);
 
   harness.context.MoguriaBattleV3.stop({ destroy: true, restoreLegacy: true });
 });
 
-test('hero atlas is an RGBA sheet with aligned 320px cells', () => {
-  const atlasPath = path.join(ROOT, 'assets/images/battle-v3/mogu-atlas-hd.png');
+test('v2 actor atlases are RGBA sheets with complete regular cells', () => {
+  const atlasPath = path.join(ROOT, 'assets/images/battle-v3/mogu-atlas-hd-v2.png');
   const bytes = fs.readFileSync(atlasPath);
-  assert.equal(bytes.toString('ascii', 1, 4), 'PNG');
-  assert.equal(bytes.readUInt32BE(16), 1280);
-  assert.equal(bytes.readUInt32BE(20), 1280);
-  assert.equal(bytes[25], 6, 'PNG color type must be truecolor with alpha');
+  assert.deepEqual(pngDimensions(bytes), { width:1536, height:1024, colorType:6 });
 
   const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'assets/images/battle-v3/atlas.json'), 'utf8'));
-  assert.equal(manifest.atlases.mogu.image, 'mogu-atlas-hd.png');
-  assert.deepEqual(manifest.atlases.mogu.cell, { width: 320, height: 320 });
-  assert.deepEqual(manifest.atlases.mogu.states.attack, [8, 9, 10, 11]);
+  assert.equal(manifest.version, 2);
+  assert.equal(manifest.atlases.mogu.image, 'mogu-atlas-hd-v2.png');
+  assert.deepEqual(manifest.atlases.mogu.cell, { width: 256, height: 256 });
+  assert.deepEqual(manifest.atlases.mogu.states.attack, [12, 13, 14, 15, 16, 17, 18, 19]);
+  assert.equal(manifest.atlases.enemy.columns * manifest.atlases.enemy.rows, 24);
+  assert.equal(manifest.atlases.boss.columns * manifest.atlases.boss.rows, 16);
+  assert.deepEqual(
+    pngDimensions(fs.readFileSync(path.join(ROOT, 'assets/images/battle-v3/enemy-atlas-v2.png'))),
+    { width:1152, height:768, colorType:6 }
+  );
+  assert.deepEqual(
+    pngDimensions(fs.readFileSync(path.join(ROOT, 'assets/images/battle-v3/boss-atlas-v2.png'))),
+    { width:2048, height:512, colorType:6 }
+  );
 });
 
 test('enemy and boss actions compose semantic multi-frame animation', () => {
@@ -241,13 +271,108 @@ test('enemy and boss actions compose semantic multi-frame animation', () => {
   harness.context.MoguriaBattleV3.boot({ parent: harness.parent });
   const scene = harness.makeScene();
 
-  assert.deepEqual(Array.from(scene.variantLayouts.enemy.soft.attack.frames), [1, 2, 0]);
-  assert.deepEqual(Array.from(scene.variantLayouts.enemy.ghost.hurt.frames), [15, 12]);
-  assert.deepEqual(Array.from(scene.variantLayouts.boss.midBoss.telegraph.frames), [0, 1]);
-  assert.deepEqual(Array.from(scene.variantLayouts.boss.midBoss.attack.frames), [1, 2, 3]);
-  assert.deepEqual(Array.from(scene.variantLayouts.boss.boss.attack.frames), [5, 6, 7]);
+  assert.deepEqual(Array.from(scene.variantLayouts.enemy.soft.attack.frames), [2, 3, 4, 0, 1]);
+  assert.deepEqual(Array.from(scene.variantLayouts.enemy.ghost.hurt.frames), [23, 18, 19]);
+  assert.deepEqual(Array.from(scene.variantLayouts.boss.midBoss.telegraph.frames), [0, 1, 2, 3]);
+  assert.deepEqual(Array.from(scene.variantLayouts.boss.midBoss.attack.frames), [2, 3, 4, 5, 6, 7]);
+  assert.deepEqual(Array.from(scene.variantLayouts.boss.boss.attack.frames), [10, 11, 12, 13, 14, 15]);
   assert.equal(scene.actorVariant('boss', { kind: 'midBoss', phase2: true }), 'midBoss');
   assert.equal(scene.actorVariant('boss', { kind: 'boss', phase2: false }), 'boss');
+
+  harness.context.MoguriaBattleV3.stop({ destroy: true, restoreLegacy: true });
+});
+
+test('reduced motion keeps semantic animation and player-linked parallax', () => {
+  const harness = createHarness({ reducedMotion: true });
+  harness.context.MoguriaBattleV3.boot({ parent: harness.parent });
+  const scene = harness.makeScene();
+  scene.createBackgrounds();
+  scene.cameras = { main: { resetFX() {} } };
+
+  scene.stateTime = 0;
+  scene.syncBackgrounds({ x: 0, y: 0 });
+  const atRest = harness.imageCalls.map(layer => ({ x: layer.x, y: layer.y }));
+  scene.stateTime = 30;
+  scene.syncBackgrounds({ x: 0, y: 0 });
+  assert.deepEqual(harness.imageCalls.map(layer => ({ x: layer.x, y: layer.y })), atRest, 'ambient drift must be suppressed');
+
+  scene.syncBackgrounds({ x: 120, y: 0 });
+  assert.ok(Math.abs(harness.imageCalls[3].x - atRest[3].x) > 28, 'movement-linked foreground parallax must remain');
+
+  const animation = {
+    timeScale: 0,
+    pauses: 0,
+    resumes: 0,
+    pause() { this.pauses += 1; },
+    resume() { this.resumes += 1; }
+  };
+  scene.playerSprite = { anims: animation };
+  scene.lastState = { mode: 'run' };
+  scene.animationPauseSignature = '';
+  scene.applyMotionPreference();
+  assert.equal(animation.pauses, 0);
+  assert.equal(animation.resumes, 1);
+  assert.equal(animation.timeScale, 1);
+
+  harness.context.MoguriaBattleV3.stop({ destroy: true, restoreLegacy: true });
+});
+
+test('attack animations preserve every pose and same-key attacks restart', () => {
+  const harness = createHarness();
+  harness.context.MoguriaBattleV3.boot({ parent: harness.parent });
+  const scene = harness.makeScene();
+  const frameCounts = {
+    'moguria-v3-mogu': 24,
+    'moguria-v3-enemy': 24,
+    'moguria-v3-companion': 8,
+    'moguria-v3-boss': 16
+  };
+  const created = [];
+  scene.textures = {
+    exists: key => key in frameCounts,
+    get: key => ({ getFrameNames: () => Array.from({ length: frameCounts[key] }, (_, index) => index) })
+  };
+  scene.anims = {
+    exists: () => false,
+    create(definition) { created.push(definition); }
+  };
+  scene.registerAnimations();
+
+  const heroAttack = created.find(item => item.key === 'moguria-v3-mogu-default-attack');
+  assert.ok(heroAttack);
+  assert.equal(heroAttack.frames.length, 8);
+  assert.equal(heroAttack.frameRate, 14);
+  assert.equal(heroAttack.skipMissedFrames, false);
+  assert.equal(created.find(item => item.key === 'moguria-v3-mogu-default-idle').skipMissedFrames, true);
+
+  scene.anims = { exists: key => key === 'moguria-v3-mogu-default-attack' };
+  const sprite = {
+    moguriaState: '',
+    playCalls: [],
+    play(...args) { this.playCalls.push(args); }
+  };
+  scene.setActorAnimation(sprite, 'mogu', 'attack');
+  sprite.moguriaState = '';
+  scene.setActorAnimation(sprite, 'mogu', 'attack');
+  assert.deepEqual(sprite.playCalls.map(call => call[1]), [false, false]);
+
+  harness.context.MoguriaBattleV3.stop({ destroy: true, restoreLegacy: true });
+});
+
+test('low quality keeps the foreground and full animation speed', () => {
+  const harness = createHarness({ quality: 'low' });
+  harness.context.MoguriaBattleV3.boot({ parent: harness.parent });
+  const scene = harness.makeScene();
+  scene.createBackgrounds();
+  const animation = { timeScale: 0, pause() {}, resume() {} };
+  scene.playerSprite = { anims: animation };
+  scene.lastState = { mode: 'run' };
+
+  scene.applyQuality(true);
+
+  assert.equal(harness.imageCalls[3].visible, true);
+  assert.equal(harness.imageCalls[3].alpha, harness.imageCalls[3].baseAlpha * 0.5);
+  assert.equal(animation.timeScale, 1);
 
   harness.context.MoguriaBattleV3.stop({ destroy: true, restoreLegacy: true });
 });
@@ -266,6 +391,90 @@ test('hero attack state requires the explicit emitted-shot timer', () => {
   scene.stateTime = 5;
   track.attackUntil = 6;
   assert.equal(scene.inferredState('enemy', { hp: 10, visualState: 'move', behavior: 'ranged' }, track), 'attack');
+
+  harness.context.MoguriaBattleV3.stop({ destroy: true, restoreLegacy: true });
+});
+
+test('a short boss execute state remains latched long enough to finish its release', () => {
+  const harness = createHarness();
+  harness.context.MoguriaBattleV3.boot({ parent: harness.parent });
+  const scene = harness.makeScene();
+  scene.stateTime = 3;
+
+  const entity = { id:'boss-1', x:0, y:0, hp:100, visualState:'telegraph', attackVisualTimer:0 };
+  let track = scene.sampleMotion('enemy:boss-1', entity);
+  assert.equal(scene.inferredState('boss', entity, track), 'telegraph');
+
+  scene.stateTime = 3.02;
+  entity.visualState = 'attack';
+  track = scene.sampleMotion('enemy:boss-1', entity);
+  assert.equal(scene.inferredState('boss', entity, track), 'attack');
+  const latchedUntil = track.semanticAttackUntil;
+  assert.ok(latchedUntil >= 3.63);
+
+  scene.stateTime = 3.28;
+  entity.visualState = 'recover';
+  track = scene.sampleMotion('enemy:boss-1', entity);
+  assert.equal(scene.inferredState('boss', entity, track), 'attack');
+
+  scene.stateTime = latchedUntil + 0.01;
+  track = scene.sampleMotion('enemy:boss-1', entity);
+  assert.equal(scene.inferredState('boss', entity, track), 'recover');
+
+  harness.context.MoguriaBattleV3.stop({ destroy: true, restoreLegacy: true });
+});
+
+test('a short core hit flash remains visible for the full enemy hurt sequence', () => {
+  const harness = createHarness();
+  harness.context.MoguriaBattleV3.boot({ parent: harness.parent });
+  const scene = harness.makeScene();
+  const entity = { x:0, y:0, hp:10, hitFlash:0, visualState:'move' };
+  scene.stateTime = 1;
+  let track = scene.sampleMotion('enemy:hit', entity);
+  assert.equal(scene.inferredState('enemy', entity, track), 'move');
+
+  scene.stateTime = 1.02;
+  entity.hitFlash = .08;
+  track = scene.sampleMotion('enemy:hit', entity);
+  assert.equal(scene.inferredState('enemy', entity, track), 'hurt');
+
+  scene.stateTime = 1.12;
+  entity.hitFlash = 0;
+  entity.visualState = 'move';
+  track = scene.sampleMotion('enemy:hit', entity);
+  assert.equal(scene.inferredState('enemy', entity, track), 'hurt');
+
+  scene.stateTime = 1.31;
+  track = scene.sampleMotion('enemy:hit', entity);
+  assert.equal(scene.inferredState('enemy', entity, track), 'move');
+
+  harness.context.MoguriaBattleV3.stop({ destroy: true, restoreLegacy: true });
+});
+
+test('a short enemy attack timer remains latched through its full release sequence', () => {
+  const harness = createHarness();
+  harness.context.MoguriaBattleV3.boot({ parent: harness.parent });
+  const scene = harness.makeScene();
+  const entity = { x:0, y:0, hp:10, attackVisualTimer:0, visualState:'move' };
+  scene.stateTime = 1;
+  let track = scene.sampleMotion('enemy:attack', entity);
+  assert.equal(scene.inferredState('enemy', entity, track), 'move');
+
+  scene.stateTime = 1.02;
+  entity.attackVisualTimer = .3;
+  track = scene.sampleMotion('enemy:attack', entity);
+  assert.equal(scene.inferredState('enemy', entity, track), 'attack');
+  const latchedUntil = track.semanticAttackUntil;
+  assert.ok(latchedUntil >= 1.43);
+
+  scene.stateTime = 1.34;
+  entity.attackVisualTimer = 0;
+  track = scene.sampleMotion('enemy:attack', entity);
+  assert.equal(scene.inferredState('enemy', entity, track), 'attack');
+
+  scene.stateTime = latchedUntil + .01;
+  track = scene.sampleMotion('enemy:attack', entity);
+  assert.equal(scene.inferredState('enemy', entity, track), 'move');
 
   harness.context.MoguriaBattleV3.stop({ destroy: true, restoreLegacy: true });
 });

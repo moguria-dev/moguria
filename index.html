@@ -5,15 +5,27 @@
  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
  <meta name="theme-color" content="#171025" />
  <title>Moguria v3.2.1</title>
- <link rel="stylesheet" href="style.css" />
+ <link rel="stylesheet" href="style.css?v=20260812-startup-loader-1" />
  <link rel="stylesheet" href="css/moguria-kv-visual-refresh.css?v=20260613-asset-rich" />
  <link rel="stylesheet" href="css/moguria-final-ui.css?v=20260803-home-layout-2" />
  <link rel="stylesheet" href="css/moguria-play-ui.css?v=20260812-battle-v3-2" />
  <link rel="stylesheet" href="css/moguria-battle-world.css?v=20260812-battle-v3-2" />
 </head>
-<body>
- <div id="app">
- <section id="home" class="screen active home-v2">
+<body class="moguria-booting">
+ <section id="startupLoader" class="startup-loader" aria-labelledby="startupLoaderTitle" aria-describedby="startupProgressText" aria-busy="true">
+ <div class="startup-loader__card">
+ <span class="startup-loader__star" aria-hidden="true">✦</span>
+ <p class="startup-loader__eyebrow">MOGURIA</p>
+ <h1 id="startupLoaderTitle">冒険の準備中</h1>
+ <div id="startupProgressBar" class="startup-loader__progress" role="progressbar" aria-label="ホーム画面の準備状況" aria-valuemin="0" aria-valuemax="18" aria-valuenow="0">
+ <i id="startupProgressFill"></i>
+ </div>
+ <p id="startupProgressText" class="startup-loader__status" role="status" aria-live="polite">データを確認しています</p>
+ <button id="startupRetryBtn" class="startup-loader__retry" type="button" hidden>もう一度ためす</button>
+ </div>
+ </section>
+ <div id="app" inert aria-hidden="true">
+ <section id="home" class="screen home-v2">
  <div class="home-v2__scene" aria-hidden="true">
  <div class="home-v2__moonbeam"></div>
  <div class="home-v2__warm-light"></div>
@@ -97,7 +109,7 @@
  <div id="artifactModal" class="modal artifact-choice-modal hidden" role="dialog" aria-modal="true" aria-labelledby="artifactTitle">
  <div class="modal-card artifact-card artifact-choice-sheet">
  <header class="artifact-choice-header">
- <span class="artifact-choice-header__core" aria-hidden="true"><img src="assets/images/kv-icons/artifact_core.png" alt="" /></span>
+ <span class="artifact-choice-header__core" aria-hidden="true"><img src="assets/images/kv-icons/artifact_core.png" alt="" loading="lazy" decoding="async" /></span>
  <div class="artifact-choice-header__copy">
  <p class="eyebrow">RELIC FOUND</p>
  <h2 id="artifactTitle">アーティファクトを選ぼう</h2>
@@ -115,7 +127,7 @@
  <h2>少し休憩しよう</h2>
  <p id="pauseSummary">Mogu、今の力を確認しているみたい。</p>
  </div>
- <img class="pause-card__mogu" src="assets/images/battle-v2/pause_mogu.webp" alt="" />
+ <img class="pause-card__mogu" src="assets/images/battle-v2/pause_mogu.webp" alt="" loading="lazy" decoding="async" />
  </header>
  <div id="pauseSkills" class="pause-skills"></div>
  <footer class="pause-card__actions">
@@ -163,10 +175,10 @@
  <script src="js/result.js"></script>
  <script src="js/home.js"></script>
  <script src="js/audio.js"></script>
- <script src="js/battle-v3-loader.js?v=20260812-battle-motion-1"></script>
- <script src="js/game.js?v=20260812-battle-motion-1"></script>
+ <script src="js/battle-v3-loader.js?v=20260812-battle-motion-2"></script>
+ <script src="js/game.js?v=20260812-battle-motion-2"></script>
  <script src="js/ui.js"></script>
- <script src="js/assetManager.js"></script>
+ <script src="js/assetManager.js?v=20260812-startup-loader-1"></script>
  <script src="js/performance.js"></script>
  <script src="js/network.js"></script>
  <script src="js/errorLog.js"></script>
@@ -174,8 +186,8 @@
  <script src="js/cheatMenu.js"></script>
  <script src="js/platform.js"></script>
  <script src="js/security.js"></script>
- <script src="js/main.js"></script>
- <script src="js/moguria-kv-visual-refresh.js?v=20260812-battle-v3-2"></script>
+ <script src="js/main.js?v=20260812-startup-loader-1"></script>
+ <script src="js/moguria-kv-visual-refresh.js?v=20260812-startup-loader-1"></script>
  <script src="js/moguria-final-ui.js?v=20260803-home-v2"></script>
 </body>
 </html>

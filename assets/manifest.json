@@ -1,7 +1,7 @@
 {
   "version": "3.2.1-battle-v3",
   "policy": {
-    "criticalBudgetMB": 2,
+    "criticalBudgetMB": 4,
     "initialAudio": "metadata-only",
     "lazyLoad": true,
     "remoteAssets": false
@@ -12,18 +12,6 @@
       "type": "image",
       "src": "assets/images/home-v2/home_bg_base.webp"
     },
-    {
-      "id": "home_v2_frame",
-      "type": "image",
-      "src": "assets/images/home-v2/frame_glass_gold_9slice.png"
-    },
-    {
-      "id": "home_v2_button_gold",
-      "type": "image",
-      "src": "assets/images/home-v2/button_gold_9slice.png"
-    }
-  ],
-  "lazy": [
     {
       "id": "home_v2_mogu",
       "type": "image",
@@ -40,9 +28,19 @@
       "src": "assets/images/home-v2/logo_moguria_home.png"
     },
     {
+      "id": "home_v2_frame",
+      "type": "image",
+      "src": "assets/images/home-v2/frame_glass_gold_9slice.png"
+    },
+    {
       "id": "home_v2_button",
       "type": "image",
       "src": "assets/images/home-v2/button_pearl_9slice.png"
+    },
+    {
+      "id": "home_v2_button_gold",
+      "type": "image",
+      "src": "assets/images/home-v2/button_gold_9slice.png"
     },
     {
       "id": "home_v2_icon_snack",
@@ -100,6 +98,7 @@
       "src": "assets/images/home-v2/expedition_mogu.png"
     }
   ],
+  "lazy": [],
   "packs": [
     {
       "id": "stage-yawaraka-forest",
@@ -110,15 +109,15 @@
       "id": "battle-v3",
       "label": "星影洞窟 battle-v3",
       "assets": [
-        { "id": "battle_v3_mogu", "type": "image", "src": "assets/images/battle-v3/mogu-atlas-hd.png" },
-        { "id": "battle_v3_enemies", "type": "image", "src": "assets/images/battle-v3/enemy-atlas.png" },
-        { "id": "battle_v3_companions", "type": "image", "src": "assets/images/battle-v3/companion-atlas.png" },
-        { "id": "battle_v3_bosses", "type": "image", "src": "assets/images/battle-v3/boss-atlas.png" },
-        { "id": "battle_v3_far", "type": "image", "src": "assets/images/battle-v3/bg-far.webp" },
-        { "id": "battle_v3_mid", "type": "image", "src": "assets/images/battle-v3/bg-mid.webp" },
-        { "id": "battle_v3_ground", "type": "image", "src": "assets/images/battle-v3/bg-ground.webp" },
-        { "id": "battle_v3_foreground", "type": "image", "src": "assets/images/battle-v3/bg-foreground.webp" },
-        { "id": "battle_v3_atlas_manifest", "type": "json", "src": "assets/images/battle-v3/atlas.json" }
+        { "id": "battle_v3_mogu", "type": "image", "src": "assets/images/battle-v3/mogu-atlas-hd-v2.png?v=20260812-battle-motion-2" },
+        { "id": "battle_v3_enemies", "type": "image", "src": "assets/images/battle-v3/enemy-atlas-v2.png?v=20260812-battle-motion-2" },
+        { "id": "battle_v3_companions", "type": "image", "src": "assets/images/battle-v3/companion-atlas.png?v=20260812-battle-motion-2" },
+        { "id": "battle_v3_bosses", "type": "image", "src": "assets/images/battle-v3/boss-atlas-v2.png?v=20260812-battle-motion-2" },
+        { "id": "battle_v3_far", "type": "image", "src": "assets/images/battle-v3/bg-far.webp?v=20260812-battle-motion-2" },
+        { "id": "battle_v3_mid", "type": "image", "src": "assets/images/battle-v3/bg-mid.webp?v=20260812-battle-motion-2" },
+        { "id": "battle_v3_ground", "type": "image", "src": "assets/images/battle-v3/bg-ground.webp?v=20260812-battle-motion-2" },
+        { "id": "battle_v3_foreground", "type": "image", "src": "assets/images/battle-v3/bg-foreground.webp?v=20260812-battle-motion-2" },
+        { "id": "battle_v3_atlas_manifest", "type": "json", "src": "assets/images/battle-v3/atlas.json?v=20260812-battle-motion-2" }
       ]
     },
     {

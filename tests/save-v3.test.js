@@ -169,7 +169,16 @@ test('checkpoint survives reload and the reloaded session reuses its runId', () 
         level: 4,
         exp: 3,
         nextExp: 29
-      }
+      },
+      collectAllSchedule: {
+        version: 1,
+        nextWave: 9,
+        triggerRatio: .58,
+        wave: 7,
+        waveKills: 1,
+        lastSpawnWave: 5
+      },
+      collectAllDrop: { x: 184, y: -92, kind: 'collectAll', rare: true, spawnedWave: 5 }
     }
   };
   assert.equal(firstPage.updateCheckpoint(started.runId, checkpoint).ok, true);
@@ -185,6 +194,10 @@ test('checkpoint survives reload and the reloaded session reuses its runId', () 
   assert.equal(loaded.activeRun.checkpoint.choiceType, 'skill');
   assert.deepEqual(Array.from(loaded.activeRun.checkpoint.pendingChoice.choiceIds), ['mini_mogu', 'guard_nut', 'quick_berry']);
   assert.equal(loaded.activeRun.checkpoint.pendingChoice.exp, 3);
+  assert.equal(loaded.activeRun.checkpoint.collectAllSchedule.nextWave, 9);
+  assert.equal(loaded.activeRun.checkpoint.collectAllSchedule.waveKills, 1);
+  assert.equal(loaded.activeRun.checkpoint.collectAllDrop.kind, 'collectAll');
+  assert.equal(loaded.activeRun.checkpoint.collectAllDrop.spawnedWave, 5);
   assert.equal(resumed.ok, true);
   assert.equal(resumed.reused, true);
   assert.equal(resumed.runId, started.runId);

@@ -6,11 +6,9 @@
   "use strict";
 
   var TAU = Math.PI * 2;
-  var ASSET_VERSION = "?v=20260613-asset-rich";
   var PLAY_ASSET_VERSION = "?v=20260804-motion-artifact-1";
   var SPRITE_BASE = "assets/images/kv-sprites/";
   var BATTLE_SPRITE_BASE = "assets/images/battle-v2/";
-  var ICON_BASE = "assets/images/kv-icons/";
 
   var battleSpriteNames = {
     mogu: "player_battle.webp",
@@ -32,19 +30,7 @@
     mine: "mine_star.png"
   };
 
-  var iconNames = {
-    fire: "skill_fire.png",
-    ice: "skill_ice.png",
-    poison: "skill_poison.png",
-    guard: "skill_guard.png",
-    star: "skill_star.png",
-    summon: "skill_summon.png",
-    cave: "skill_cave.png",
-    artifact: "artifact_core.png"
-  };
-
   var sprites = {};
-  var icons = {};
   var overlayCanvas = null;
   var overlayCtx = null;
   var worldLayer = null;
@@ -55,18 +41,7 @@
   var enemyTracks = new WeakMap();
   var lastWorldTransform = "";
 
-  function loadImages() {
-    // Battle-v3 owns every combat image and loads its pack only on entry.
-    // Keep this visual refresh focused on DOM UI decoration at startup.
-    Object.keys(iconNames).forEach(function (key) {
-      var img = new Image();
-      img.src = ICON_BASE + iconNames[key] + ASSET_VERSION;
-      icons[key] = img;
-    });
-  }
-
   function init() {
-    loadImages();
     document.body.classList.add("kv-visual-refresh");
 
     var mq = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)");

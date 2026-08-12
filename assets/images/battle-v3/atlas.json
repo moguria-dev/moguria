@@ -1,60 +1,60 @@
 {
-  "version": 1,
+  "version": 2,
   "cellOrigin": "top-left",
   "frameOrder": "row-major",
   "atlases": {
     "mogu": {
-      "image": "mogu-atlas-hd.png",
-      "width": 1280,
-      "height": 1280,
-      "columns": 4,
-      "rows": 4,
-      "cell": {
-        "width": 320,
-        "height": 320
-      },
-      "states": {
-        "idle": [0, 1, 2, 3],
-        "move": [4, 5, 6, 7],
-        "attack": [8, 9, 10, 11],
-        "hit": [12, 13],
-        "defeat": [14, 15]
-      }
-    },
-    "enemy": {
-      "image": "enemy-atlas.png",
-      "width": 1024,
+      "image": "mogu-atlas-hd-v2.png",
+      "width": 1536,
       "height": 1024,
-      "columns": 4,
+      "columns": 6,
       "rows": 4,
       "cell": {
         "width": 256,
         "height": 256
       },
       "states": {
+        "idle": [0, 1, 2, 3, 4, 5],
+        "move": [6, 7, 8, 9, 10, 11],
+        "attack": [12, 13, 14, 15, 16, 17, 18, 19],
+        "hit": [20, 21],
+        "defeat": [22, 23]
+      }
+    },
+    "enemy": {
+      "image": "enemy-atlas-v2.png",
+      "width": 1152,
+      "height": 768,
+      "columns": 6,
+      "rows": 4,
+      "cell": {
+        "width": 192,
+        "height": 192
+      },
+      "states": {
         "soft": {
-          "idle": 0,
-          "move": 1,
-          "attack": 2,
-          "hit": 3
+          "idle": [0, 1],
+          "move": [2, 3],
+          "attack": [4],
+          "hit": [5]
         },
         "bat": {
-          "idle": 4,
-          "move": 5,
-          "attack": 6,
-          "hit": 7
+          "idle": [6, 7],
+          "move": [8, 9],
+          "attack": [10],
+          "hit": [11]
         },
         "stone": {
-          "idle": 8,
-          "move": 9,
-          "attack": 10,
-          "hit": 11
+          "idle": [12, 13],
+          "move": [14, 15],
+          "attack": [16],
+          "hit": [17]
         },
         "ghost": {
-          "idle": 12,
-          "move": 13,
-          "attack": 14,
-          "hit": 15
+          "idle": [18, 19],
+          "move": [20, 21],
+          "attack": [22],
+          "hit": [23]
         }
       }
     },
@@ -77,10 +77,10 @@
       }
     },
     "boss": {
-      "image": "boss-atlas.png",
-      "width": 1024,
+      "image": "boss-atlas-v2.png",
+      "width": 2048,
       "height": 512,
-      "columns": 4,
+      "columns": 8,
       "rows": 2,
       "cell": {
         "width": 256,
@@ -88,16 +88,16 @@
       },
       "states": {
         "midBoss": {
-          "idle": 0,
-          "windup": 1,
-          "slam": 2,
-          "recover": 3
+          "idle": [0, 1],
+          "windup": [2, 3],
+          "slam": [4, 5],
+          "recover": [6, 7]
         },
         "boss": {
-          "idle": 4,
-          "windup": 5,
-          "burst": 6,
-          "enraged": 7
+          "idle": [8, 9],
+          "windup": [10, 11],
+          "burst": [12, 13],
+          "enraged": [14, 15]
         }
       }
     }

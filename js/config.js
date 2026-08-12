@@ -22,7 +22,7 @@
 
     assets: freeze({
       manifest: 'assets/manifest.json',
-      criticalBudgetMB: 2,
+      criticalBudgetMB: 4,
       lazyLoad: true,
       registerServiceWorker: false,
       cleanupOldServiceWorker: true
@@ -50,11 +50,19 @@
 
     combat: freeze({
       attackRange: 245,
+      attackAnimationSeconds: 0.62,
       summonRange: 275,
       rareArrowPadding: 34,
       lightningStartRange: 320,
       lightningChainRange: 175,
       lightningPlayerLimit: 390
+    }),
+
+    collectAll: freeze({
+      minWaveGap: 2,
+      maxWaveGap: 4,
+      minTriggerRatio: 0.35,
+      maxTriggerRatio: 0.70
     }),
 
     belly: freeze({

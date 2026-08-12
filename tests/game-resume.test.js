@@ -186,8 +186,11 @@ function prepareDropCombat(harness) {
   return state;
 }
 
-function defeatEnemy(harness, kind = 'normal', id = 100) {
+function defeatEnemy(harness, kind = 'normal', id = 100, options = {}) {
   const state = prepareDropCombat(harness);
+  if (Number.isFinite(options.wave)) state.wave = options.wave;
+  if (Number.isFinite(options.waveTarget)) state.waveTarget = options.waveTarget;
+  if (options.schedule) state.collectAllSchedule = clone(options.schedule);
   const enemy = {
     id,
     name: kind === 'rare' ? '金のぷに' : kind === 'boss' ? 'もりの大ボス' : kind === 'midBoss' ? 'ねむり番長' : 'ぷに虫',
@@ -354,38 +357,178 @@ test('collect-all pickup force-magnets every current EXP and heal drop without c
   assert.equal(Number.isFinite(state.p.exp), true);
 });
 
-test('collect-all uses the specified per-kind rare chances', () => {
+test('collect-all schedules use uniform two-to-four-wave gaps and a bounded trigger point', () => {
   const cases = [
-    { kind: 'normal', random: .001, expected: true },
-    { kind: 'normal', random: .002, expected: false },
-    { kind: 'rare', random: .002, expected: true },
-    { kind: 'rare', random: .015, expected: false },
-    { kind: 'midBoss', random: .015, expected: true },
-    { kind: 'boss', random: .015, expected: true },
-    { kind: 'boss', random: .031, expected: false }
+    { random: 0, gap: 2, ratio: .35 },
+    { random: .5, gap: 3, ratio: .525 },
+    { random: .999999, gap: 4, ratio: .70 }
   ];
+  const gaps = [];
 
   for (const entry of cases) {
     const harness = createGameHarness(null, { random: () => entry.random });
-    const state = defeatEnemy(harness, entry.kind);
-    assert.equal(
-      state.drops.some(drop => drop.kind === 'collectAll'),
-      entry.expected,
-      `${entry.kind} at random=${entry.random}`
-    );
+    const schedule = harness.state.collectAllSchedule;
+    const gap = schedule.nextWave - schedule.wave;
+    gaps.push(gap);
+    assert.equal(gap, entry.gap);
+    assert.ok(Math.abs(schedule.triggerRatio - entry.ratio) < .000001);
+    assert.ok(schedule.triggerRatio >= .35 && schedule.triggerRatio <= .70);
   }
+  assert.equal(gaps.reduce((sum, gap) => sum + gap, 0) / gaps.length, 3);
 });
 
-test('only one uncollected collect-all item can exist at a time', () => {
-  const harness = createGameHarness(null, { random: () => 0 });
-  const state = defeatEnemy(harness, 'normal', 101);
-  assert.equal(state.drops.filter(drop => drop.kind === 'collectAll').length, 1);
+test('collect-all appears exactly at its planned kill and advances one bounded schedule', () => {
+  const harness = createGameHarness(null, { random: () => .9 });
+  const state = harness.state;
+  state.collectAllSchedule = {
+    version: 1,
+    nextWave: 2,
+    triggerRatio: .5,
+    wave: 2,
+    waveKills: 0,
+    lastSpawnWave: 0
+  };
 
-  defeatEnemy(harness, 'normal', 102);
+  for (let kill = 1; kill < 5; kill += 1) {
+    defeatEnemy(harness, 'normal', 100 + kill, { wave: 2, waveTarget: 10 });
+    assert.equal(state.drops.filter(drop => drop.kind === 'collectAll' && !drop.dead).length, 0);
+    assert.equal(state.collectAllSchedule.waveKills, kill);
+  }
+
+  defeatEnemy(harness, 'normal', 105, { wave: 2, waveTarget: 10 });
+  assert.equal(state.drops.filter(drop => drop.kind === 'collectAll' && !drop.dead).length, 1);
+  assert.equal(state.collectAllSchedule.lastSpawnWave, 2);
+  assert.equal(state.collectAllSchedule.nextWave, 6);
+  assert.ok(state.collectAllSchedule.triggerRatio >= .35 && state.collectAllSchedule.triggerRatio <= .70);
+
+  defeatEnemy(harness, 'normal', 106, { wave: 2, waveTarget: 10 });
   assert.equal(state.drops.filter(drop => drop.kind === 'collectAll' && !drop.dead).length, 1);
 });
 
-test('a real player shot exposes a short transient attack animation timer', () => {
+test('a due schedule is consumed without duplicating an already-live collect-all', () => {
+  const harness = createGameHarness(null, { random: () => .5 });
+  const state = prepareDropCombat(harness);
+  state.waveTarget = 10;
+  state.collectAllSchedule = {
+    version: 1,
+    nextWave: 2,
+    triggerRatio: .35,
+    wave: 2,
+    waveKills: 3,
+    lastSpawnWave: 1
+  };
+  state.drops.push({ x: 500, y: 0, kind: 'collectAll', rare: true, spawnedWave: 1 });
+
+  defeatEnemy(harness, 'normal', 201, { wave: 2, waveTarget: 10 });
+
+  assert.equal(state.drops.filter(drop => drop.kind === 'collectAll' && !drop.dead).length, 1);
+  assert.equal(state.collectAllSchedule.nextWave, 5);
+  assert.equal(state.collectAllSchedule.lastSpawnWave, 1);
+});
+
+test('checkpoint preserves collect-all plan, counter, and live item; pickup cannot resurrect it', () => {
+  const firstPage = createGameHarness(null, { random: () => .5 });
+  const firstState = prepareDropCombat(firstPage);
+  firstState.collectAllSchedule = {
+    version: 1,
+    nextWave: 5,
+    triggerRatio: .52,
+    wave: 2,
+    waveKills: 5,
+    lastSpawnWave: 2
+  };
+  firstState.drops = [{ x: 300, y: 0, kind: 'collectAll', rare: true, spawnedWave: 2 }];
+  assert.equal(firstPage.game.persistCheckpoint('pagehide').ok, true);
+
+  const secondPage = createGameHarness(firstPage.savedCheckpoint, { random: () => .5 });
+  assert.deepEqual(clone(secondPage.state.collectAllSchedule), clone(firstState.collectAllSchedule));
+  assert.equal(secondPage.state.drops.filter(drop => drop.kind === 'collectAll').length, 1);
+  assert.equal(secondPage.state.drops[0].spawnedWave, 2);
+
+  secondPage.state.introTimer = 0;
+  secondPage.state.wave = 2;
+  secondPage.state.floor = 2;
+  secondPage.state.waveState = 'spawning';
+  secondPage.state.waveTarget = 999;
+  secondPage.state.waveSpawned = 0;
+  secondPage.state.spawnCd = 999;
+  secondPage.state.p.x = 300;
+  secondPage.state.p.y = 0;
+  secondPage.game.devStep(.016);
+  assert.equal(secondPage.state.drops.some(drop => drop.kind === 'collectAll'), false);
+  assert.equal(secondPage.savedCheckpoint.collectAllDrop, null);
+  assert.equal(secondPage.savedCheckpoint.collectAllSchedule.nextWave, 5);
+
+  const thirdPage = createGameHarness(secondPage.savedCheckpoint, { random: () => .5 });
+  assert.equal(thirdPage.state.drops.some(drop => drop.kind === 'collectAll'), false);
+  assert.equal(thirdPage.state.collectAllSchedule.nextWave, 5);
+  assert.equal(thirdPage.state.collectAllSchedule.waveKills, 5);
+});
+
+test('legacy checkpoints without a collect-all schedule receive a future compatible plan', () => {
+  const firstPage = createGameHarness(null, { random: () => .5 });
+  const state = prepareDropCombat(firstPage);
+  assert.equal(firstPage.game.persistCheckpoint('pagehide').ok, true);
+  const legacyCheckpoint = clone(firstPage.savedCheckpoint);
+  delete legacyCheckpoint.collectAllSchedule;
+  delete legacyCheckpoint.collectAllDrop;
+
+  const restored = createGameHarness(legacyCheckpoint, { random: () => .5 });
+  assert.equal(restored.state.collectAllSchedule.wave, 2);
+  assert.equal(restored.state.collectAllSchedule.nextWave, 5);
+  assert.ok(restored.state.collectAllSchedule.triggerRatio >= .35);
+  assert.ok(restored.state.collectAllSchedule.triggerRatio <= .70);
+  assert.equal(restored.state.drops.some(drop => drop.kind === 'collectAll'), false);
+});
+
+test('collect-all survives the normal runtime drop cap as a reserved special slot', () => {
+  const harness = createGameHarness();
+  const state = prepareDropCombat(harness);
+  state.p.nextExp = 1000000;
+  state.drops = [
+    ...Array.from({ length: 160 }, (_, index) => ({ x: 500 + index, y: 500, kind: 'exp', exp: 1 })),
+    { x: 700, y: 700, kind: 'collectAll', rare: true, spawnedWave: 2 }
+  ];
+
+  harness.game.devStep(.016);
+
+  assert.equal(state.drops.filter(drop => drop.kind === 'exp').length, 130);
+  assert.equal(state.drops.filter(drop => drop.kind === 'collectAll').length, 1);
+  assert.equal(state.drops.length, 131);
+});
+
+test('a final-boss collect-all is consumed before the return cue can strand it', () => {
+  const harness = createGameHarness(null, { random: () => .5 });
+  const state = defeatEnemy(harness, 'boss', 912, {
+    wave: 12,
+    waveTarget: 1,
+    schedule: {
+      version:1,
+      nextWave:12,
+      triggerRatio:.5,
+      wave:12,
+      waveKills:0,
+      lastSpawnWave:9
+    }
+  });
+  assert.equal(state.drops.filter(drop => drop.kind === 'collectAll' && !drop.dead).length, 1);
+  state.p.nextExp = 10000;
+  state.p.exp = 0;
+  state.p.hp = 50;
+
+  for(let frame = 0; frame < 35 && !state.cleared; frame += 1) harness.game.devStep(.033);
+
+  assert.equal(state.cleared, true);
+  assert.equal(state.drops.some(drop => drop.kind === 'collectAll'), false);
+  assert.equal(state.drops.some(drop => drop.kind === 'exp' || drop.kind === 'heal'), false);
+  assert.equal(state.p.exp, 4);
+  assert.equal(state.p.hp, 84);
+  assert.equal(harness.savedCheckpoint.collectAllDrop, null);
+  assert.equal(harness.savedCheckpoint.player.numbers.exp, 4);
+  assert.equal(harness.savedCheckpoint.player.numbers.hp, 84);
+});
+
+test('a real player shot keeps the attack state long enough for all eight frames', () => {
   const harness = createGameHarness();
   const state = prepareDropCombat(harness);
   state.p.attackCd = 0;
@@ -397,10 +540,10 @@ test('a real player shot exposes a short transient attack animation timer', () =
 
   harness.game.devStep(.016);
   assert.equal(state.bullets.length, 1);
-  assert.equal(state.p.attackAnimTimer, .38);
+  assert.equal(state.p.attackAnimTimer, .62);
 
   harness.game.devStep(.033);
-  assert.ok(state.p.attackAnimTimer < .38);
+  assert.ok(state.p.attackAnimTimer < .62);
   assert.ok(state.p.attackAnimTimer > 0);
 });
 
