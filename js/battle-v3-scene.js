@@ -14,7 +14,7 @@
   const MAX_COMPANIONS = 6;
 
   const DEFAULT_ASSETS = Object.freeze({
-    manifest: Object.freeze({ key: 'moguria-v3-atlas-manifest', src: 'assets/images/battle-v3/atlas.json?v=20260812-battle-v3-2' }),
+    manifest: Object.freeze({ key: 'moguria-v3-atlas-manifest', src: 'assets/images/battle-v3/atlas.json?v=20260812-battle-motion-1' }),
     backgrounds: Object.freeze([
       Object.freeze({ key: 'moguria-v3-bg-far', src: 'assets/images/battle-v3/bg-far.webp', scrollFactor: 0.04, alpha: 1 }),
       Object.freeze({ key: 'moguria-v3-bg-mid', src: 'assets/images/battle-v3/bg-mid.webp', scrollFactor: 0.18, alpha: 0.34 }),
@@ -22,7 +22,7 @@
       Object.freeze({ key: 'moguria-v3-bg-foreground', src: 'assets/images/battle-v3/bg-foreground.webp', scrollFactor: 0.76, alpha: 0.54 })
     ]),
     sheets: Object.freeze({
-      mogu: Object.freeze({ key: 'moguria-v3-mogu', src: 'assets/images/battle-v3/mogu-atlas.png', frameWidth: 256, frameHeight: 256 }),
+      mogu: Object.freeze({ key: 'moguria-v3-mogu', src: 'assets/images/battle-v3/mogu-atlas-hd.png', frameWidth: 320, frameHeight: 320 }),
       enemy: Object.freeze({ key: 'moguria-v3-enemy', src: 'assets/images/battle-v3/enemy-atlas.png', frameWidth: 256, frameHeight: 256 }),
       companion: Object.freeze({ key: 'moguria-v3-companion', src: 'assets/images/battle-v3/companion-atlas.png', frameWidth: 256, frameHeight: 256 }),
       boss: Object.freeze({ key: 'moguria-v3-boss', src: 'assets/images/battle-v3/boss-atlas.png', frameWidth: 256, frameHeight: 256 })
@@ -33,18 +33,18 @@
   // state or the first frame, which lets art packs arrive independently.
   const DEFAULT_LAYOUTS = Object.freeze({
     mogu: Object.freeze({
-      idle: Object.freeze({ frames: Object.freeze([1, 2]), fps: 7, repeat: -1 }),
-      move: Object.freeze({ frames: Object.freeze([5, 6]), fps: 11, repeat: -1 }),
-      attack: Object.freeze({ frames: Object.freeze([9, 10]), fps: 15, repeat: 0 }),
+      idle: Object.freeze({ frames: Object.freeze([0, 1, 2, 3]), fps: 7, repeat: -1 }),
+      move: Object.freeze({ frames: Object.freeze([4, 5, 6, 7]), fps: 11, repeat: -1 }),
+      attack: Object.freeze({ frames: Object.freeze([8, 9, 10, 11]), fps: 12, repeat: 0 }),
       hurt: Object.freeze({ frames: Object.freeze([12, 13]), fps: 12, repeat: 0 }),
-      skill: Object.freeze({ frames: Object.freeze([9, 10]), fps: 12, repeat: 0 }),
+      skill: Object.freeze({ frames: Object.freeze([8, 9, 10, 11]), fps: 12, repeat: 0 }),
       defeat: Object.freeze({ frames: Object.freeze([14, 15]), fps: 7, repeat: 0 })
     }),
     enemy: Object.freeze({
       idle: Object.freeze({ frames: Object.freeze([0]), fps: 7, repeat: -1 }),
-      move: Object.freeze({ frames: Object.freeze([1]), fps: 10, repeat: -1 }),
-      attack: Object.freeze({ frames: Object.freeze([2]), fps: 13, repeat: 0 }),
-      hurt: Object.freeze({ frames: Object.freeze([3]), fps: 12, repeat: 0 })
+      move: Object.freeze({ frames: Object.freeze([0, 1]), fps: 9, repeat: -1 }),
+      attack: Object.freeze({ frames: Object.freeze([1, 2, 0]), fps: 12, repeat: 0 }),
+      hurt: Object.freeze({ frames: Object.freeze([3, 0]), fps: 11, repeat: 0 })
     }),
     companion: Object.freeze({
       idle: Object.freeze({ frames: Object.freeze([0, 1]), fps: 8, repeat: -1 }),
@@ -55,24 +55,24 @@
     }),
     boss: Object.freeze({
       idle: Object.freeze({ frames: Object.freeze([0]), fps: 6, repeat: -1 }),
-      move: Object.freeze({ frames: Object.freeze([0]), fps: 8, repeat: -1 }),
-      attack: Object.freeze({ frames: Object.freeze([2]), fps: 12, repeat: 0 }),
-      hurt: Object.freeze({ frames: Object.freeze([7]), fps: 10, repeat: 0 }),
-      telegraph: Object.freeze({ frames: Object.freeze([1]), fps: 9, repeat: -1 }),
-      recover: Object.freeze({ frames: Object.freeze([3]), fps: 7, repeat: 0 })
+      move: Object.freeze({ frames: Object.freeze([0, 1]), fps: 7, repeat: -1 }),
+      attack: Object.freeze({ frames: Object.freeze([1, 2, 3]), fps: 9, repeat: 0 }),
+      hurt: Object.freeze({ frames: Object.freeze([3, 0]), fps: 8, repeat: 0 }),
+      telegraph: Object.freeze({ frames: Object.freeze([0, 1]), fps: 7, repeat: -1 }),
+      recover: Object.freeze({ frames: Object.freeze([3, 0]), fps: 7, repeat: 0 })
     })
   });
 
   const DEFAULT_VARIANT_LAYOUTS = Object.freeze({
     enemy: Object.freeze({
-      soft: Object.freeze({ idle: { frames: [0] }, move: { frames: [1] }, attack: { frames: [2] }, hurt: { frames: [3] } }),
-      bat: Object.freeze({ idle: { frames: [4] }, move: { frames: [5] }, attack: { frames: [6] }, hurt: { frames: [7] } }),
-      stone: Object.freeze({ idle: { frames: [8] }, move: { frames: [9] }, attack: { frames: [10] }, hurt: { frames: [11] } }),
-      ghost: Object.freeze({ idle: { frames: [12] }, move: { frames: [13] }, attack: { frames: [14] }, hurt: { frames: [15] } })
+      soft: Object.freeze({ idle: { frames: [0] }, move: { frames: [0, 1] }, attack: { frames: [1, 2, 0] }, hurt: { frames: [3, 0] } }),
+      bat: Object.freeze({ idle: { frames: [4] }, move: { frames: [4, 5] }, attack: { frames: [5, 6, 4] }, hurt: { frames: [7, 4] } }),
+      stone: Object.freeze({ idle: { frames: [8] }, move: { frames: [8, 9] }, attack: { frames: [9, 10, 8] }, hurt: { frames: [11, 8] } }),
+      ghost: Object.freeze({ idle: { frames: [12] }, move: { frames: [12, 13] }, attack: { frames: [13, 14, 12] }, hurt: { frames: [15, 12] } })
     }),
     boss: Object.freeze({
-      phase1: Object.freeze({ idle: { frames: [0] }, move: { frames: [0] }, attack: { frames: [2] }, hurt: { frames: [3] }, telegraph: { frames: [1] }, recover: { frames: [3] } }),
-      phase2: Object.freeze({ idle: { frames: [4] }, move: { frames: [4] }, attack: { frames: [6] }, hurt: { frames: [7] }, telegraph: { frames: [5] }, recover: { frames: [7] } })
+      midBoss: Object.freeze({ idle: { frames: [0] }, move: { frames: [0, 1] }, attack: { frames: [1, 2, 3] }, hurt: { frames: [3, 0] }, telegraph: { frames: [0, 1] }, recover: { frames: [3, 0] } }),
+      boss: Object.freeze({ idle: { frames: [4] }, move: { frames: [4, 5] }, attack: { frames: [5, 6, 7] }, hurt: { frames: [7, 4] }, telegraph: { frames: [4, 5] }, recover: { frames: [7, 4] } })
     })
   });
 
@@ -213,6 +213,12 @@
     return layout;
   }
 
+  function composeManifestState(layout, stateName, values, metadata = {}) {
+    const frames = values.flatMap(value => frameDefinition(value).frames || []);
+    if (!frames.length) return;
+    layout[stateName] = frameDefinition({ ...metadata, frames }, layout[stateName] || {});
+  }
+
   function applyAtlasManifest(manifest, baseLayouts, customLayouts) {
     const layouts = Object.fromEntries(Object.entries(baseLayouts).map(([role, layout]) => [role, copyLayout(layout)]));
     const variants = copyVariantLayouts();
@@ -228,7 +234,14 @@
         variants.enemy = {};
         for (const [variant, states] of Object.entries(enemyStates)) {
           if (!states || typeof states !== 'object') continue;
-          variants.enemy[variant] = layoutFromStateMap(states, layouts.enemy);
+          const layout = layoutFromStateMap(states, layouts.enemy);
+          composeManifestState(layout, 'move', [states.idle, states.move], { fps: 9, repeat: -1 });
+          // Each enemy atlas row already contains a readable anticipation,
+          // release and neutral pose. Combining those semantic poses produces
+          // real frame animation without substituting the hurt drawing.
+          composeManifestState(layout, 'attack', [states.move, states.attack, states.idle], { fps: 12, repeat: 0 });
+          composeManifestState(layout, 'hurt', [states.hit ?? states.hurt, states.idle], { fps: 11, repeat: 0 });
+          variants.enemy[variant] = layout;
         }
         layouts.enemy = copyLayout(variants.enemy.soft || Object.values(variants.enemy)[0] || layouts.enemy);
       }
@@ -238,9 +251,9 @@
         variants.boss = {};
         for (const [variant, states] of Object.entries(bossStates)) {
           if (!states || typeof states !== 'object') continue;
+          const semanticVariant = variant === 'phase1' ? 'midBoss' : variant === 'phase2' ? 'boss' : variant;
           const layout = copyLayout(layouts.boss);
           if (states.idle != null) applyManifestState(layout, 'idle', states.idle);
-          if (states.idle != null) applyManifestState(layout, 'move', states.idle);
           if (states.windup != null) applyManifestState(layout, 'telegraph', states.windup);
           if (states.slam != null) applyManifestState(layout, 'attack', states.slam);
           if (states.burst != null) applyManifestState(layout, 'attack', states.burst);
@@ -249,9 +262,16 @@
             applyManifestState(layout, 'recover', states.enraged, 'enraged');
             applyManifestState(layout, 'hurt', states.enraged, 'enraged');
           }
-          variants.boss[variant] = layout;
+          const release = states.slam ?? states.burst;
+          const recovery = states.recover ?? states.enraged;
+          composeManifestState(layout, 'move', [states.idle, states.windup], { fps: 7, repeat: -1 });
+          composeManifestState(layout, 'telegraph', [states.idle, states.windup], { fps: 7, repeat: -1 });
+          composeManifestState(layout, 'attack', [states.windup, release, recovery], { fps: 9, repeat: 0 });
+          composeManifestState(layout, 'recover', [recovery, states.idle], { fps: 7, repeat: 0 });
+          composeManifestState(layout, 'hurt', [recovery, states.idle], { fps: 8, repeat: 0 });
+          variants.boss[semanticVariant] = layout;
         }
-        layouts.boss = copyLayout(variants.boss.phase1 || Object.values(variants.boss)[0] || layouts.boss);
+        layouts.boss = copyLayout(variants.boss.midBoss || Object.values(variants.boss)[0] || layouts.boss);
       }
     }
 
@@ -404,6 +424,7 @@
     if (/telegraph|warning|windup|chargeup|予兆/.test(text)) return 'telegraph';
     if (/recover|cooldown|stun|硬直|回復待ち/.test(text)) return 'recover';
     if (/skill|special|cast|magic|スキル|魔法/.test(text)) return 'skill';
+    if (/defeat|dead|down|death|敗北|倒れ/.test(text)) return 'defeat';
     if (/hurt|hit|damage|被弾|痛/.test(text)) return 'hurt';
     if (/attack|strike|shoot|slam|攻撃|射撃/.test(text)) return 'attack';
     if (/move|walk|run|chase|移動|追跡/.test(text)) return 'move';
@@ -442,6 +463,9 @@
         this.dropGraphics = null;
         this.effectGraphics = null;
         this.statusGraphics = null;
+        this.boundaryGraphics = null;
+        this.levelUpText = null;
+        this.levelCueSignature = '';
         this.floatingTexts = new Map();
         this.floatingTextIds = new WeakMap();
         this.floatingTextSerial = 0;
@@ -612,18 +636,37 @@
       }
 
       createDrawLayers() {
+        this.boundaryGraphics = this.add.graphics().setDepth(16);
         this.dropGraphics = this.add.graphics().setDepth(20);
         this.statusGraphics = this.add.graphics().setDepth(31);
         this.projectileGraphics = this.add.graphics().setDepth(50);
         this.effectGraphics = this.add.graphics().setDepth(70);
         this.projectileGraphics.setBlendMode?.(Phaser.BlendModes?.ADD ?? 1);
         this.effectGraphics.setBlendMode?.(Phaser.BlendModes?.ADD ?? 1);
+        const levelLabel = this.add.text?.(0, 0, '', {
+          fontFamily: '-apple-system, BlinkMacSystemFont, "Hiragino Sans", sans-serif',
+          fontSize: '27px',
+          fontStyle: 'bold',
+          color: '#fff4cf',
+          stroke: '#251333',
+          strokeThickness: 6,
+          align: 'center',
+          lineSpacing: 2
+        });
+        if (levelLabel) {
+          levelLabel.setOrigin?.(0.5);
+          levelLabel.setDepth?.(92);
+          levelLabel.setVisible?.(false);
+          this.levelUpText = levelLabel;
+        }
       }
 
       backgroundDisplaySize() {
         const width = Math.max(390, this.scale?.width || global.innerWidth || 390);
         const height = Math.max(844, this.scale?.height || global.innerHeight || 844);
-        const displayWidth = Math.max(width + 80, (height + 80) / 2);
+        // Leave enough non-repeating image outside the viewport for visible
+        // parallax while retaining a safe crop at every map edge.
+        const displayWidth = Math.max(width + 112, (height + 112) / 2);
         return { width: displayWidth, height: displayWidth * 2 };
       }
 
@@ -678,8 +721,10 @@
         this.syncEnemies(state, p);
         this.syncCompanions(state, p);
         this.drawTransientObjects(state, p);
+        this.drawMapBoundary(state, p);
+        this.syncLevelUpCue(state, p);
         this.syncCameraSignals(state);
-        this.applyAnimationPause(state.mode !== 'run');
+        this.applyAnimationPause(!['run', 'levelup', 'defeat'].includes(state.mode));
         return true;
       }
 
@@ -689,7 +734,18 @@
         const sampleTime = Number.isFinite(this.stateTime) ? this.stateTime : global.performance?.now?.() / 1000 || 0;
         let track = this.actorTracks.get(key);
         if (!track) {
-          track = { x, y, time: sampleTime, vx: 0, vy: 0, facing: 1, attackCd: Number(entity?.attackCd) || 0, attackUntil: 0 };
+          track = {
+            x,
+            y,
+            time: sampleTime,
+            vx: 0,
+            vy: 0,
+            facing: 1,
+            attackCd: Number(entity?.attackCd) || 0,
+            attackUntil: 0,
+            attackAnimTimer: Math.max(0, Number(entity?.attackAnimTimer) || Number(entity?.attackVisualTimer) || 0),
+            attackSerial: 0
+          };
           this.actorTracks.set(key, track);
           return track;
         }
@@ -702,6 +758,9 @@
         const attackCd = Number(entity?.attackCd);
         if (Number.isFinite(attackCd) && attackCd > track.attackCd + 0.2) track.attackUntil = sampleTime + 0.2;
         track.attackCd = Number.isFinite(attackCd) ? attackCd : track.attackCd;
+        const attackAnimTimer = Math.max(0, Number(entity?.attackAnimTimer) || Number(entity?.attackVisualTimer) || 0);
+        if (attackAnimTimer > track.attackAnimTimer + 0.05) track.attackSerial += 1;
+        track.attackAnimTimer = attackAnimTimer;
         track.x = x;
         track.y = y;
         track.time = sampleTime;
@@ -710,18 +769,24 @@
 
       inferredState(role, entity, track) {
         const explicit = explicitActorState(entity);
-        if (explicit) return explicit;
+        // Generic move/idle labels must not mask a newly detected enemy attack.
+        // Specific actions (hurt, telegraph, attack, recover...) stay authoritative.
+        if (explicit && explicit !== 'move' && explicit !== 'idle') return explicit;
+        if (role === 'mogu' && (Number(entity?.hp) || 0) <= 0) return 'defeat';
         if ((Number(entity?.hitFlash) || 0) > 0 || (role === 'mogu' && (Number(entity?.invuln) || 0) > 0.36)) return 'hurt';
         if (role === 'boss') {
           if ((Number(entity?.telegraphTimer) || 0) > 0 || (Number(entity?.warningTimer) || 0) > 0) return 'telegraph';
           if ((Number(entity?.recoverTimer) || 0) > 0 || (Number(entity?.stunTimer) || 0) > 0) return 'recover';
         }
-        if (track && this.stateTime < (track.attackUntil || 0)) return 'attack';
         if (role === 'mogu') {
-          const rate = Math.max(0.01, Number(entity?.attackRate) || 0.65);
-          if ((Number(entity?.attackCd) || 0) > rate * 0.72) return 'attack';
+          // The core raises this only when a projectile is actually emitted.
+          // Cooldown values alone previously made Mogu attack empty space.
+          if (Math.max(0, Number(entity?.attackAnimTimer) || Number(entity?.attackVisualTimer) || 0) > 0) return 'attack';
         }
+        if (role !== 'mogu' && Math.max(0, Number(entity?.attackAnimTimer) || Number(entity?.attackVisualTimer) || 0) > 0) return 'attack';
+        if (role !== 'mogu' && track && this.stateTime < (track.attackUntil || 0)) return 'attack';
         if (entity?.behavior === 'charge' && (Number(entity?.chargeCd) || 0) < 0.43) return 'attack';
+        if (explicit) return explicit;
         if (Math.hypot(track?.vx || 0, track?.vy || 0) > 12) return 'move';
         return 'idle';
       }
@@ -731,8 +796,12 @@
         const variants = this.variantLayouts[role] || {};
         if (requested && variants[requested]) return requested;
         if (role === 'boss') {
-          const phase = entity?.phase2 || Number(entity?.phase) >= 2 ? 'phase2' : 'phase1';
-          return variants[phase] ? phase : Object.keys(variants)[0] || 'default';
+          // Atlas rows represent two different characters, not two phases of
+          // one character. Phase 2 is expressed with tint and energy effects.
+          const kind = entity?.kind === 'midBoss' ? 'midBoss' : 'boss';
+          if (variants[kind]) return kind;
+          const legacy = kind === 'midBoss' ? 'phase1' : 'phase2';
+          return variants[legacy] ? legacy : Object.keys(variants)[0] || 'default';
         }
         if (role === 'enemy') {
           const behavior = String(entity?.behavior || '').toLowerCase();
@@ -766,12 +835,25 @@
         const y = reducedMotion ? 0 : Number(p.y) || 0;
         const centerX = Math.max(1, Number(this.scale?.width) || 390) / 2;
         const centerY = Math.max(1, Number(this.scale?.height) || 844) / 2;
+        const bounds = this.lastState?.mapBounds || { minX: -760, maxX: 760, minY: -760, maxY: 760 };
+        const maxX = Math.max(1, Math.abs(Number(bounds.minX) || 0), Math.abs(Number(bounds.maxX) || 0));
+        const maxY = Math.max(1, Math.abs(Number(bounds.minY) || 0), Math.abs(Number(bounds.maxY) || 0));
+        const normalizedX = Math.max(-1, Math.min(1, x / maxX));
+        const normalizedY = Math.max(-1, Math.min(1, y / maxY));
+        const maxFactor = Math.max(0.01, ...this.backgroundLayers.map(layer => Number(layer.parallaxFactor) || 0));
         for (let index = 0; index < this.backgroundLayers.length; index++) {
           const layer = this.backgroundLayers[index];
           const factor = Number(layer.parallaxFactor) || 0;
+          const strength = Math.max(0.12, Math.min(1, 0.08 + factor / maxFactor * 0.92));
+          const overscanX = Math.max(0, (Number(layer.displayWidth) - centerX * 2) / 2 - 4);
+          const overscanY = Math.max(0, (Number(layer.displayHeight) - centerY * 2) / 2 - 4);
+          const driftX = reducedMotion ? 0 : Math.sin(this.stateTime * (0.16 + index * 0.035) + index * 1.17) * (0.025 + index * 0.009);
+          const driftY = reducedMotion ? 0 : Math.cos(this.stateTime * (0.12 + index * 0.028) + index * 0.83) * (0.018 + index * 0.007);
+          const offsetX = overscanX * Math.max(-1, Math.min(1, normalizedX * strength + driftX));
+          const offsetY = overscanY * Math.max(-1, Math.min(1, normalizedY * strength + driftY));
           layer.setPosition?.(
-            centerX - x * factor * 0.05,
-            centerY - y * factor * 0.035 + index * 2
+            centerX - offsetX,
+            centerY - offsetY
           );
         }
       }
@@ -787,7 +869,12 @@
         sprite.setDisplaySize?.(126, 126);
         sprite.setDepth?.(40 + (Number(p.y) || 0) * 0.001);
         sprite.setAlpha?.((Number(p.invuln) || 0) > 0 && !reducedMotion ? 0.78 : 1);
-        const stateName = this.inferredState('mogu', p, track);
+        const cueRemaining = Number(state.levelUpCue?.remaining) || 0;
+        const stateName = cueRemaining > 0 ? 'skill' : this.inferredState('mogu', p, track);
+        if (stateName === 'attack' && sprite.moguriaAttackSerial !== track.attackSerial) {
+          sprite.moguriaAttackSerial = track.attackSerial;
+          sprite.moguriaState = '';
+        }
         this.setActorAnimation(sprite, 'mogu', stateName, this.actorVariant('mogu', p));
         this.applyProceduralActorMotion(sprite, 'mogu', p, stateName, 'player');
       }
@@ -818,7 +905,8 @@
           sprite.setFlipX?.(!boss && track.facing < 0);
           sprite.setDepth?.(30 + (Number(entity.y) || 0) * 0.001);
           sprite.setAlpha?.((Number(entity.hitFlash) || 0) > 0 ? 0.76 : 1);
-          if (entity.kind === 'rare') sprite.setTint?.(0xffd978);
+          if (boss && (entity.phase2 || Number(entity.phase) >= 2)) sprite.setTint?.(0xf0c4ff);
+          else if (entity.kind === 'rare') sprite.setTint?.(0xffd978);
           else if (entity.kind === 'midBoss') sprite.setTint?.(0xd9c4ff);
           else sprite.clearTint?.();
           const stateName = this.inferredState(role, entity, track);
@@ -910,15 +998,63 @@
         const seed = String(id || '').split('').reduce((sum, char) => sum + char.charCodeAt(0), 0) * 0.017;
         const time = this.stateTime + seed;
         const boss = role === 'boss';
-        const moving = stateName === 'move';
-        const attacking = stateName === 'attack' || stateName === 'telegraph' || stateName === 'skill';
-        const hurt = stateName === 'hurt';
-        const bob = Math.sin(time * (boss ? 2.5 : moving ? 8.2 : 3.8));
+        const baseScaleX = Math.abs(sprite.scaleX || 1);
+        const baseScaleY = Math.abs(sprite.scaleY || 1);
+        const direction = sprite.flipX ? -1 : 1;
+        const idleWave = Math.sin(time * (boss ? 2.5 : 3.8));
+        const actionWave = Math.sin(time * (boss ? 8.2 : 13.5));
+        let offsetX = 0;
+        let offsetY = idleWave * (boss ? 3.4 : 1.7);
+        let rotation = idleWave * 0.012;
+        let scaleX = 1 + idleWave * (boss ? 0.018 : 0.012);
+        let scaleY = 2 - scaleX;
+
+        if (stateName === 'move') {
+          const stride = Math.sin(time * (boss ? 5.2 : 9.4));
+          offsetX = direction * Math.max(1, Math.abs(stride) * (boss ? 2 : 3.6));
+          offsetY = stride * (boss ? 3.2 : 2.7);
+          rotation = stride * (boss ? 0.016 : 0.028) * direction;
+          scaleX = 1 + Math.abs(stride) * 0.035;
+          scaleY = 1 - Math.abs(stride) * 0.045;
+        } else if (stateName === 'telegraph') {
+          const charge = (Math.sin(time * 8) + 1) * 0.5;
+          offsetY = -charge * (boss ? 5 : 2.5);
+          rotation = actionWave * 0.012;
+          scaleX = 1 - charge * 0.055;
+          scaleY = 1 + charge * 0.085;
+        } else if (stateName === 'attack' || stateName === 'skill') {
+          const release = Math.max(0, actionWave);
+          offsetX = boss ? 0 : direction * release * (role === 'mogu' ? 7 : 5);
+          offsetY = -release * (boss ? 4 : 2.4);
+          rotation = actionWave * (boss ? 0.018 : 0.035) * direction;
+          scaleX = 1 + release * (boss ? 0.075 : 0.095);
+          scaleY = 1 - release * (boss ? 0.055 : 0.07);
+        } else if (stateName === 'hurt') {
+          const recoil = Math.sin(time * 35);
+          offsetX = recoil * (boss ? 4.5 : 3.2);
+          offsetY = Math.abs(recoil) * 1.5;
+          rotation = recoil * (boss ? 0.035 : 0.065);
+          scaleX = 1 - Math.abs(recoil) * 0.045;
+          scaleY = 1 + Math.abs(recoil) * 0.035;
+        } else if (stateName === 'recover') {
+          const settle = (Math.sin(time * 5.5) + 1) * 0.5;
+          offsetY = (boss ? 5 : 3) - settle * 2;
+          rotation = -direction * (boss ? 0.018 : 0.025);
+          scaleX = 1 + settle * 0.025;
+          scaleY = 1 - settle * 0.035;
+        } else if (stateName === 'defeat') {
+          offsetY = boss ? 8 : 5;
+          rotation = direction * 0.09;
+          scaleX = 1.04;
+          scaleY = 0.9;
+        }
+
+        const baseX = Number(entity?.x) || 0;
         const baseY = Number(entity?.y) || 0;
-        sprite.y = baseY + bob * (boss ? 3.4 : moving ? 2.8 : 1.7);
-        sprite.setRotation?.(hurt ? Math.sin(time * 34) * 0.045 : attacking ? Math.sin(time * 10) * 0.025 : bob * 0.012);
-        const pulse = attacking ? 1 + Math.max(0, Math.sin(time * 10)) * 0.045 : 1 + bob * (boss ? 0.018 : 0.012);
-        sprite.setScale?.(Math.abs(sprite.scaleX || 1) * pulse, Math.abs(sprite.scaleY || 1) * (2 - pulse));
+        sprite.x = baseX + offsetX;
+        sprite.y = baseY + offsetY;
+        sprite.setRotation?.(rotation);
+        sprite.setScale?.(baseScaleX * scaleX, baseScaleY * scaleY);
       }
 
       drawTransientObjects(state, p) {
@@ -954,17 +1090,7 @@
         }
 
         for (const drop of (state.drops || []).slice(-(quality === 'low' ? 60 : 110))) {
-          const x = Number(drop.x) || 0;
-          const y = Number(drop.y) || 0;
-          if (drop.kind === 'heal') {
-            this.dropGraphics.fillStyle(0x95e18a, 0.94);
-            this.dropGraphics.fillCircle(x, y, 8);
-            this.dropGraphics.fillStyle(0xffffff, 0.82);
-            this.dropGraphics.fillRect(x - 1.5, y - 6, 3, 12);
-            this.dropGraphics.fillRect(x - 6, y - 1.5, 12, 3);
-          } else {
-            this.drawStar(this.dropGraphics, x, y, drop.rare ? 11 : 8, drop.rare ? 5 : 3.5, 0xffe68b, 0.95);
-          }
+          this.drawDrop(drop);
         }
 
         for (const mine of state.mines || []) {
@@ -990,6 +1116,14 @@
             this.statusGraphics.strokeCircle(x, y, radius + 13);
             this.drawStar(this.statusGraphics, x, y - radius - 18, 7, 3.2, 0xffe68b, 0.96);
           }
+          if ((enemy.kind === 'boss' || enemy.kind === 'midBoss') && (enemy.phase2 || Number(enemy.phase) >= 2)) {
+            const phasePulse = reducedMotion ? 0 : Math.sin(this.stateTime * 6.4) * 3;
+            this.statusGraphics.lineStyle(4, 0xc994ff, 0.58);
+            this.statusGraphics.strokeCircle(x, y, radius + 17 + phasePulse);
+            this.statusGraphics.lineStyle(2, 0xffe39b, 0.5);
+            this.statusGraphics.strokeCircle(x, y, radius + 25 - phasePulse * 0.4);
+            this.drawStar(this.statusGraphics, x, y - radius - 25, 8, 3.5, 0xf4d7ff, 0.9);
+          }
           if ((Number(enemy.maxHp) || 0) > 40) this.drawHpBar(enemy);
         }
         this.drawPlayerStatus(state, p);
@@ -1012,6 +1146,131 @@
             this.effectGraphics.fillCircle(Number(particle.x) || 0, Number(particle.y) || 0, Math.max(1, Number(particle.r) || 2));
           }
         }
+      }
+
+      drawDrop(drop) {
+        const graphics = this.dropGraphics;
+        if (!graphics || !drop) return '';
+        const x = Number(drop.x) || 0;
+        const y = Number(drop.y) || 0;
+        if (drop.kind === 'collectAll') {
+          const pulse = reducedMotion ? 0 : Math.sin(this.stateTime * 7.5) * 2;
+          graphics.fillStyle(0x8e5bc7, 0.2);
+          graphics.fillCircle(x, y, 20 + pulse);
+          graphics.lineStyle(4, 0xd8a9ff, 0.88);
+          graphics.strokeCircle(x, y, 14 + pulse * 0.4);
+          graphics.lineStyle(2, 0xffe58f, 0.92);
+          graphics.strokeCircle(x, y, 9);
+          this.drawStar(graphics, x, y, 10, 4.4, 0xffed9e, 0.98);
+          for (let orbit = 0; orbit < 3; orbit++) {
+            const angle = this.stateTime * 1.8 + orbit * TAU / 3;
+            this.drawStar(graphics, x + Math.cos(angle) * 19, y + Math.sin(angle) * 12, 3.2, 1.4, 0xe5c6ff, 0.9);
+          }
+          return 'collectAll';
+        }
+        if (drop.kind === 'heal') {
+          graphics.fillStyle(0x95e18a, 0.94);
+          graphics.fillCircle(x, y, 8);
+          graphics.fillStyle(0xffffff, 0.82);
+          graphics.fillRect(x - 1.5, y - 6, 3, 12);
+          graphics.fillRect(x - 6, y - 1.5, 12, 3);
+          return 'heal';
+        }
+        this.drawStar(graphics, x, y, drop.rare ? 11 : 8, drop.rare ? 5 : 3.5, 0xffe68b, 0.95);
+        return 'exp';
+      }
+
+      drawMapBoundary(state, player) {
+        const graphics = this.boundaryGraphics;
+        graphics?.clear?.();
+        const bounds = state?.mapBounds;
+        if (!graphics || !bounds || !player) return false;
+        const minX = Number(bounds.minX);
+        const maxX = Number(bounds.maxX);
+        const minY = Number(bounds.minY);
+        const maxY = Number(bounds.maxY);
+        if (![minX, maxX, minY, maxY].every(Number.isFinite) || maxX <= minX || maxY <= minY) return false;
+        const x = Number(player.x) || 0;
+        const y = Number(player.y) || 0;
+        const distance = Math.min(x - minX, maxX - x, y - minY, maxY - y);
+        const proximity = Math.max(0, Math.min(1, (260 - distance) / 260));
+        if (proximity <= 0) return false;
+
+        const width = maxX - minX;
+        const height = maxY - minY;
+        const padding = Math.max(520, Number(this.cameras.main?.width) || 0, Number(this.cameras.main?.height) || 0);
+        const fogAlpha = 0.08 + proximity * 0.24;
+        graphics.fillStyle(0x06040f, fogAlpha);
+        graphics.fillRect(minX - padding, minY - padding, width + padding * 2, padding);
+        graphics.fillRect(minX - padding, maxY, width + padding * 2, padding);
+        graphics.fillRect(minX - padding, minY, padding, height);
+        graphics.fillRect(maxX, minY, padding, height);
+
+        graphics.lineStyle(10, 0x7d4db1, 0.2 + proximity * 0.38);
+        graphics.strokeRect(minX, minY, width, height);
+        graphics.lineStyle(3, 0xffdf8a, 0.36 + proximity * 0.54);
+        graphics.strokeRect(minX, minY, width, height);
+        graphics.lineStyle(1, 0xf0d4ff, 0.28 + proximity * 0.42);
+        graphics.strokeRect(minX + 7, minY + 7, width - 14, height - 14);
+
+        const markerStep = currentQuality() === 'low' ? 300 : 190;
+        for (let markerX = minX + markerStep / 2; markerX < maxX; markerX += markerStep) {
+          this.drawStar(graphics, markerX, minY, 5, 2.1, 0xffe7a2, 0.45 + proximity * 0.42);
+          this.drawStar(graphics, markerX, maxY, 5, 2.1, 0xffe7a2, 0.45 + proximity * 0.42);
+        }
+        for (let markerY = minY + markerStep / 2; markerY < maxY; markerY += markerStep) {
+          this.drawStar(graphics, minX, markerY, 5, 2.1, 0xdcb8ff, 0.45 + proximity * 0.42);
+          this.drawStar(graphics, maxX, markerY, 5, 2.1, 0xdcb8ff, 0.45 + proximity * 0.42);
+        }
+        return true;
+      }
+
+      syncLevelUpCue(state, player) {
+        const cue = state?.levelUpCue;
+        const remaining = Math.max(0, Number(cue?.remaining) || 0);
+        const duration = Math.max(0.1, Number(cue?.duration) || remaining || 0.75);
+        if (!cue || remaining <= 0 || !player) {
+          this.levelUpText?.setVisible?.(false);
+          return false;
+        }
+
+        const progress = Math.max(0, Math.min(1, 1 - remaining / duration));
+        const fade = Math.min(1, remaining / Math.min(0.2, duration * 0.28));
+        const x = Number(player.x) || 0;
+        const y = Number(player.y) || 0;
+        const radius = 38 + progress * 94;
+        const pulse = reducedMotion ? 0 : Math.sin(this.stateTime * 10) * 4;
+        this.effectGraphics.lineStyle(7, 0xffe18a, 0.72 * fade);
+        this.effectGraphics.strokeCircle(x, y, radius + pulse);
+        this.effectGraphics.lineStyle(3, 0xcda2ff, 0.78 * fade);
+        this.effectGraphics.strokeCircle(x, y, Math.max(20, radius * 0.72 - pulse));
+        for (let star = 0; star < 10; star++) {
+          const angle = star * TAU / 10 + (reducedMotion ? 0 : progress * 0.7);
+          const distance = radius * (0.62 + (star % 2) * 0.18);
+          this.drawStar(
+            this.effectGraphics,
+            x + Math.cos(angle) * distance,
+            y + Math.sin(angle) * distance,
+            star % 2 ? 5 : 7,
+            star % 2 ? 2.1 : 3,
+            star % 3 ? 0xffe69b : 0xd9b7ff,
+            0.86 * fade
+          );
+        }
+
+        const level = Math.max(1, Math.floor(Number(cue.level) || Number(player.lv) || 1));
+        this.levelUpText?.setText?.(`LEVEL UP!\nLv.${level}`);
+        this.levelUpText?.setPosition?.(x, y - 94 - progress * 10);
+        this.levelUpText?.setAlpha?.(fade);
+        this.levelUpText?.setScale?.(1 + (reducedMotion ? 0 : Math.sin(progress * Math.PI) * 0.12));
+        this.levelUpText?.setVisible?.(true);
+
+        const signature = `${level}:${duration}`;
+        if (signature !== this.levelCueSignature) {
+          this.levelCueSignature = signature;
+          this.cameraFx('zoom', { zoom: 1.055, duration: 130, hold: Math.max(180, duration * 1000 - 300) });
+        }
+        return true;
       }
 
       drawPlayerStatus(state, player) {
@@ -1284,7 +1543,7 @@
       }
 
       applyMotionPreference() {
-        this.applyAnimationPause(this.lastState?.mode !== 'run');
+        this.applyAnimationPause(!['run', 'levelup', 'defeat'].includes(this.lastState?.mode));
         if (reducedMotion) this.cameras.main.resetFX?.();
       }
 
@@ -1301,7 +1560,7 @@
         if (middle) middle.setAlpha?.(quality === 'low' ? middle.baseAlpha * 0.58 : middle.baseAlpha);
         const ground = this.backgroundLayers[2];
         if (ground) ground.setAlpha?.(quality === 'low' ? ground.baseAlpha * 0.72 : ground.baseAlpha);
-        this.applyAnimationPause(this.lastState?.mode !== 'run');
+        this.applyAnimationPause(!['run', 'levelup', 'defeat'].includes(this.lastState?.mode));
       }
 
       update(time, delta) {
@@ -1343,6 +1602,8 @@
         this.enemySprites.clear();
         this.companionSprites.clear();
         this.actorTracks.clear();
+        this.levelUpText?.destroy?.();
+        this.levelUpText = null;
         for (const label of this.floatingTexts.values()) label.destroy?.();
         this.floatingTexts.clear();
       }

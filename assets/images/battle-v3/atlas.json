@@ -4,19 +4,19 @@
   "frameOrder": "row-major",
   "atlases": {
     "mogu": {
-      "image": "mogu-atlas.png",
-      "width": 1024,
-      "height": 1024,
+      "image": "mogu-atlas-hd.png",
+      "width": 1280,
+      "height": 1280,
       "columns": 4,
       "rows": 4,
       "cell": {
-        "width": 256,
-        "height": 256
+        "width": 320,
+        "height": 320
       },
       "states": {
-        "idle": [1, 2],
-        "move": [5, 6],
-        "attack": [9, 10],
+        "idle": [0, 1, 2, 3],
+        "move": [4, 5, 6, 7],
+        "attack": [8, 9, 10, 11],
         "hit": [12, 13],
         "defeat": [14, 15]
       }
@@ -87,13 +87,13 @@
         "height": 256
       },
       "states": {
-        "phase1": {
+        "midBoss": {
           "idle": 0,
           "windup": 1,
           "slam": 2,
           "recover": 3
         },
-        "phase2": {
+        "boss": {
           "idle": 4,
           "windup": 5,
           "burst": 6,

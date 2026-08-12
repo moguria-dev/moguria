@@ -15,6 +15,9 @@ window.MoguriaGame = (() => {
       {id:'dash',telegraph:.64,duration:.54,recover:.78}
     ]
   };
+  const LEVEL_UP_CUE_SECONDS=.75;
+  const DEFEAT_CUE_SECONDS=.58;
+  const COLLECT_ALL_DROP_CHANCES=Object.freeze({normal:.0015,rare:.01,midBoss:.03,boss:.03});
   function init(){
     canvas=document.getElementById('gameCanvas'); ctx=canvas.getContext('2d'); resize();
     setupStick(); document.getElementById('giveupBtn').onclick=()=>endRun(true); document.getElementById('pauseBtn').onclick=()=>pauseRun(); document.getElementById('resumeBtn').onclick=()=>resumeRun(); document.getElementById('pauseGiveupBtn').onclick=()=>{ document.getElementById('pauseModal').classList.add('hidden'); endRun(true); };
@@ -92,7 +95,7 @@ window.MoguriaGame = (() => {
     else if(window.MoguriaMeta) MoguriaMeta.applyEquipmentToPlayer(player);
     state={ mode:'run', runId:String(options.runId||options.activeRun?.runId||''), startedAt:Number(options.activeRun?.startedAt)||Date.now(), p:player, enemies:[], bullets:[], enemyBullets:[], mines:[], fx:[], drops:[], companions:[], scheduled:[], dungeon:MoguriaDungeon.create(checkpoint?.dungeon?.seed||Date.now()), time:0, last:performance.now(), spawnCd:0, floor:1,
       wave:0, maxWave:MoguriaConfig.run.maxWave, timeLimit:MoguriaConfig.run.timeLimit||480, waveState:'ready', waveSpawned:0, waveTarget:0, waveClearTimer:0, cleared:false, timeout:false, introTimer:2.15, bossAlertTimer:0, clearTimer:0, mobEvent:null,
-      stats:{kills:0,maxDamage:0,totalDamage:0,shots:0,crits:0,hitsTaken:0,dodges:0,explosions:0,poisonKills:0,rareKills:0,bossKills:0,combo:0,bestCombo:0}, rerolls:MoguriaConfig.run.rerolls, bans:2, bannedSkills:[], pendingChoice:null, shake:0, hitStop:0, flash:0, particles:[], comboTimer:0, awakenTimer:0, dangerPulse:0, nearMissCd:0, bossPhaseTimer:0, artifactWaves:{}, mapBounds:{...MoguriaConfig.map}, depthCueShown:false, criticalCueCd:0, chainCueCd:0, returnGlow:0, checkpointElapsed:0, hudAt:0, finalizing:false };
+      stats:{kills:0,maxDamage:0,totalDamage:0,shots:0,crits:0,hitsTaken:0,dodges:0,explosions:0,poisonKills:0,rareKills:0,bossKills:0,combo:0,bestCombo:0}, rerolls:MoguriaConfig.run.rerolls, bans:2, bannedSkills:[], pendingChoice:null, levelUpCue:null, defeatCue:null, shake:0, hitStop:0, flash:0, particles:[], comboTimer:0, awakenTimer:0, dangerPulse:0, nearMissCd:0, bossPhaseTimer:0, artifactWaves:{}, mapBounds:{...MoguriaConfig.map}, depthCueShown:false, criticalCueCd:0, chainCueCd:0, returnGlow:0, checkpointElapsed:0, hudAt:0, finalizing:false };
     if(checkpoint) restoreCheckpoint(checkpoint);
     else { state.p.x=0; state.p.y=0; state.p.hp=state.p.maxHp; }
     if(state.pendingChoice) restorePendingChoice();
@@ -140,6 +143,7 @@ window.MoguriaGame = (() => {
       artifactWaves:{...(state.artifactWaves||{})},
       choiceType:pendingChoice?.type||null,
       pendingChoice,
+      defeated:state.mode==='defeat'||(Number(state.p.hp)||0)<=0,
       dungeon:{seed:state.dungeon?.seed||0}
     };
   }
@@ -165,7 +169,15 @@ window.MoguriaGame = (() => {
     state.pendingChoice=normalizePendingChoice(checkpoint.pendingChoice,checkpoint.choiceType);
     if(!state.pendingChoice) state.pendingChoice=inferLegacyPendingChoice(checkpoint,savedWave);
     const pendingWave=Math.max(0,Math.min(state.maxWave,Math.floor(Number(state.pendingChoice?.wave)||savedWave)));
-    if(state.pendingChoice?.type==='artifact'){
+    if(checkpoint.defeated || (Number(state.p.hp)||0)<=0){
+      state.p.hp=0;
+      state.wave=savedWave;
+      state.floor=Math.max(1,savedWave||1);
+      state.introTimer=0;
+      state.mode='defeat';
+      state.defeatCue={remaining:DEFEAT_CUE_SECONDS,duration:DEFEAT_CUE_SECONDS};
+      state.pendingChoice=null;
+    } else if(state.pendingChoice?.type==='artifact'){
       // The artifact modal opens only after this wave is cleared. Resume at the
       // cleared wave so choosing an artifact advances exactly once.
       state.wave=pendingWave;
@@ -442,8 +454,19 @@ window.MoguriaGame = (() => {
   function battleStep(dt){
     if(!state) return state;
     window.MoguriaPerformance?.recordFrame?.(dt*1000);
-    if(state.mode!=='run') return state;
     dt=Math.max(0,Math.min(.033,Number(dt)||0));
+    if(state.mode==='levelup'){
+      updateLevelUpCue(dt);
+      return state;
+    }
+    if(state.mode==='defeat'){
+      if(state.defeatCue){
+        state.defeatCue.remaining=Math.max(0,(Number(state.defeatCue.remaining)||0)-dt);
+        if(state.defeatCue.remaining<=0){ state.defeatCue=null; endRun(false); }
+      } else endRun(false);
+      return state;
+    }
+    if(state.mode!=='run') return state;
     if(state.hitStop>0){ state.hitStop=Math.max(0,state.hitStop-dt); return state; }
     state.time+=dt;
     state.checkpointElapsed=(state.checkpointElapsed||0)+dt;
@@ -464,7 +487,7 @@ window.MoguriaGame = (() => {
     const il=Math.hypot(ix,iy)||1; if(Math.hypot(ix,iy)>0){ix/=il;iy/=il;}
     p.x += ix*p.speed*dt; p.y += iy*p.speed*dt;
     const mb=state.mapBounds; p.x=Math.max(mb.minX+p.r,Math.min(mb.maxX-p.r,p.x)); p.y=Math.max(mb.minY+p.r,Math.min(mb.maxY-p.r,p.y));
-    p.invuln=Math.max(0,p.invuln-dt); p.attackCd-=dt;
+    p.invuln=Math.max(0,p.invuln-dt); p.attackCd-=dt; p.attackAnimTimer=Math.max(0,(p.attackAnimTimer||0)-dt);
     state.awakenTimer=Math.max(0,(state.awakenTimer||0)-dt);
     state.dangerPulse=Math.max(0,(state.dangerPulse||0)-dt); state.nearMissCd=Math.max(0,(state.nearMissCd||0)-dt); state.bossPhaseTimer=Math.max(0,(state.bossPhaseTimer||0)-dt); state.criticalCueCd=Math.max(0,(state.criticalCueCd||0)-dt); state.chainCueCd=Math.max(0,(state.chainCueCd||0)-dt); state.returnGlow=Math.max(0,(state.returnGlow||0)-dt);
     if(p.hp/p.maxHp<.28 && state.dangerPulse<=0){ state.dangerPulse=.75; state.flash=Math.max(state.flash,.08); } p.summonCd-=dt; if(p.regen>0) p.hp=Math.min(p.maxHp,p.hp+p.regen*dt);
@@ -511,7 +534,7 @@ window.MoguriaGame = (() => {
         if(l<260){ e.x-=dx/l*e.speed*.75*slowMul*dt; e.y-=dy/l*e.speed*.75*slowMul*dt; }
         else if(l>360){ e.x+=dx/l*e.speed*.55*slowMul*dt; e.y+=dy/l*e.speed*.55*slowMul*dt; }
         e.attackCd=(e.attackCd||1)-dt;
-        if(e.attackCd<=0 && l<520){ e.attackCd=e.kind==='midBoss'?1.15:2.1; addEnemyBullet(e.x,e.y,-dx/l*160,-dy/l*160,e.kind==='midBoss'?12:7); }
+        if(e.attackCd<=0 && l<520){ e.attackCd=e.kind==='midBoss'?1.15:2.1; e.attackVisualTimer=.3; addEnemyBullet(e.x,e.y,-dx/l*160,-dy/l*160,e.kind==='midBoss'?12:7); }
       } else if(e.behavior==='charge'){
         e.chargeCd=(e.chargeCd||1)-dt;
         const boost=e.chargeCd<.42?2.15:1;
@@ -526,8 +549,9 @@ window.MoguriaGame = (() => {
       const mb=state.mapBounds; e.x=Math.max(mb.minX+e.r,Math.min(mb.maxX-e.r,e.x)); e.y=Math.max(mb.minY+e.r,Math.min(mb.maxY-e.r,e.y));
       const contactDist=Math.hypot(p.x-e.x,p.y-e.y);
       e.hitFlash=Math.max(0,e.hitFlash-dt);
+      e.attackVisualTimer=Math.max(0,(Number(e.attackVisualTimer)||0)-dt);
       if(e.hitFlash>0 && !e.bossAction) e.visualState='hurt';
-      else if(!e.bossAction && e.visualState==='hurt') e.visualState='move';
+      else if(!e.bossAction && e.visualState==='hurt') e.visualState='';
       if(e.poison>0){ e.poison-=dt; e.poisonTick-=dt; if(e.poisonTick<=0){ e.poisonTick=.5; hurtEnemy(e,p.poisonPower,false,'poison'); } }
       if(contactDist>=e.r+p.r && contactDist<e.r+p.r+10 && p.invuln<=0 && state.nearMissCd<=0){
         state.nearMissCd=.9; state.hitStop=Math.max(state.hitStop,.018); addFx(p.x,p.y-22,'ぎりっ','#fff0a6'); MoguriaAudio?.play('miss'); pushFx({x:p.x,y:p.y,r:42,life:.26,type:'nearMiss'});
@@ -535,10 +559,11 @@ window.MoguriaGame = (() => {
       if(contactDist<e.r+p.r && p.invuln<=0){
         if(Math.random()<p.dodge){ state.stats.dodges++; p.invuln=.45; if(p.dodgeShot) shootAtNearest(7,true); if(p.dodgeBomb) explosion(p.x,p.y,p.explosionRadius*.8,18,true); }
         else { applyDamageToPlayer(e.dmg,.55); if(p.thorns) hurtEnemy(e,p.thorns,false,'thorn'); }
+        e.attackVisualTimer=.3;
       }
     }
     separateEnemies(dt);
-    if(p.attackCd<=0){ p.attackCd=p.attackRate; shootAtNearest(p.baseDamage*MoguriaPlayer.damageMultiplier(p),false); }
+    if(p.attackCd<=0){ p.attackCd=p.attackRate; if(shootAtNearest(p.baseDamage*MoguriaPlayer.damageMultiplier(p),false)) p.attackAnimTimer=.38; }
     for(const b of state.bullets){ b.x+=b.vx*dt; b.y+=b.vy*dt; b.life-=dt; }
     for(const eb of state.enemyBullets||[]){ eb.x+=eb.vx*dt; eb.y+=eb.vy*dt; eb.life-=dt; if(Math.hypot(eb.x-p.x,eb.y-p.y)<p.r+eb.r && p.invuln<=0){ if(Math.random()<p.dodge){ state.stats.dodges++; p.invuln=.35; } else applyDamageToPlayer(eb.dmg,.45); eb.dead=true; } }
     for(const eb of state.enemyBullets||[]){
@@ -570,18 +595,7 @@ window.MoguriaGame = (() => {
       }
     }
     state.bullets=state.bullets.filter(b=>b.life>0&&!b.dead);
-    for(const d of state.drops){
-      const dx=p.x-d.x, dy=p.y-d.y, dist=Math.hypot(dx,dy)||1;
-      // v0.4: Mogu約2匹分の距離で吸い寄せ開始。近すぎず、拾いに行く感覚も残す。
-      const attractRadius = p.magnetRadius || 82;
-      if(dist < attractRadius){
-        d.magnet = true;
-        const pull = Math.min(760, 170 + (attractRadius-dist)*7.2);
-        d.x += dx/dist*pull*dt;
-        d.y += dy/dist*pull*dt;
-      }
-      if(dist<30){ if(d.kind==='heal'){ const heal=d.heal||18; p.hp=Math.min(p.maxHp,p.hp+heal); d.dead=true; addFx(d.x,d.y,'+'+heal+'HP','#9be58b'); MoguriaAudio?.play('eat'); } else { const gain=d.exp*(1+(p.xpBonus||0)); p.exp+=gain; d.dead=true; addFx(d.x,d.y,'+EXP','#fff0a6'); } }
-    }
+    updateDrops(dt);
     state.drops=state.drops.filter(d=>!d.dead).slice(-(MoguriaConfig.performance.maxDrops||120));
     state.enemies=state.enemies.filter(e=>e.hp>0 && Math.hypot(e.x-p.x,e.y-p.y)<1800);
     while(p.exp>=p.nextExp){ p.exp-=p.nextExp; levelUp(); return; }
@@ -590,7 +604,15 @@ window.MoguriaGame = (() => {
     for(const pp of state.particles||[]){ pp.x+=pp.vx*dt; pp.y+=pp.vy*dt; pp.vx*=Math.pow(.06,dt); pp.vy*=Math.pow(.06,dt); pp.life-=dt; }
     state.particles=(state.particles||[]).filter(pp=>pp.life>0).slice(-MoguriaConfig.performance.maxParticles);
     if(p.hp>0 && p.hp/p.maxHp<.18 && state.criticalCueCd<=0){ state.criticalCueCd=5.5; state.hitStop=Math.max(state.hitStop,.035); state.dangerPulse=.8; MoguriaAudio?.play('danger'); pushFx({x:p.x,y:p.y,r:74,life:.5,type:'criticalRing'}); }
-    if(p.hp<=0) endRun(false); updateHud();
+    if(p.hp<=0 && state.mode==='run'){
+      p.hp=0;
+      state.mode='defeat';
+      state.defeatCue={remaining:DEFEAT_CUE_SECONDS,duration:DEFEAT_CUE_SECONDS};
+      state.shake=Math.max(state.shake,4);
+      state.flash=Math.max(state.flash,.12);
+      persistCheckpoint('defeat');
+    }
+    updateHud();
   }
   function chooseBossPattern(e){
     const pool=BOSS_PATTERNS[e.kind]||BOSS_PATTERNS.boss;
@@ -830,10 +852,76 @@ window.MoguriaGame = (() => {
     addFx(e.x,e.y,Math.floor(dmg)+(crit?'!':''),crit?'#ffe27c':'#fff');
     if(e.hp<=0) killEnemy(e,source);
   }
+  function collectAllDropChance(kind){
+    return COLLECT_ALL_DROP_CHANCES[kind]??COLLECT_ALL_DROP_CHANCES.normal;
+  }
+  function maybeDropCollectAll(e){
+    if(!state || state.drops.some(drop=>drop.kind==='collectAll'&&!drop.dead)) return false;
+    if(Math.random()>=collectAllDropChance(e?.kind)) return false;
+    state.drops.push({x:e.x+(Math.random()*24-12),y:e.y+(Math.random()*24-12),kind:'collectAll',rare:true});
+    return true;
+  }
+  function collectDrop(drop,p){
+    if(drop.kind==='collectAll'){
+      drop.dead=true;
+      for(const other of state.drops){
+        if(other!==drop&&!other.dead&&(other.kind==='exp'||other.kind==='heal')) other.forceMagnet=true;
+      }
+      state.flash=Math.max(state.flash,.18);
+      sparkleBurst(drop.x,drop.y,34,'#c9f7ff');
+      pushFx({x:drop.x,y:drop.y,r:110,life:.72,type:'waveClear'});
+      addFx(drop.x,drop.y,'ぜんぶあつまれ！','#dffcff');
+      MoguriaAudio?.play('rare');
+      return;
+    }
+    if(drop.kind==='heal'){
+      const heal=Math.max(0,Number(drop.heal)||18);
+      p.hp=Math.min(p.maxHp,p.hp+heal);
+      drop.dead=true;
+      addFx(drop.x,drop.y,'+'+heal+'HP','#9be58b');
+      MoguriaAudio?.play('eat');
+      return;
+    }
+    if(drop.kind==='exp'){
+      const baseExp=Math.max(0,Number(drop.exp)||0);
+      const gain=baseExp*(1+(Number(p.xpBonus)||0));
+      if(Number.isFinite(gain)) p.exp+=gain;
+      drop.dead=true;
+      if(gain>0) addFx(drop.x,drop.y,'+EXP','#fff0a6');
+      return;
+    }
+    // Unknown runtime drops must never poison EXP with undefined/NaN values.
+    drop.dead=true;
+  }
+  function updateDrops(dt){
+    const p=state.p;
+    for(const drop of state.drops){
+      if(drop.dead) continue;
+      const dx=p.x-drop.x, dy=p.y-drop.y;
+      const dist=Math.hypot(dx,dy);
+      const attractRadius=p.magnetRadius||82;
+      const forceMagnet=!!drop.forceMagnet&&(drop.kind==='exp'||drop.kind==='heal');
+      if(dist>0.001&&(forceMagnet||dist<attractRadius)){
+        drop.magnet=true;
+        const pull=forceMagnet?Math.min(2200,900+dist*4):Math.min(760,170+(attractRadius-dist)*7.2);
+        const travel=Math.min(dist,pull*dt);
+        drop.x+=dx/dist*travel;
+        drop.y+=dy/dist*travel;
+      }
+      if(Math.hypot(p.x-drop.x,p.y-drop.y)<30) collectDrop(drop,p);
+    }
+  }
   function killEnemy(e,source){
     const p=state.p; state.stats.kills++; state.stats.combo=(state.stats.combo||0)+1; state.stats.bestCombo=Math.max(state.stats.bestCombo||0,state.stats.combo||0); state.comboTimer=1.55; MoguriaAudio?.play('kill'); if(source==='poison') state.stats.poisonKills++; if(e.kind==='rare'){ state.stats.rareKills++; pushFx({x:e.x,y:e.y,r:82,life:.9,type:'rareBurst'}); sparkleBurst(e.x,e.y,38,'#ffd15c'); }
     if((state.stats.combo>=10 && state.stats.combo%10===0) && state.chainCueCd<=0){ state.chainCueCd=.9; MoguriaAudio?.play('chain'); pushFx({x:p.x,y:p.y,r:92+state.stats.combo*2.2,life:.52,type:'megaChain'}); }
-    if(state.stats.combo===12 || state.stats.combo===24 || state.stats.combo===40){ state.awakenTimer=2.2; state.flash=Math.max(state.flash,.2); state.shake=Math.max(state.shake,5); sparkleBurst(p.x,p.y,42,'#fff0a6'); pushFx({x:p.x,y:p.y,r:130,life:.8,type:'chainBurst'}); bigToast('もぐ覚醒！', `${state.stats.combo}連鎖のひかり`); } if(e.kind==='boss'||e.kind==='midBoss'){ state.stats.bossKills++; pushFx({x:e.x,y:e.y,r:e.r*3.2,life:1.05,type:'bossFade'}); state.shake=Math.max(state.shake,9); sparkleBurst(e.x,e.y,48,'#d9b3ff'); } state.drops.push({x:e.x,y:e.y,exp:e.exp, rare:e.kind==='rare'||e.kind==='boss'||e.kind==='midBoss', kind:'exp'}); pushFx({x:e.x,y:e.y,tx:p.x,ty:p.y,life:.42,type:'absorb'}); if(Math.random() < (e.kind==='boss'||e.kind==='midBoss' ? .75 : e.kind==='rare' ? .45 : .075)){ state.drops.push({x:e.x+(Math.random()*32-16),y:e.y+(Math.random()*32-16),kind:'heal',heal:e.kind==='normal'?18:34, rare:e.kind!=='normal'}); }
+    if(state.stats.combo===12 || state.stats.combo===24 || state.stats.combo===40){ state.awakenTimer=2.2; state.flash=Math.max(state.flash,.2); state.shake=Math.max(state.shake,5); sparkleBurst(p.x,p.y,42,'#fff0a6'); pushFx({x:p.x,y:p.y,r:130,life:.8,type:'chainBurst'}); bigToast('もぐ覚醒！', `${state.stats.combo}連鎖のひかり`); }
+    if(e.kind==='boss'||e.kind==='midBoss'){ state.stats.bossKills++; pushFx({x:e.x,y:e.y,r:e.r*3.2,life:1.05,type:'bossFade'}); state.shake=Math.max(state.shake,9); sparkleBurst(e.x,e.y,48,'#d9b3ff'); }
+    state.drops.push({x:e.x,y:e.y,exp:e.exp,rare:e.kind==='rare'||e.kind==='boss'||e.kind==='midBoss',kind:'exp'});
+    pushFx({x:e.x,y:e.y,tx:p.x,ty:p.y,life:.42,type:'absorb'});
+    if(Math.random()<((e.kind==='boss'||e.kind==='midBoss') ? .75 : e.kind==='rare' ? .45 : .075)){
+      state.drops.push({x:e.x+(Math.random()*32-16),y:e.y+(Math.random()*32-16),kind:'heal',heal:e.kind==='normal'?18:34,rare:e.kind!=='normal'});
+    }
+    maybeDropCollectAll(e);
     if(p.lifesteal) p.hp=Math.min(p.maxHp,p.hp+p.lifesteal);
     if(e.splitOnDeath && e.kind==='normal'){ for(let i=0;i<2;i++){ const child={...e,id:Date.now()+Math.random(),name:'ちびぷに',maxHp:18,hp:18,r:10,dmg:6,exp:3,speed:58,splitOnDeath:false,behavior:'swarm',x:e.x+(i?18:-18),y:e.y+(Math.random()*16-8),kind:'normal',poison:0,poisonTick:0,slow:0,hitFlash:0}; state.enemies.push(child); } }
     if(Math.random()<p.killExplodeChance || (p.toxicBurst && e.poison>0)){ explosion(e.x,e.y,p.explosionRadius,p.explosionPower,true); }
@@ -844,11 +932,28 @@ window.MoguriaGame = (() => {
     for(const e of state.enemies){ if(e.hp>0 && Math.hypot(e.x-x,e.y-y)<r){ const was=e.hp; hurtEnemy(e,dmg,false,'explosion'); if(was>0 && e.hp<=0 && chain && state.p.chainExplosion) scheduleAction(.035,()=>explosion(e.x,e.y,r*.82,dmg*.62,false)); } }
   }
   function addFx(x,y,text,color){ pushFx({x,y,text,color,life:.55,type:'text'}); }
+  function updateLevelUpCue(dt){
+    const cue=state?.levelUpCue;
+    const pending=normalizePendingChoice(state?.pendingChoice);
+    if(pending?.type!=='skill'){
+      state.levelUpCue=null;
+      state.mode='run';
+      state.last=performance.now();
+      return;
+    }
+    if(!cue){
+      levelUp({resume:true,choiceIds:pending.choiceIds,wave:pending.wave});
+      return;
+    }
+    cue.remaining=Math.max(0,(Number(cue.remaining)||0)-dt);
+    if(cue.remaining>0) return;
+    state.levelUpCue=null;
+    levelUp({resume:true,choiceIds:pending.choiceIds,wave:pending.wave});
+  }
   function levelUp(options={}){
     const resume=!!options.resume;
-    state.mode='choice';
     if(!resume){
-      state.p.lv++; MoguriaAudio?.play('level'); state.flash=Math.max(state.flash,.16); sparkleBurst(state.p.x,state.p.y,30,'#fff0a6');
+      state.p.lv++;
       // レベルアップ頻度は少し重めに。1回の「食べる」に価値を出す。
       state.p.nextExp = Math.floor(MoguriaConfig.exp.base + Math.pow(state.p.lv, MoguriaConfig.exp.power) * MoguriaConfig.exp.scale); if(state.p.expDiscount>0){ state.p.nextExp=Math.floor(state.p.nextExp*MoguriaConfig.exp.discountRate); state.p.expDiscount--; }
     }
@@ -861,6 +966,23 @@ window.MoguriaGame = (() => {
       if(!choices.some(s=>s.id===choice.id)) choices.push(choice);
     }
     rememberPendingChoice('skill',options.wave??state.wave,choices);
+    if(!resume){
+      state.mode='levelup';
+      state.levelUpCue={remaining:LEVEL_UP_CUE_SECONDS,duration:LEVEL_UP_CUE_SECONDS,level:state.p.lv};
+      updateHud();
+      // Persist the incremented level and exact cards before the celebratory gap.
+      // A reload during the cue restores the modal directly without replaying it.
+      persistCheckpoint('levelup');
+      MoguriaAudio?.play('level');
+      state.flash=Math.max(state.flash,.22);
+      state.shake=Math.max(state.shake,3);
+      sparkleBurst(state.p.x,state.p.y,42,'#fff0a6');
+      pushFx({x:state.p.x,y:state.p.y,r:118,life:.75,type:'waveClear'});
+      bigToast('LEVEL UP!',`Lv.${state.p.lv} ひかりが満ちた`);
+      return;
+    }
+    state.mode='choice';
+    state.levelUpCue=null;
     const wrap=document.getElementById('skillChoices');
     const rerollBtn=document.getElementById('rerollBtn');
     const rerollCount=document.getElementById('rerollCount');

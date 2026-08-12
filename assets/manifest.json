@@ -110,7 +110,7 @@
       "id": "battle-v3",
       "label": "星影洞窟 battle-v3",
       "assets": [
-        { "id": "battle_v3_mogu", "type": "image", "src": "assets/images/battle-v3/mogu-atlas.png" },
+        { "id": "battle_v3_mogu", "type": "image", "src": "assets/images/battle-v3/mogu-atlas-hd.png" },
         { "id": "battle_v3_enemies", "type": "image", "src": "assets/images/battle-v3/enemy-atlas.png" },
         { "id": "battle_v3_companions", "type": "image", "src": "assets/images/battle-v3/companion-atlas.png" },
         { "id": "battle_v3_bosses", "type": "image", "src": "assets/images/battle-v3/boss-atlas.png" },

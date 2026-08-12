@@ -9,7 +9,7 @@ const vm = require('node:vm');
 const ROOT = path.resolve(__dirname, '..');
 const LOADER_SOURCE = fs.readFileSync(path.join(ROOT, 'js/battle-v3-loader.js'), 'utf8');
 const ENGINE_SRC = 'vendor/phaser/phaser-arcade-physics-4.2.1.min.js';
-const SCENE_SRC = 'js/battle-v3-scene.js?v=20260812-battle-v3-3';
+const SCENE_SRC = 'js/battle-v3-scene.js?v=20260812-battle-motion-1';
 
 function createHarness(overrides = {}) {
   let nextTimerId = 0;
