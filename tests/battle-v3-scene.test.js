@@ -24,19 +24,28 @@ function chainableLayer(key) {
   };
 }
 
-function createHarness() {
+function createHarness(options = {}) {
   let gameConfig = null;
   const imageCalls = [];
   const bodyClasses = new Set();
+  const viewportWidth = options.viewportWidth ?? 1440;
+  const viewportHeight = options.viewportHeight ?? 900;
+  const appWidth = options.appWidth ?? 430;
+  const appHeight = options.appHeight ?? 844;
+  const parentWidth = options.parentWidth ?? 0;
+  const parentHeight = options.parentHeight ?? 0;
   const app = {
-    clientWidth: 430,
-    clientHeight: 844,
-    getBoundingClientRect: () => ({ width: 430, height: 844 })
+    clientWidth: appWidth,
+    clientHeight: appHeight,
+    getBoundingClientRect: () => ({ width: appWidth, height: appHeight })
   };
   const parent = {
     firstChild: null,
+    clientWidth: parentWidth,
+    clientHeight: parentHeight,
     querySelector: () => null,
     closest: selector => selector === '#app' ? app : null,
+    getBoundingClientRect: () => ({ width: parentWidth, height: parentHeight }),
     insertBefore(child) {
       child.parentElement = this;
       child.parentNode = this;
@@ -58,8 +67,8 @@ function createHarness() {
     Error,
     TypeError,
     performance: { now: () => 1000 },
-    innerWidth: 1440,
-    innerHeight: 900,
+    innerWidth: viewportWidth,
+    innerHeight: viewportHeight,
     devicePixelRatio: 2,
     setTimeout,
     clearTimeout,
@@ -142,7 +151,7 @@ function createHarness() {
   };
 }
 
-test('desktop boot uses the constrained app size rather than the browser viewport', () => {
+test('hidden preload falls back to the constrained app size', () => {
   const harness = createHarness();
   const pending = harness.context.MoguriaBattleV3.boot({ parent: harness.parent });
 
@@ -153,6 +162,22 @@ test('desktop boot uses the constrained app size rather than the browser viewpor
   assert.equal(harness.gameConfig.scale.height, 844);
 
   harness.context.MoguriaBattleV3.stop({ destroy: true, restoreLegacy: true });
+});
+
+test('visible battle uses the same PC and mobile dimensions as its DOM HUD', () => {
+  for (const dimensions of [
+    { parentWidth: 1363, parentHeight: 936, appWidth: 820, appHeight: 936 },
+    { parentWidth: 390, parentHeight: 844, appWidth: 390, appHeight: 844, viewportWidth: 390, viewportHeight: 844 },
+    { parentWidth: 375, parentHeight: 667, appWidth: 375, appHeight: 667, viewportWidth: 375, viewportHeight: 667 }
+  ]) {
+    const harness = createHarness(dimensions);
+    harness.context.MoguriaBattleV3.boot({ parent: harness.parent });
+    assert.equal(harness.gameConfig.width, dimensions.parentWidth);
+    assert.equal(harness.gameConfig.height, dimensions.parentHeight);
+    assert.equal(harness.gameConfig.scale.width, dimensions.parentWidth);
+    assert.equal(harness.gameConfig.scale.height, dimensions.parentHeight);
+    harness.context.MoguriaBattleV3.stop({ destroy: true, restoreLegacy: true });
+  }
 });
 
 test('backgrounds use one oversized non-repeating image per visible depth layer', () => {

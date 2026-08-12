@@ -387,9 +387,14 @@
 
   function layoutSize(parent) {
     const app = parent?.closest?.('#app') || document.getElementById('app') || parent;
-    const rect = app?.getBoundingClientRect?.();
-    const width = Math.max(1, Math.round(Number(rect?.width) || Number(app?.clientWidth) || Number(global.innerWidth) || 390));
-    const height = Math.max(1, Math.round(Number(rect?.height) || Number(app?.clientHeight) || Number(global.innerHeight) || 844));
+    const parentRect = parent?.getBoundingClientRect?.();
+    const appRect = app?.getBoundingClientRect?.();
+    // #game is viewport-sized on wide layouts, but display:none while Phaser
+    // preloads from Home. Prefer its live box, then fall back to #app until the
+    // screen becomes visible. This keeps Canvas, DOM HUD and pointer space equal
+    // after desktop resize without breaking the hidden preload path.
+    const width = Math.max(1, Math.round(Number(parentRect?.width) || Number(parent?.clientWidth) || Number(appRect?.width) || Number(app?.clientWidth) || Number(global.innerWidth) || 390));
+    const height = Math.max(1, Math.round(Number(parentRect?.height) || Number(parent?.clientHeight) || Number(appRect?.height) || Number(app?.clientHeight) || Number(global.innerHeight) || 844));
     return { width, height };
   }
 
