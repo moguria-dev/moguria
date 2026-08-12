@@ -133,6 +133,7 @@ function createHarness(options = {}) {
       }
     }
   };
+  if (options.rig) context.MoguriaMoguRig = options.rig;
 
   class Scene {
     constructor(config) { this.sceneConfig = config; }
@@ -313,6 +314,113 @@ test('reduced motion keeps semantic animation and player-linked parallax', () =>
   assert.equal(animation.pauses, 0);
   assert.equal(animation.resumes, 1);
   assert.equal(animation.timeScale, 1);
+
+  harness.context.MoguriaBattleV3.stop({ destroy: true, restoreLegacy: true });
+});
+
+test('continuous Mogu rig owns frame zero and applies one blended pose per Phaser frame', () => {
+  const updates = [];
+  const pauses = [];
+  let stops = 0;
+  let destroys = 0;
+  const harness = createHarness({
+    rig: {
+      createController() {
+        return {
+          update(options) {
+            updates.push({ ...options });
+            return { x:3, y:4, rotation:0.2, scaleX:1.1, scaleY:0.9, state:'attack', elapsed:0.1 };
+          },
+          setPaused(value) { pauses.push(value); },
+          destroy() { destroys += 1; }
+        };
+      }
+    }
+  });
+  harness.context.MoguriaBattleV3.boot({ parent: harness.parent });
+  const scene = harness.makeScene();
+  const sprite = {
+    moguriaFallback: false,
+    anims: { stop() { stops += 1; } },
+    setFrame(value) { this.frame = value; return this; },
+    setPosition(x, y) { this.x = x; this.y = y; return this; },
+    setRotation(value) { this.rotation = value; return this; },
+    setScale(x, y) { this.scaleX = x; this.scaleY = y; return this; }
+  };
+  scene.playerSprite = sprite;
+
+  assert.equal(scene.createPlayerRig(), true);
+  scene.visualFrameDelta = 1 / 60;
+  assert.equal(scene.applyPlayerRig(sprite, 'skill', { facing:-1, attackSerial:4 }, { mode:'run' }, { x:10, y:20 }), true);
+
+  assert.equal(updates.length, 1);
+  assert.deepEqual(updates[0], {
+    state:'skill', attackSerial:8, delta:1 / 60, advance:true, reducedMotion:false, quality:'high'
+  });
+  assert.equal(sprite.frame, 0);
+  assert.equal(sprite.x, 7);
+  assert.equal(sprite.y, 24);
+  assert.equal(sprite.rotation, -0.2);
+  assert.ok(Math.abs(sprite.scaleX - (116 / 256 * 1.1)) < 1e-12);
+  assert.ok(Math.abs(sprite.scaleY - (116 / 256 * 0.9)) < 1e-12);
+  assert.equal(sprite.moguriaState, 'rig:attack');
+  assert.ok(stops >= 2, 'atlas playback must remain stopped while the rig owns Mogu');
+
+  scene.visualFrameDelta = 0;
+  scene.applyPlayerRig(sprite, 'idle', { facing:1, attackSerial:4 }, { mode:'artifact' }, { x:10, y:20 });
+  assert.equal(updates[1].advance, false);
+  assert.equal(updates[1].delta, 0);
+  assert.deepEqual(pauses, [false, true]);
+  scene.releaseSceneObjects();
+  assert.equal(destroys, 1);
+  assert.equal(scene.playerRig, null);
+
+  harness.context.MoguriaBattleV3.stop({ destroy: true, restoreLegacy: true });
+});
+
+test('a failed continuous rig falls back to the existing Mogu atlas in the same sync', () => {
+  const harness = createHarness({
+    rig: {
+      createController() {
+        return {
+          update() { throw new Error('rig failed'); },
+          destroy() {}
+        };
+      }
+    }
+  });
+  harness.context.MoguriaBattleV3.boot({ parent: harness.parent });
+  const scene = harness.makeScene();
+  const sprite = {
+    moguriaFallback: false,
+    moguriaState: '',
+    anims: { stop() {} },
+    setFrame() { return this; },
+    setPosition() { return this; },
+    setRotation() { return this; },
+    setScale() { return this; },
+    setFlipX() { return this; },
+    setDisplaySize() { return this; },
+    setDepth() { return this; },
+    setAlpha() { return this; }
+  };
+  scene.playerSprite = sprite;
+  assert.equal(scene.createPlayerRig(), true);
+  scene.animationPauseSignature = 'true:high:1';
+  scene.sampleMotion = () => ({ facing:1, attackSerial:2 });
+  scene.inferredState = () => 'attack';
+  let atlasCalls = 0;
+  let proceduralCalls = 0;
+  scene.setActorAnimation = () => { atlasCalls += 1; };
+  scene.applyProceduralActorMotion = () => { proceduralCalls += 1; };
+
+  scene.syncPlayer({ mode:'run', levelUpCue:null }, { x:0, y:0, hp:10, invuln:0 });
+
+  assert.equal(scene.playerRig, null);
+  assert.equal(sprite.moguriaRigControlled, false);
+  assert.equal(scene.animationPauseSignature, '', 'fallback pause/resume must be reapplied after a rig failure');
+  assert.equal(atlasCalls, 1);
+  assert.equal(proceduralCalls, 1);
 
   harness.context.MoguriaBattleV3.stop({ destroy: true, restoreLegacy: true });
 });

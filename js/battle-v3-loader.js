@@ -2,7 +2,8 @@
   'use strict';
 
   const ENGINE_SRC = 'vendor/phaser/phaser-arcade-physics-4.2.1.min.js';
-  const SCENE_SRC = 'js/battle-v3-scene.js?v=20260812-battle-motion-2';
+  const RIG_SRC = 'js/mogu-rig.js?v=20260813-mogu-rig-1';
+  const SCENE_SRC = 'js/battle-v3-scene.js?v=20260813-mogu-rig-1';
   const SCRIPT_TIMEOUT_MS = 15000;
   const BOOT_TIMEOUT_MS = 30000;
   let preparation = null;
@@ -133,6 +134,14 @@
       // assets/manifest.json, but preloading it through a second Image registry
       // would hold duplicate decoded bitmaps on mobile.
       await loadScript(ENGINE_SRC, () => !!window.Phaser);
+      // The continuous rig is a presentation enhancement. If this optional
+      // module is unavailable, the scene must still boot and use its proven
+      // atlas animation fallback instead of blocking the whole battle.
+      try {
+        await loadScript(RIG_SRC, () => !!window.MoguriaMoguRig);
+      } catch (error) {
+        window.MoguriaDebug?.warn?.('Mogu continuous rig unavailable; using atlas fallback', error.message);
+      }
       await loadScript(SCENE_SRC, () => !!window.MoguriaBattleV3);
       const renderer = window.MoguriaBattleV3;
       const booted = await bootWithTimeout(renderer);

@@ -460,6 +460,9 @@
         this.companionSprites = new Map();
         this.actorTracks = new Map();
         this.playerSprite = null;
+        this.playerRig = null;
+        this.playerRigFailed = false;
+        this.visualFrameDelta = 0;
         this.projectileGraphics = null;
         this.dropGraphics = null;
         this.effectGraphics = null;
@@ -520,6 +523,7 @@
         this.createBackgrounds();
         this.createDrawLayers();
         this.playerSprite = this.createActorSprite('mogu', 'mogu', 116).setDepth(40);
+        this.createPlayerRig();
 
         const camera = this.cameras.main;
         camera.setBackgroundColor?.('#070819');
@@ -701,6 +705,87 @@
         sprite.moguriaState = '';
         sprite.moguriaFallback = !(this.textures.get(sheet.key)?.getFrameNames?.() || []).some(name => Number.isFinite(Number(name)));
         return sprite;
+      }
+
+      createPlayerRig() {
+        const sprite = this.playerSprite;
+        const rigApi = global.MoguriaMoguRig;
+        if (!sprite || sprite.moguriaFallback || typeof rigApi?.createController !== 'function') return false;
+        try {
+          const controller = rigApi.createController();
+          if (!controller || typeof controller.update !== 'function') {
+            throw new TypeError('MoguriaMoguRig.createController() must return an update-capable controller.');
+          }
+          this.playerRig = controller;
+          this.playerRigFailed = false;
+          sprite.moguriaRigControlled = true;
+          sprite.anims?.stop?.();
+          sprite.setFrame?.(0);
+          return true;
+        } catch (error) {
+          this.disablePlayerRig(error);
+          return false;
+        }
+      }
+
+      disablePlayerRig(error) {
+        const controller = this.playerRig;
+        this.playerRig = null;
+        try { controller?.destroy?.(); } catch {}
+        this.animationPauseSignature = '';
+        const sprite = this.playerSprite;
+        if (sprite) {
+          sprite.moguriaRigControlled = false;
+          sprite.moguriaState = '';
+          sprite.setRotation?.(0);
+          sprite.setDisplaySize?.(116, 116);
+        }
+        if (error && !this.playerRigFailed) {
+          this.playerRigFailed = true;
+          global.console?.warn?.('[MoguriaBattleV3] continuous Mogu rig unavailable; using atlas fallback', error);
+        }
+      }
+
+      applyPlayerRig(sprite, stateName, track, state, p) {
+        const controller = this.playerRig;
+        if (!sprite?.moguriaRigControlled || !controller) return false;
+        const advance = ['run', 'levelup', 'defeat'].includes(state?.mode);
+        const cueRemaining = Number(state?.levelUpCue?.remaining) || 0;
+        const attackSerial = Math.max(0, Number(track?.attackSerial) || 0) * 2 + (cueRemaining > 0 ? 1 : 0);
+        try {
+          controller.setPaused?.(!advance);
+          const pose = controller.update({
+            state: stateName,
+            attackSerial,
+            delta: Math.max(0, Number(this.visualFrameDelta) || 0),
+            advance,
+            reducedMotion,
+            quality: currentQuality()
+          });
+          const poseX = Number(pose?.x);
+          const poseY = Number(pose?.y);
+          const rotation = Number(pose?.rotation);
+          const scaleX = Number(pose?.scaleX);
+          const scaleY = Number(pose?.scaleY);
+          if (![poseX, poseY, rotation, scaleX, scaleY].every(Number.isFinite) || scaleX <= 0 || scaleY <= 0) {
+            throw new TypeError('MoguriaMoguRig returned an invalid pose.');
+          }
+          const facing = track?.facing < 0 ? -1 : 1;
+          const baseX = Number(p?.x) || 0;
+          const baseY = Number(p?.y) || 0;
+          // The approved continuous treatment deforms one high-resolution
+          // neutral painting instead of replacing it with disconnected poses.
+          sprite.anims?.stop?.();
+          sprite.setFrame?.(0);
+          sprite.setPosition?.(baseX + poseX * facing, baseY + poseY);
+          sprite.setRotation?.(rotation * facing);
+          sprite.setScale?.((116 / 256) * scaleX, (116 / 256) * scaleY);
+          sprite.moguriaState = `rig:${pose.state || stateName}`;
+          return true;
+        } catch (error) {
+          this.disablePlayerRig(error);
+          return false;
+        }
       }
 
       syncState(state) {
@@ -909,8 +994,10 @@
           sprite.moguriaAttackSerial = track.attackSerial;
           sprite.moguriaState = '';
         }
-        this.setActorAnimation(sprite, 'mogu', stateName, this.actorVariant('mogu', p));
-        this.applyProceduralActorMotion(sprite, 'mogu', p, stateName, 'player');
+        if (!this.applyPlayerRig(sprite, stateName, track, state, p)) {
+          this.setActorAnimation(sprite, 'mogu', stateName, this.actorVariant('mogu', p));
+          this.applyProceduralActorMotion(sprite, 'mogu', p, stateName, 'player');
+        }
       }
 
       syncEnemies(state, player) {
@@ -1025,6 +1112,7 @@
       }
 
       applyProceduralActorMotion(sprite, role, entity, stateName, id) {
+        if (sprite?.moguriaRigControlled) return;
         if (!sprite || reducedMotion) {
           sprite?.setRotation?.(0);
           return;
@@ -1569,7 +1657,16 @@
         const signature = `${shouldPause}:${quality}:${sprites.length}`;
         if (signature === this.animationPauseSignature) return;
         this.animationPauseSignature = signature;
+        try {
+          this.playerRig?.setPaused?.(shouldPause);
+        } catch (error) {
+          this.disablePlayerRig(error);
+        }
         for (const sprite of sprites) {
+          if (sprite?.moguriaRigControlled) {
+            sprite.anims?.stop?.();
+            continue;
+          }
           if (!sprite?.anims) continue;
           // Frame count is part of action readability, so quality reductions
           // must never stretch an attack beyond its core presentation window.
@@ -1619,7 +1716,11 @@
             coreStepping = false;
           }
         }
+        this.visualFrameDelta = frameDelta;
         if (pendingState?.p) this.syncState(pendingState);
+        // Immediate sync calls can happen when a modal choice closes. Only the
+        // Phaser frame owns elapsed visual time, so never reuse its delta.
+        this.visualFrameDelta = 0;
         if (!this.targetCamera.initialized) return;
         const camera = this.cameras.main;
         if (reducedMotion) {
@@ -1636,6 +1737,9 @@
       releaseSceneObjects() {
         companionOrigins = [];
         fallbackAssets = [];
+        try { this.playerRig?.destroy?.(); } catch {}
+        this.playerRig = null;
+        if (this.playerSprite) this.playerSprite.moguriaRigControlled = false;
         this.enemySprites.clear();
         this.companionSprites.clear();
         this.actorTracks.clear();
