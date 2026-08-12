@@ -10,7 +10,7 @@ const ROOT = path.resolve(__dirname, '..');
 const LOADER_SOURCE = fs.readFileSync(path.join(ROOT, 'js/battle-v3-loader.js'), 'utf8');
 const ENGINE_SRC = 'vendor/phaser/phaser-arcade-physics-4.2.1.min.js';
 const RIG_SRC = 'js/mogu-rig.js?v=20260813-mogu-rig-1';
-const SCENE_SRC = 'js/battle-v3-scene.js?v=20260813-mogu-rig-1';
+const SCENE_SRC = 'js/battle-v3-scene.js?v=20260813-battle-refinement-2';
 
 function createHarness(overrides = {}) {
   let nextTimerId = 0;

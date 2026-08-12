@@ -40,6 +40,7 @@ function createElement(tag = 'div', id = '') {
     remove() { if (this.parentNode) this.parentNode.children = this.parentNode.children.filter(child => child !== this); },
     addEventListener(type, handler) { listeners.set(type, handler); },
     setAttribute(name, value) { this.attributes[name] = String(value); },
+    getAttribute(name) { return Object.prototype.hasOwnProperty.call(this.attributes, name) ? this.attributes[name] : null; },
     querySelector(selector) {
       if (selector !== '.ban-skill') return null;
       if (!this.banButton) this.banButton = createElement('button');
@@ -65,8 +66,10 @@ function createElement(tag = 'div', id = '') {
 function createGameHarness(checkpoint = null, options = {}) {
   const ids = [
     'gameCanvas', 'game', 'stick', 'knob', 'giveupBtn', 'pauseBtn', 'resumeBtn', 'pauseGiveupBtn',
-    'pauseModal', 'pauseSkills', 'pauseSummary', 'artifactModal', 'artifactChoices', 'artifactTitle',
-    'levelModal', 'skillChoices', 'rerollBtn', 'rerollCount', 'lv', 'hp', 'exp', 'nextExp',
+    'pauseModal', 'pauseSkills', 'pauseSummary', 'pauseWaveValue', 'pauseLevelValue', 'pauseHpValue',
+    'pauseSkillGrid', 'pauseArtifactGrid', 'pausePowerDetail', 'pauseSkillTab', 'pauseArtifactTab',
+    'artifactModal', 'artifactChoices', 'artifactTitle', 'artifactOwnedSkills', 'artifactOwnedDetail', 'artifactRerollBtn', 'artifactRerollCount',
+    'levelModal', 'skillChoices', 'levelOwnedSkills', 'levelOwnedDetail', 'rerollBtn', 'rerollCount', 'lv', 'hp', 'exp', 'nextExp',
     'timer', 'wave', 'miniStats'
   ];
   const elements = Object.fromEntries(ids.map(id => [id, createElement(id === 'gameCanvas' ? 'canvas' : 'div', id)]));
@@ -569,6 +572,28 @@ test('defeat animation plays before result settlement', () => {
   assert.equal(stopCalls, 1);
 });
 
+test('settlement failure exposes a visible retry explanation in the refreshed pause journal', () => {
+  const harness = createGameHarness();
+  const state = prepareDropCombat(harness);
+  harness.context.MoguriaMeta = { awardFromRun: () => ({ ok: false, reason: 'save-failed' }) };
+  harness.context.MoguriaResult = { buildName: () => 'test run', comment: () => 'test', titles: () => [] };
+  state.p.hp = 0;
+
+  harness.game.devStep(.016);
+  for (let i = 0; i < 20 && state.mode === 'defeat'; i++) harness.game.devStep(.033);
+
+  assert.equal(state.mode, 'settlementError');
+  assert.equal(harness.elements.pauseModal.classList.contains('hidden'), false);
+  assert.equal(harness.elements.pauseSummary.classList.contains('is-error'), true);
+  assert.match(harness.elements.pauseSummary.textContent, /冒険記録を保存できませんでした/);
+  assert.equal(harness.elements.resumeBtn.textContent, '保存を再試行');
+});
+
+test('settlement error stylesheet replaces the power grid so retry actions cannot be clipped', () => {
+  const stylesheet = readScript('css/moguria-battle-refinement.css');
+  assert.match(stylesheet, /\.pause-card__summary\.is-error\s*\+\s*\.pause-card__powers\s*\{[^}]*display:\s*none\s*!important/s);
+});
+
 test('reload during defeat cue restores death instead of undoing it', () => {
   const firstPage = createGameHarness();
   const firstState = prepareDropCombat(firstPage);
@@ -724,4 +749,144 @@ test('pre-pendingChoice checkpoints infer interrupted skill and artifact selecti
   assert.equal(artifactResume.state.mode, 'artifact');
   assert.equal(artifactResume.state.pendingChoice.type, 'artifact');
   assert.equal(artifactResume.state.artifactWaves[3], undefined);
+});
+
+test('dependent skill enhancements stay hidden until a skill or artifact provides their capability', () => {
+  const harness = createGameHarness(null, { random: () => 0 });
+  const { MoguriaSkills } = harness.context;
+  const player = harness.state.p;
+  const poisonStack = MoguriaSkills.skills.find(skill => skill.id === 'poison_stack');
+  const friendJam = MoguriaSkills.skills.find(skill => skill.id === 'friend_jam');
+  const chainPop = MoguriaSkills.skills.find(skill => skill.id === 'chain_pop');
+
+  assert.equal(MoguriaSkills.isSkillEligible(poisonStack, player), false);
+  assert.equal(MoguriaSkills.isSkillEligible(friendJam, player), false);
+  assert.equal(MoguriaSkills.isSkillEligible(chainPop, player), false);
+
+  harness.game.devAddSkill('poison_seed');
+  harness.game.devAddArtifact('little_parade');
+  harness.game.devAddArtifact('pop_crown');
+
+  assert.equal(MoguriaSkills.isSkillEligible(poisonStack, player), true);
+  assert.equal(MoguriaSkills.isSkillEligible(friendJam, player), true);
+  assert.equal(MoguriaSkills.isSkillEligible(chainPop, player), true);
+  assert.equal(MoguriaSkills.choiceMetadataForSkill(poisonStack, player).relationship, 'むらさきキノコを強くする');
+});
+
+test('weighted skill choices are unique, eligibility-aware, and terminate with fewer than three candidates', () => {
+  const harness = createGameHarness(null, { random: () => 0 });
+  const { MoguriaSkills } = harness.context;
+  const allowed = new Set(['guard_nut', 'quick_berry']);
+  const banned = MoguriaSkills.skills.filter(skill => !allowed.has(skill.id)).map(skill => skill.id);
+  const choices = MoguriaSkills.weightedChoices(3, harness.state.p, banned);
+
+  assert.deepEqual(Array.from(choices, skill => skill.id), ['quick_berry', 'guard_nut']);
+  assert.equal(new Set(choices.map(skill => skill.id)).size, choices.length);
+  assert.equal(choices.some(skill => skill.requirement), false);
+});
+
+test('an ineligible saved skill card is discarded instead of returning after reload', () => {
+  const firstPage = createGameHarness();
+  const state = firstPage.state;
+  state.pendingChoice = {
+    type: 'skill', wave: 2, choiceIds: ['poison_stack', 'guard_nut', 'quick_berry'],
+    level: state.p.lv, exp: state.p.exp, nextExp: state.p.nextExp
+  };
+  firstPage.game.persistCheckpoint('test-ineligible-card');
+
+  const secondPage = createGameHarness(firstPage.savedCheckpoint);
+  const restoredIds = Array.from(secondPage.state.pendingChoice.choiceIds);
+  assert.equal(secondPage.state.mode, 'choice');
+  assert.equal(restoredIds.includes('poison_stack'), false);
+  assert.equal(secondPage.elements.skillChoices.children.some(card => card.dataset.skillId === 'poison_stack'), false);
+});
+
+test('skill reroll and ban persist their exact post-action state immediately', () => {
+  const firstPage = createGameHarness();
+  openLevelChoice(firstPage);
+
+  firstPage.elements.rerollBtn.click();
+  assert.equal(firstPage.state.rerolls, 2);
+  assert.equal(firstPage.savedCheckpoint.rerolls, 2);
+  assert.deepEqual(Array.from(firstPage.savedCheckpoint.pendingChoice.choiceIds), Array.from(firstPage.state.pendingChoice.choiceIds));
+
+  firstPage.elements.skillChoices.children[0].banButton.click();
+  assert.equal(firstPage.state.bans, 1);
+  assert.equal(firstPage.savedCheckpoint.bans, 1);
+  assert.deepEqual(Array.from(firstPage.savedCheckpoint.bannedSkills), Array.from(firstPage.state.bannedSkills));
+});
+
+test('artifact rerolls persist across reload and stop cleanly at zero', () => {
+  const firstPage = createGameHarness();
+  openArtifactChoice(firstPage);
+  firstPage.elements.artifactRerollBtn.click();
+
+  assert.equal(firstPage.state.artifactRerolls, 2);
+  assert.equal(firstPage.savedCheckpoint.artifactRerolls, 2);
+  assert.deepEqual(Array.from(firstPage.savedCheckpoint.pendingChoice.choiceIds), Array.from(firstPage.state.pendingChoice.choiceIds));
+
+  const secondPage = createGameHarness(firstPage.savedCheckpoint);
+  assert.equal(secondPage.state.artifactRerolls, 2);
+  secondPage.elements.artifactRerollBtn.click();
+  secondPage.elements.artifactRerollBtn.click();
+  secondPage.elements.artifactRerollBtn.click();
+  assert.equal(secondPage.state.artifactRerolls, 0);
+  assert.equal(secondPage.savedCheckpoint.artifactRerolls, 0);
+  assert.equal(secondPage.elements.artifactRerollBtn.disabled, true);
+});
+
+test('old checkpoints default artifact rerolls and owned-power surfaces expose atlas metadata and details', () => {
+  const firstPage = createGameHarness();
+  firstPage.game.devAddSkill('poison_seed');
+  firstPage.game.devAddArtifact('little_parade');
+  firstPage.game.persistCheckpoint('legacy-artifact-rerolls');
+  const legacyCheckpoint = clone(firstPage.savedCheckpoint);
+  delete legacyCheckpoint.artifactRerolls;
+
+  const secondPage = createGameHarness(legacyCheckpoint);
+  assert.equal(secondPage.state.artifactRerolls, 3);
+  openLevelChoice(secondPage);
+  const ownedSkill = secondPage.elements.levelOwnedSkills.children[0];
+  assert.equal(ownedSkill.dataset.skillId, 'poison_seed');
+  assert.match(ownedSkill.innerHTML, /data-skill-atlas="poison"/);
+  ownedSkill.click();
+  assert.equal(secondPage.elements.levelOwnedDetail.hidden, false);
+  assert.match(secondPage.elements.levelOwnedDetail.innerHTML, /むらさきキノコ/);
+
+  secondPage.elements.levelModal.classList.add('hidden');
+  secondPage.state.mode = 'run';
+  secondPage.game.pauseRun();
+  assert.equal(secondPage.elements.pauseSkillGrid.children[0].dataset.skillId, 'poison_seed');
+  assert.equal(secondPage.elements.pauseArtifactGrid.children[0].dataset.artifactId, 'little_parade');
+  assert.match(secondPage.elements.pauseSkillGrid.children[0].innerHTML, /data-cell="0"/);
+});
+
+test('skill icon atlas cells follow their visual families and provide broad recognition variety', () => {
+  const harness = createGameHarness();
+  const { MoguriaSkills } = harness.context;
+  const visual = id => {
+    const icon = MoguriaSkills.iconVisualForSkill(id);
+    return `${icon.family}:${icon.cell}`;
+  };
+
+  assert.equal(visual('poison_seed'), 'poison:0');
+  assert.equal(visual('toxic_burst'), 'poison:3');
+  assert.equal(visual('fan_cookie'), 'blast:3');
+  assert.equal(visual('ice_syrup'), 'support:0');
+  assert.equal(visual('mogu_vamp'), 'support:1');
+  assert.equal(visual('pierce_skewer'), 'star:0');
+  assert.equal(visual('star_meteor'), 'star:2');
+  assert.equal(visual('moon_orbit'), 'combat:1');
+  assert.equal(visual('thunder_gum'), 'combat:2');
+  assert.equal(visual('sleepy_mine'), 'combat:3');
+
+  assert.equal(visual('fusion_toxic_star_firework'), 'poison:3');
+  assert.equal(visual('fusion_storm_orbit'), 'combat:2');
+  assert.equal(visual('fusion_safe_flower_bomb'), 'guard:3');
+  assert.equal(visual('fusion_little_meteor_parade'), 'summon:2');
+  assert.equal(new Set(MoguriaSkills.fusions.map(fusion => visual(fusion.id))).size, 4);
+
+  const motifs = new Set(MoguriaSkills.skills.map(skill => visual(skill.id)));
+  assert.equal(MoguriaSkills.skills.length, 36);
+  assert.equal(motifs.size, 32);
 });

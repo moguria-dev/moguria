@@ -1,0 +1,1170 @@
+/* Moguria battle refinement — owned powers, choice relationships and rest journal.
+   Loaded after the existing play/world sheets so these scoped rules can retire
+   the legacy one-icon-per-family presentation without changing battle values. */
+
+body.kv-visual-refresh {
+  --refine-gold: #e4b65f;
+  --refine-gold-bright: #ffe19a;
+  --refine-cream: #fff1d4;
+  --refine-muted: rgba(244, 224, 192, .69);
+  --refine-line: rgba(228, 182, 95, .28);
+  --refine-night: #050716;
+  --refine-panel: rgba(10, 12, 34, .92);
+}
+
+/* Shared acquired-power strip ------------------------------------------ */
+
+#levelModal .owned-powers,
+#artifactModal .owned-powers {
+  position: relative;
+  z-index: 4;
+  min-width: 0;
+  padding: 6px 8px 7px;
+  overflow: hidden;
+  border: 1px solid rgba(228, 182, 95, .22);
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 12% 0, rgba(154, 122, 232, .11), transparent 34%),
+    linear-gradient(180deg, rgba(15, 18, 48, .82), rgba(5, 7, 24, .88));
+  box-shadow:
+    inset 0 1px rgba(255, 239, 199, .05),
+    0 6px 16px rgba(1, 2, 12, .20);
+}
+
+#levelModal .owned-powers__header,
+#artifactModal .owned-powers__header {
+  min-height: 16px;
+  margin: 0 2px 4px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+#levelModal .owned-powers__header h3,
+#artifactModal .owned-powers__header h3 {
+  margin: 0;
+  color: rgba(255, 226, 162, .92) !important;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .12em;
+}
+
+#levelModal .owned-powers__header h3::before,
+#artifactModal .owned-powers__header h3::before {
+  content: "✦";
+  margin-right: 5px;
+  color: var(--refine-gold);
+  font: 8px/1 Georgia, serif;
+}
+
+#levelModal .owned-powers__header small,
+#artifactModal .owned-powers__header small {
+  color: rgba(235, 213, 177, .51) !important;
+  font-size: 7px;
+  font-weight: 700;
+  letter-spacing: .03em;
+}
+
+#levelOwnedSkills,
+#artifactOwnedSkills {
+  min-width: 0;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+}
+
+#levelOwnedSkills::-webkit-scrollbar,
+#artifactOwnedSkills::-webkit-scrollbar {
+  display: none;
+}
+
+/* The renderer uses .owned-power; the broader selectors retain a graceful
+   skin while older checkpoints briefly restore their previous DOM shape. */
+#levelOwnedSkills > button,
+#artifactOwnedSkills > button,
+.owned-power {
+  position: relative;
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px !important;
+  min-height: 44px !important;
+  margin: 0;
+  padding: 2px !important;
+  display: grid;
+  place-items: center;
+  overflow: visible;
+  border: 1px solid rgba(228, 182, 95, .42) !important;
+  border-radius: 14px !important;
+  background-color: rgba(3, 5, 20, .86) !important;
+  background-image: none !important;
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 235, 190, .04),
+    0 0 12px rgba(110, 98, 209, .10) !important;
+  scroll-snap-align: start;
+  touch-action: manipulation;
+}
+
+.owned-power[aria-pressed="true"],
+.owned-power.is-selected,
+#levelOwnedSkills > button[aria-pressed="true"],
+#artifactOwnedSkills > button[aria-pressed="true"] {
+  border-color: rgba(255, 223, 146, .86) !important;
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 237, 194, .09),
+    0 0 16px rgba(231, 184, 88, .28) !important;
+  transform: translateY(-1px);
+}
+
+.owned-power[data-kv-kind="fire"] { border-color: rgba(235, 137, 82, .64) !important; }
+.owned-power[data-kv-kind="ice"] { border-color: rgba(112, 198, 231, .66) !important; }
+.owned-power[data-kv-kind="poison"] { border-color: rgba(183, 117, 225, .68) !important; }
+.owned-power[data-kv-kind="guard"] { border-color: rgba(111, 193, 143, .64) !important; }
+.owned-power[data-kv-kind="summon"] { border-color: rgba(224, 151, 184, .66) !important; }
+.owned-power[data-kv-kind="star"] { border-color: rgba(238, 194, 89, .72) !important; }
+
+.owned-power.is-artifact,
+.owned-power[data-power-type="artifact"],
+#artifactOwnedSkills .owned-power[data-artifact-id] {
+  border-radius: 0 !important;
+  clip-path: polygon(21% 3%, 79% 3%, 97% 21%, 97% 79%, 79% 97%, 21% 97%, 3% 79%, 3% 21%);
+  border-color: rgba(237, 196, 107, .70) !important;
+  background:
+    radial-gradient(circle, rgba(103, 76, 161, .25), rgba(3, 5, 20, .91) 72%) !important;
+}
+
+.owned-power__art,
+.pause-power__art,
+.skill-icon__art {
+  display: block;
+  background-image: var(--skill-atlas) !important;
+  background-position: var(--skill-x, 0%) var(--skill-y, 0%) !important;
+  background-repeat: no-repeat !important;
+  background-size: 200% 200% !important;
+}
+
+/* Keep atlas URLs in this stylesheet so they resolve from /css to /assets
+   consistently in Safari. Inline variables remain a compatibility fallback. */
+.skill-icon__art[data-skill-atlas="poison"],
+.owned-power__art[data-skill-atlas="poison"],
+.pause-power__art[data-skill-atlas="poison"] {
+  background-image: url("../assets/images/skill-icons/skill-atlas-poison.webp") !important;
+}
+
+.skill-icon__art[data-skill-atlas="blast"],
+.owned-power__art[data-skill-atlas="blast"],
+.pause-power__art[data-skill-atlas="blast"] {
+  background-image: url("../assets/images/skill-icons/skill-atlas-blast.webp") !important;
+}
+
+.skill-icon__art[data-skill-atlas="combat"],
+.owned-power__art[data-skill-atlas="combat"],
+.pause-power__art[data-skill-atlas="combat"] {
+  background-image: url("../assets/images/skill-icons/skill-atlas-combat.webp") !important;
+}
+
+.skill-icon__art[data-skill-atlas="guard"],
+.owned-power__art[data-skill-atlas="guard"],
+.pause-power__art[data-skill-atlas="guard"] {
+  background-image: url("../assets/images/skill-icons/skill-atlas-guard.webp") !important;
+}
+
+.skill-icon__art[data-skill-atlas="move"],
+.owned-power__art[data-skill-atlas="move"],
+.pause-power__art[data-skill-atlas="move"] {
+  background-image: url("../assets/images/skill-icons/skill-atlas-move.webp") !important;
+}
+
+.skill-icon__art[data-skill-atlas="star"],
+.owned-power__art[data-skill-atlas="star"],
+.pause-power__art[data-skill-atlas="star"] {
+  background-image: url("../assets/images/skill-icons/skill-atlas-star.webp") !important;
+}
+
+.skill-icon__art[data-skill-atlas="summon"],
+.owned-power__art[data-skill-atlas="summon"],
+.pause-power__art[data-skill-atlas="summon"] {
+  background-image: url("../assets/images/skill-icons/skill-atlas-summon.webp") !important;
+}
+
+.skill-icon__art[data-skill-atlas="support"],
+.owned-power__art[data-skill-atlas="support"],
+.pause-power__art[data-skill-atlas="support"] {
+  background-image: url("../assets/images/skill-icons/skill-atlas-support.webp") !important;
+}
+
+.skill-icon__art[data-cell="0"],
+.owned-power__art[data-cell="0"],
+.pause-power__art[data-cell="0"] { background-position: 0% 0% !important; }
+
+.skill-icon__art[data-cell="1"],
+.owned-power__art[data-cell="1"],
+.pause-power__art[data-cell="1"] { background-position: 100% 0% !important; }
+
+.skill-icon__art[data-cell="2"],
+.owned-power__art[data-cell="2"],
+.pause-power__art[data-cell="2"] { background-position: 0% 100% !important; }
+
+.skill-icon__art[data-cell="3"],
+.owned-power__art[data-cell="3"],
+.pause-power__art[data-cell="3"] { background-position: 100% 100% !important; }
+
+.owned-power__art {
+  position: absolute;
+  inset: 2px;
+  border-radius: 11px;
+  filter: drop-shadow(0 3px 5px rgba(1, 2, 12, .52));
+  pointer-events: none;
+}
+
+.owned-power__glyph,
+.pause-power__glyph {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  color: #fff0cb;
+  border: 1px solid rgba(255, 225, 153, .30);
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 28%, rgba(116, 87, 164, .35), rgba(5, 7, 24, .78) 72%);
+  box-shadow: inset 0 1px rgba(255, 244, 215, .09);
+  line-height: 1;
+  text-shadow: 0 1px 3px rgba(1, 2, 12, .82);
+}
+
+.owned-power__glyph {
+  width: 34px;
+  height: 34px;
+  font-size: 20px;
+}
+
+.pause-power__glyph {
+  width: 38px;
+  height: 38px;
+  font-size: 23px;
+}
+
+.owned-power__level,
+.owned-power .skill-lv,
+.pause-power__level {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  z-index: 2;
+  min-width: 19px;
+  height: 19px;
+  padding: 0 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #30213e !important;
+  border: 1px solid rgba(255, 249, 223, .78);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #fff0b9, #dbaa62) !important;
+  box-shadow: 0 2px 5px rgba(1, 2, 12, .48);
+  font-size: 8px;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.owned-powers__empty,
+#levelOwnedSkills > .empty,
+#artifactOwnedSkills > .empty {
+  width: 100%;
+  min-height: 40px;
+  padding: 0 8px;
+  display: flex;
+  align-items: center;
+  color: rgba(238, 218, 184, .55) !important;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.owned-powers__detail {
+  min-height: 35px;
+  margin-top: 6px;
+  padding: 6px 9px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px 8px;
+  color: var(--refine-cream) !important;
+  border-top: 1px solid rgba(228, 182, 95, .20);
+  background: rgba(4, 6, 23, .34);
+  font-size: 9px;
+  line-height: 1.25;
+}
+
+.owned-powers__detail[hidden] {
+  display: none !important;
+}
+
+.owned-powers__detail b {
+  overflow: hidden;
+  color: var(--refine-cream) !important;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.owned-powers__detail small,
+.owned-powers__detail p {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--refine-muted) !important;
+  font-size: 8px;
+}
+
+/* Make room for the shared rail while keeping the three choices primary. */
+body.kv-visual-refresh #levelModal .play-choice-sheet {
+  height: min(720px, calc(100dvh - var(--play-safe-top) - var(--play-safe-bottom) - 14px));
+  grid-template-rows: auto auto minmax(0, 1fr) auto !important;
+  gap: 8px !important;
+}
+
+body.kv-visual-refresh #artifactModal .artifact-choice-sheet {
+  height: min(700px, calc(100dvh - var(--play-safe-top) - var(--play-safe-bottom) - 14px));
+  grid-template-rows: auto auto minmax(0, 1fr) auto !important;
+  gap: 8px !important;
+}
+
+#levelModal #skillChoices,
+#artifactModal #artifactChoices {
+  min-height: 0;
+  grid-template-rows: none !important;
+  grid-auto-rows: minmax(92px, auto);
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+
+#levelModal #skillChoices::-webkit-scrollbar,
+#artifactModal #artifactChoices::-webkit-scrollbar {
+  display: none;
+}
+
+#artifactModal .artifact-choice-footer {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  justify-content: center;
+}
+
+body.kv-visual-refresh #artifactModal .artifact-reroll-btn {
+  position: relative;
+  isolation: isolate;
+  width: 180px;
+  min-width: 180px;
+  height: 48px;
+  min-height: 48px;
+  margin: 0 !important;
+  padding: 5px 15px !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: #f7dfb1 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: none !important;
+  box-shadow: none !important;
+  text-shadow: 0 2px 4px rgba(1, 2, 12, .72) !important;
+}
+
+body.kv-visual-refresh #artifactModal .artifact-reroll-btn::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border: 18px solid transparent;
+  border-image-source: url("../assets/images/home-v2/button_pearl_9slice.png");
+  border-image-slice: 48 fill;
+  border-image-width: 12px;
+  border-image-repeat: stretch;
+  filter: drop-shadow(0 4px 6px rgba(1, 2, 12, .38));
+}
+
+#artifactModal .artifact-reroll-btn > span {
+  color: #f7dfb1 !important;
+  font-size: 13px !important;
+  font-weight: 900;
+}
+
+#artifactModal .artifact-reroll-btn small,
+#artifactModal .artifact-reroll-btn small b {
+  color: rgba(241, 215, 168, .78) !important;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+/* Individual atlas art replaces the old single family image. The data
+   attribute is intentionally part of the selector so older fallback cards
+   still receive their painterly play-ui family icon. */
+body.kv-visual-refresh #levelModal .skill-icon[data-icon-id],
+body.kv-visual-refresh #artifactModal .skill-icon[data-icon-id],
+body.kv-visual-refresh #levelModal .skill-icon:has(.skill-icon__art),
+body.kv-visual-refresh #artifactModal .skill-icon:has(.skill-icon__art) {
+  position: relative;
+  overflow: hidden;
+  background-color: rgba(3, 5, 19, .84) !important;
+  background-image: none !important;
+}
+
+.skill-icon__art {
+  position: absolute;
+  inset: 1px;
+  z-index: 2;
+  width: auto;
+  height: auto;
+  margin: 0 !important;
+  padding: 0 !important;
+  border-radius: inherit;
+  filter: drop-shadow(0 4px 7px rgba(1, 2, 12, .48));
+  pointer-events: none;
+}
+
+/* Choice semantics: NEW, an ordinary level-up, and a dependent enhancement
+   must be understandable without relying on rarity colour. */
+.skill-card__badge,
+.skill-badge,
+.choice-badge {
+  flex: 0 0 auto;
+  min-height: 18px;
+  padding: 2px 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #2f2140 !important;
+  border: 1px solid rgba(255, 249, 223, .64);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #fff0b9, #dbaa62) !important;
+  font-size: 7px;
+  font-weight: 950;
+  letter-spacing: .07em;
+  line-height: 1;
+  text-shadow: none !important;
+}
+
+/* The skill name and level already share a narrow row on iPhone. Pin the
+   semantic badge to the card corner so NEW/LEVEL UP/強化 can never be pushed
+   out by a long Japanese skill name. */
+body.kv-visual-refresh #levelModal .skill-card > .skill-head .skill-card__badge,
+body.kv-visual-refresh #levelModal .skill-card .skill-card__badge {
+  position: absolute;
+  top: 12px;
+  right: 13px;
+  z-index: 4;
+  max-width: 70px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body.kv-visual-refresh #levelModal .skill-card .skill-head b {
+  padding-right: 70px;
+}
+
+/* Artifact cards intentionally retain the established family painting. The
+   per-artifact glyph sits in a small medallion, adding identity without
+   obscuring that family cue. */
+body.kv-visual-refresh #artifactModal .artifact-choice .skill-icon {
+  position: relative;
+  overflow: visible;
+}
+
+body.kv-visual-refresh #artifactModal .artifact-choice .skill-icon__glyph {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  z-index: 3;
+  width: 23px;
+  height: 23px;
+  margin: 0 !important;
+  padding: 0 !important;
+  display: grid !important;
+  place-items: center;
+  color: #fff1d0 !important;
+  border: 1px solid rgba(255, 225, 153, .84);
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 28%, #343052, #090b23 72%) !important;
+  box-shadow: 0 2px 6px rgba(1, 2, 12, .72), inset 0 1px rgba(255, 245, 216, .13);
+  font-size: 13px !important;
+  line-height: 1;
+  text-shadow: 0 1px 3px rgba(1, 2, 12, .86);
+  filter: none !important;
+}
+
+.skill-card.is-enhancement .skill-card__badge,
+.skill-card[data-choice-kind="enhancement"] .skill-card__badge,
+.skill-card__badge--enhancement {
+  color: #efe2ff !important;
+  border-color: rgba(217, 180, 255, .56);
+  background: linear-gradient(180deg, rgba(119, 77, 171, .96), rgba(65, 40, 112, .98)) !important;
+  box-shadow: 0 0 11px rgba(174, 112, 242, .19);
+}
+
+.skill-card.is-enhancement,
+.skill-card[data-choice-kind="enhancement"] {
+  grid-template-rows: auto minmax(16px, 1fr) auto auto !important;
+}
+
+.skill-card.is-enhancement::after,
+.skill-card[data-choice-kind="enhancement"]::after {
+  background:
+    radial-gradient(circle at 14% 13%, rgba(181, 119, 237, .15), transparent 32%),
+    linear-gradient(105deg, transparent 0 63%, rgba(255, 232, 178, .05) 70%, transparent 79%) !important;
+}
+
+body.kv-visual-refresh #levelModal .skill-card > .skill-card__relationship,
+body.kv-visual-refresh #levelModal .skill-card > .skill-relationship,
+body.kv-visual-refresh #levelModal .skill-card > .choice-relationship,
+body.kv-visual-refresh #artifactModal .skill-card > .skill-card__relationship,
+body.kv-visual-refresh #artifactModal .skill-card > .skill-relationship,
+body.kv-visual-refresh #artifactModal .skill-card > .choice-relationship {
+  grid-column: 2 / 4;
+  grid-row: 3;
+  align-self: center;
+  min-width: 0;
+  margin: 0 !important;
+  padding: 3px 7px !important;
+  display: block !important;
+  overflow: hidden;
+  color: #dfc6ff !important;
+  border-left: 2px solid rgba(183, 117, 225, .74);
+  border-radius: 0 7px 7px 0;
+  background: rgba(91, 51, 135, .25) !important;
+  font-size: 8px !important;
+  font-weight: 850;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-shadow: 0 1px 3px rgba(1, 2, 12, .72);
+}
+
+#levelModal .skill-card.is-enhancement > em,
+#levelModal .skill-card[data-choice-kind="enhancement"] > em {
+  grid-row: 4 !important;
+}
+
+#levelModal .skill-card.is-enhancement .ban-skill,
+#levelModal .skill-card[data-choice-kind="enhancement"] .ban-skill {
+  grid-row: 4 !important;
+}
+
+/* Starlight rest journal ----------------------------------------------- */
+
+body.kv-visual-refresh #pauseModal {
+  z-index: 60 !important;
+  padding:
+    calc(var(--play-safe-top) + 6px)
+    7px
+    calc(var(--play-safe-bottom) + 6px) !important;
+  place-items: center !important;
+  align-items: center !important;
+  overflow: hidden !important;
+  background:
+    radial-gradient(circle at 68% 16%, rgba(228, 182, 95, .11), transparent 25%),
+    radial-gradient(circle at 24% 68%, rgba(125, 97, 212, .12), transparent 32%),
+    rgba(2, 4, 17, .80) !important;
+  backdrop-filter: blur(7px) saturate(.64) brightness(.58) !important;
+  -webkit-backdrop-filter: blur(7px) saturate(.64) brightness(.58) !important;
+}
+
+body.kv-visual-refresh #pauseModal .pause-card.pause-journal {
+  position: relative;
+  isolation: isolate;
+  box-sizing: border-box;
+  width: min(100%, 420px);
+  height: calc(100dvh - var(--play-safe-top) - var(--play-safe-bottom) - 12px);
+  min-height: 0;
+  max-height: none;
+  margin: 0;
+  padding: 20px 18px 16px !important;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto !important;
+  gap: 9px;
+  overflow: hidden;
+  color: var(--refine-cream) !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: none !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+body.kv-visual-refresh #pauseModal .pause-card.pause-journal::before {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: -2;
+  width: auto !important;
+  height: auto !important;
+  box-sizing: border-box;
+  border: 18px solid transparent !important;
+  border-radius: 0 !important;
+  background: none !important;
+  border-image-source: url("../assets/images/home-v2/frame_glass_gold_9slice.png") !important;
+  border-image-slice: 64 fill !important;
+  border-image-width: 18px !important;
+  border-image-repeat: stretch !important;
+  filter: drop-shadow(0 20px 42px rgba(1, 2, 12, .70));
+  pointer-events: none;
+}
+
+body.kv-visual-refresh #pauseModal .pause-card.pause-journal::after {
+  content: "";
+  position: absolute;
+  inset: 12px;
+  z-index: -1;
+  border: 1px solid rgba(228, 182, 95, .14);
+  background:
+    radial-gradient(circle at 82% 8%, rgba(255, 221, 142, .09), transparent 23%),
+    radial-gradient(circle at 14% 76%, rgba(133, 109, 224, .08), transparent 29%),
+    linear-gradient(180deg, rgba(15, 18, 49, .47), rgba(3, 5, 21, .75));
+  pointer-events: none;
+}
+
+#pauseModal .pause-journal .pause-card__hero {
+  min-height: 88px;
+  grid-template-columns: minmax(0, 1fr) 88px;
+  gap: 8px;
+  border-bottom: 1px solid rgba(228, 182, 95, .23);
+}
+
+#pauseModal .pause-journal .pause-card__copy {
+  padding: 3px 0 10px 5px;
+}
+
+body.kv-visual-refresh #pauseModal .pause-journal .pause-card__copy .eyebrow {
+  margin: 0 0 4px;
+  color: rgba(228, 182, 95, .91) !important;
+  font: 850 8px/1 Georgia, serif;
+  letter-spacing: .22em;
+}
+
+body.kv-visual-refresh #pauseModal .pause-journal h2 {
+  margin: 0 0 5px;
+  color: #fff2d6 !important;
+  font-family: "Yu Mincho", "Hiragino Mincho ProN", Georgia, serif;
+  font-size: 23px;
+  font-weight: 800;
+  line-height: 1.12;
+  letter-spacing: .04em;
+  text-shadow: 0 0 16px rgba(239, 193, 95, .18), 0 3px 10px rgba(1, 2, 12, .72);
+}
+
+body.kv-visual-refresh #pauseModal .pause-journal .pause-card__copy > p:last-child {
+  margin: 0;
+  color: var(--refine-muted) !important;
+  font-size: 9px;
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+#pauseModal .pause-journal .pause-card__mogu {
+  width: 88px;
+  height: 88px;
+  filter:
+    drop-shadow(0 9px 12px rgba(1, 2, 12, .48))
+    drop-shadow(0 0 12px rgba(242, 194, 100, .16));
+}
+
+#pauseModal .pause-card__status {
+  min-height: 52px;
+  padding: 0 2px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+#pauseModal .pause-card__status > span {
+  min-width: 0;
+  padding: 6px 5px;
+  display: grid;
+  place-content: center;
+  gap: 2px;
+  overflow: hidden;
+  border: 1px solid rgba(228, 182, 95, .27);
+  border-radius: 13px;
+  background:
+    radial-gradient(circle at 50% 0, rgba(255, 227, 157, .08), transparent 55%),
+    rgba(5, 7, 26, .66);
+  box-shadow: inset 0 1px rgba(255, 241, 207, .04);
+  text-align: center;
+}
+
+#pauseModal .pause-card__status small {
+  color: rgba(228, 182, 95, .72) !important;
+  font: 800 7px/1 Georgia, serif;
+  letter-spacing: .14em;
+}
+
+#pauseModal .pause-card__status b {
+  overflow: hidden;
+  color: #fff1d3 !important;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 12px;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#pauseModal .pause-card__summary {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  margin: -1px !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  clip-path: inset(50%) !important;
+  white-space: nowrap !important;
+}
+
+#pauseModal .pause-card__summary.is-error {
+  position: relative !important;
+  width: auto !important;
+  height: auto !important;
+  margin: 0 !important;
+  padding: 8px 10px !important;
+  overflow: visible !important;
+  clip: auto !important;
+  clip-path: none !important;
+  white-space: normal !important;
+  border: 1px solid rgba(242, 137, 128, .42);
+  border-radius: 11px;
+  color: #ffe2dc !important;
+  background: rgba(75, 20, 34, .48);
+  font-size: 9px;
+  font-weight: 750;
+  line-height: 1.55;
+  text-align: center;
+}
+
+/* A save failure replaces the collected-power area so the explanation and
+   retry action keep their own rows even in the 375×667 safe viewport. */
+#pauseModal .pause-card__summary.is-error + .pause-card__powers {
+  display: none !important;
+}
+
+body.kv-visual-refresh #pauseModal .pause-card__powers {
+  min-height: 0;
+  max-height: none;
+  margin: 0;
+  padding: 8px 8px 7px !important;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  align-content: stretch;
+  gap: 6px;
+  overflow: hidden !important;
+  border: 1px solid rgba(228, 182, 95, .20);
+  border-radius: 15px;
+  background:
+    radial-gradient(circle at 16% 0, rgba(119, 94, 202, .11), transparent 34%),
+    linear-gradient(180deg, rgba(13, 16, 45, .74), rgba(4, 6, 23, .78));
+  box-shadow: inset 0 1px rgba(255, 237, 194, .04);
+}
+
+#pauseModal .pause-card__powers-head {
+  min-height: 27px;
+  padding: 0 3px;
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+#pauseModal .pause-card__powers-head div {
+  min-width: 0;
+}
+
+#pauseModal .pause-card__powers-head small {
+  display: block;
+  color: rgba(228, 182, 95, .63) !important;
+  font: 750 6px/1 Georgia, serif;
+  letter-spacing: .14em;
+}
+
+#pauseModal .pause-card__powers-head h3 {
+  margin: 2px 0 0;
+  color: #fff0d1 !important;
+  font-size: 13px;
+  line-height: 1;
+}
+
+#pauseModal .pause-card__powers-head > span {
+  color: rgba(237, 216, 181, .46);
+  font-size: 7px;
+  font-weight: 700;
+}
+
+#pauseModal .pause-power-tabs {
+  padding: 2px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px;
+  border: 1px solid rgba(228, 182, 95, .16);
+  border-radius: 11px;
+  background: rgba(2, 4, 18, .52);
+}
+
+body.kv-visual-refresh #pauseModal .pause-power-tabs button {
+  min-height: 36px;
+  margin: 0;
+  padding: 5px 8px !important;
+  color: rgba(236, 215, 179, .60) !important;
+  border: 1px solid transparent !important;
+  border-radius: 9px !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  font-size: 9px;
+  font-weight: 850;
+}
+
+body.kv-visual-refresh #pauseModal .pause-power-tabs button[aria-selected="true"] {
+  color: #fff0ce !important;
+  border-color: rgba(228, 182, 95, .28) !important;
+  background:
+    radial-gradient(circle at 50% 0, rgba(255, 225, 151, .10), transparent 60%),
+    rgba(62, 49, 101, .43) !important;
+  box-shadow: inset 0 1px rgba(255, 239, 202, .05) !important;
+}
+
+#pauseModal .pause-power-panels {
+  min-height: 0;
+  padding: 2px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(228, 182, 95, .30) transparent;
+}
+
+#pauseModal .owned-power-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(44px, 1fr));
+  align-content: start;
+  gap: 8px 6px;
+}
+
+#pauseModal .owned-power-grid[hidden] {
+  display: none !important;
+}
+
+#pauseModal .pause-power,
+#pauseModal .owned-power-grid > button {
+  position: relative;
+  justify-self: center;
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
+  margin: 0;
+  padding: 2px !important;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(228, 182, 95, .43) !important;
+  border-radius: 15px !important;
+  background-color: rgba(3, 5, 20, .86) !important;
+  background-image: none !important;
+  box-shadow: inset 0 0 0 2px rgba(255, 235, 190, .04) !important;
+  touch-action: manipulation;
+}
+
+#pauseModal .pause-power[aria-pressed="true"],
+#pauseModal .pause-power.is-selected,
+#pauseModal .owned-power-grid > button[aria-pressed="true"] {
+  border-color: rgba(255, 224, 151, .88) !important;
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 235, 190, .08),
+    0 0 15px rgba(228, 182, 95, .24) !important;
+  transform: translateY(-1px);
+}
+
+#pauseModal .pause-power[data-kv-kind="fire"] { border-color: rgba(235, 137, 82, .64) !important; }
+#pauseModal .pause-power[data-kv-kind="ice"] { border-color: rgba(112, 198, 231, .66) !important; }
+#pauseModal .pause-power[data-kv-kind="poison"] { border-color: rgba(183, 117, 225, .68) !important; }
+#pauseModal .pause-power[data-kv-kind="guard"] { border-color: rgba(111, 193, 143, .64) !important; }
+#pauseModal .pause-power[data-kv-kind="summon"] { border-color: rgba(224, 151, 184, .66) !important; }
+#pauseModal .pause-power[data-kv-kind="star"] { border-color: rgba(238, 194, 89, .72) !important; }
+
+#pauseModal .owned-power-grid--artifacts .pause-power,
+#pauseModal .pause-power.is-artifact,
+#pauseModal .pause-power[data-power-type="artifact"] {
+  border-radius: 0 !important;
+  clip-path: polygon(21% 3%, 79% 3%, 97% 21%, 97% 79%, 79% 97%, 21% 97%, 3% 79%, 3% 21%);
+  border-color: rgba(237, 196, 107, .70) !important;
+  background:
+    radial-gradient(circle, rgba(103, 76, 161, .26), rgba(3, 5, 20, .91) 72%) !important;
+}
+
+.pause-power__art {
+  position: absolute;
+  inset: 2px;
+  border-radius: 12px;
+  filter: drop-shadow(0 3px 5px rgba(1, 2, 12, .52));
+  pointer-events: none;
+}
+
+#pauseModal .pause-power-detail {
+  min-height: 39px;
+  max-height: 62px;
+  margin-top: 0;
+  overflow: hidden;
+  border: 1px solid rgba(228, 182, 95, .17);
+  border-radius: 10px;
+  background: rgba(3, 5, 20, .52);
+}
+
+#pauseModal .pause-power-empty,
+#pauseModal .owned-power-grid > .empty {
+  grid-column: 1 / -1;
+  min-height: 72px;
+  display: grid;
+  place-items: center;
+  color: rgba(237, 217, 183, .52) !important;
+  font-size: 9px;
+  font-weight: 700;
+  text-align: center;
+}
+
+#pauseModal .pause-journal .pause-card__actions {
+  position: relative;
+  z-index: 4;
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
+  gap: 7px;
+  padding-top: 1px;
+  background: linear-gradient(180deg, transparent, rgba(3, 5, 20, .28));
+}
+
+body.kv-visual-refresh #pauseModal .pause-journal .pause-card__actions button {
+  min-height: 49px;
+  margin: 0 !important;
+  padding: 7px 11px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+body.kv-visual-refresh #pauseModal .pause-journal #resumeBtn {
+  color: #38233e !important;
+  background-color: transparent !important;
+  background-image: url("../assets/images/home-v2/button_gold_9slice.png") !important;
+  background-size: 100% 100% !important;
+  background-repeat: no-repeat !important;
+  font-size: 14px;
+  font-weight: 900;
+  text-shadow: 0 1px rgba(255, 248, 220, .62);
+}
+
+body.kv-visual-refresh #pauseModal .pause-journal #pauseGiveupBtn {
+  color: #f2dcb4 !important;
+  background-color: transparent !important;
+  background-image: url("../assets/images/home-v2/button_pearl_9slice.png") !important;
+  background-size: 100% 100% !important;
+  background-repeat: no-repeat !important;
+  font-size: 11px;
+  font-weight: 850;
+}
+
+/* 375×667 and compact in-app Safari viewport -------------------------- */
+
+@media (max-width: 380px) {
+  #pauseModal .owned-power-grid {
+    grid-template-columns: repeat(4, minmax(48px, 1fr));
+  }
+
+  body.kv-visual-refresh #pauseModal .pause-card.pause-journal {
+    padding-right: 15px !important;
+    padding-left: 15px !important;
+  }
+}
+
+@media (max-height: 700px) {
+  body.kv-visual-refresh #levelModal .play-choice-sheet,
+  body.kv-visual-refresh #artifactModal .artifact-choice-sheet {
+    height: calc(100dvh - var(--play-safe-top) - var(--play-safe-bottom) - 10px);
+    padding: 13px 13px 11px !important;
+    gap: 5px !important;
+  }
+
+  #levelModal .owned-powers,
+  #artifactModal .owned-powers {
+    padding: 4px 6px 5px;
+  }
+
+  #levelModal .owned-powers__header,
+  #artifactModal .owned-powers__header {
+    margin-bottom: 2px;
+  }
+
+  #levelOwnedSkills,
+  #artifactOwnedSkills {
+    min-height: 40px;
+  }
+
+  #levelOwnedSkills > button,
+  #artifactOwnedSkills > button,
+  .owned-power {
+    flex-basis: 40px;
+    width: 40px;
+    height: 40px;
+    min-width: 40px !important;
+    min-height: 40px !important;
+  }
+
+  #levelModal #skillChoices,
+  #artifactModal #artifactChoices {
+    grid-auto-rows: minmax(83px, auto);
+    gap: 5px !important;
+  }
+
+  body.kv-visual-refresh #artifactModal .artifact-reroll-btn,
+  body.kv-visual-refresh #levelModal .reroll-btn {
+    height: 44px;
+    min-height: 44px;
+  }
+
+  body.kv-visual-refresh #levelModal .skill-card > .skill-head .skill-card__badge,
+  body.kv-visual-refresh #levelModal .skill-card .skill-card__badge {
+    top: 9px;
+    right: 10px;
+    max-width: 62px;
+  }
+
+  body.kv-visual-refresh #levelModal .skill-card .skill-head b {
+    padding-right: 63px;
+  }
+
+  body.kv-visual-refresh #pauseModal {
+    padding:
+      calc(var(--play-safe-top) + 4px)
+      5px
+      calc(var(--play-safe-bottom) + 4px) !important;
+  }
+
+  body.kv-visual-refresh #pauseModal .pause-card.pause-journal {
+    height: calc(100dvh - var(--play-safe-top) - var(--play-safe-bottom) - 8px);
+    padding: 15px 14px 12px !important;
+    gap: 6px;
+  }
+
+  #pauseModal .pause-journal .pause-card__hero {
+    min-height: 66px;
+    grid-template-columns: minmax(0, 1fr) 66px;
+  }
+
+  body.kv-visual-refresh #pauseModal .pause-journal h2 {
+    margin-bottom: 2px;
+    font-size: 19px;
+  }
+
+  body.kv-visual-refresh #pauseModal .pause-journal .pause-card__copy > p:last-child {
+    display: none;
+  }
+
+  #pauseModal .pause-journal .pause-card__mogu {
+    width: 66px;
+    height: 66px;
+  }
+
+  #pauseModal .pause-card__status {
+    min-height: 43px;
+    gap: 5px;
+  }
+
+  #pauseModal .pause-card__status > span {
+    padding: 4px;
+    border-radius: 10px;
+  }
+
+  #pauseModal .pause-card__powers-head {
+    min-height: 21px;
+  }
+
+  body.kv-visual-refresh #pauseModal .pause-power-tabs button {
+    min-height: 32px;
+  }
+
+  #pauseModal .pause-power,
+  #pauseModal .owned-power-grid > button {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  #pauseModal .pause-power-detail {
+    min-height: 34px;
+    max-height: 50px;
+  }
+
+  body.kv-visual-refresh #pauseModal .pause-journal .pause-card__actions button {
+    min-height: 46px;
+  }
+}
+
+@media (max-height: 560px) {
+  #levelModal .owned-powers__header,
+  #artifactModal .owned-powers__header,
+  #pauseModal .pause-card__powers-head > span {
+    display: none;
+  }
+
+  #levelOwnedSkills,
+  #artifactOwnedSkills {
+    min-height: 38px;
+  }
+
+  #levelOwnedSkills > button,
+  #artifactOwnedSkills > button,
+  .owned-power {
+    flex-basis: 38px;
+    width: 38px;
+    height: 38px;
+    min-width: 38px !important;
+    min-height: 38px !important;
+  }
+
+  #pauseModal .pause-journal .pause-card__hero {
+    min-height: 52px;
+    grid-template-columns: minmax(0, 1fr) 54px;
+  }
+
+  #pauseModal .pause-journal .pause-card__mogu {
+    width: 54px;
+    height: 54px;
+  }
+
+  #pauseModal .pause-card__status {
+    min-height: 38px;
+  }
+
+  #pauseModal .pause-card__powers-head {
+    display: none;
+  }
+
+  #pauseModal .owned-power-grid {
+    grid-template-columns: repeat(6, minmax(42px, 1fr));
+    gap: 5px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .owned-power[aria-pressed="true"],
+  .pause-power[aria-pressed="true"] {
+    transform: none;
+  }
+}

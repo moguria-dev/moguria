@@ -13,6 +13,15 @@
   const TAU = Math.PI * 2;
   const MAX_COMPANIONS = 6;
   const ASSET_VERSION = '20260812-battle-motion-2';
+  const PLAYER_DISPLAY_SIZE = 82;
+  const PLAYER_STATUS_OFFSET_Y = 48;
+  const PLAYER_LEVEL_CUE_OFFSET_Y = 72;
+  const REGULAR_ENEMY_MIN_DISPLAY_SIZE = 54;
+  const REGULAR_ENEMY_RADIUS_SCALE = 3.5;
+  const BOSS_MIN_DISPLAY_SIZE = 184;
+  const BOSS_RADIUS_SCALE = 5.15;
+  const ENEMY_FACING_HOLD_SECONDS = 0.12;
+  const ENEMY_FACING_DEAD_ZONE = 12;
 
   const DEFAULT_ASSETS = Object.freeze({
     manifest: Object.freeze({ key: 'moguria-v3-atlas-manifest', src: `assets/images/battle-v3/atlas.json?v=${ASSET_VERSION}` }),
@@ -522,7 +531,7 @@
         this.registerAnimations();
         this.createBackgrounds();
         this.createDrawLayers();
-        this.playerSprite = this.createActorSprite('mogu', 'mogu', 116).setDepth(40);
+        this.playerSprite = this.createActorSprite('mogu', 'mogu', PLAYER_DISPLAY_SIZE).setDepth(40);
         this.createPlayerRig();
 
         const camera = this.cameras.main;
@@ -738,7 +747,7 @@
           sprite.moguriaRigControlled = false;
           sprite.moguriaState = '';
           sprite.setRotation?.(0);
-          sprite.setDisplaySize?.(116, 116);
+          sprite.setDisplaySize?.(PLAYER_DISPLAY_SIZE, PLAYER_DISPLAY_SIZE);
         }
         if (error && !this.playerRigFailed) {
           this.playerRigFailed = true;
@@ -779,7 +788,7 @@
           sprite.setFrame?.(0);
           sprite.setPosition?.(baseX + poseX * facing, baseY + poseY);
           sprite.setRotation?.(rotation * facing);
-          sprite.setScale?.((116 / 256) * scaleX, (116 / 256) * scaleY);
+          sprite.setScale?.((PLAYER_DISPLAY_SIZE / 256) * scaleX, (PLAYER_DISPLAY_SIZE / 256) * scaleY);
           sprite.moguriaState = `rig:${pose.state || stateName}`;
           return true;
         } catch (error) {
@@ -847,7 +856,12 @@
         const vy = (y - track.y) / dt;
         track.vx += (vx - track.vx) * Math.min(1, dt * 14);
         track.vy += (vy - track.vy) * Math.min(1, dt * 14);
-        if (Math.abs(track.vx) > 6) track.facing = track.vx < 0 ? -1 : 1;
+        // Regular enemies use player-relative facing with a dead zone and dwell
+        // in stabilizeEnemyFacing(). Their collision separation can change the
+        // sampled velocity sign every frame at close range, which previously
+        // made the painted atlas appear to spin. Other actors retain velocity-
+        // driven facing because they do not share that close-contact jitter.
+        if (!key.startsWith('enemy:') && Math.abs(track.vx) > 6) track.facing = track.vx < 0 ? -1 : 1;
         const attackCd = Number(entity?.attackCd);
         if (Number.isFinite(attackCd) && attackCd > track.attackCd + 0.2) track.attackUntil = sampleTime + 0.2;
         track.attackCd = Number.isFinite(attackCd) ? attackCd : track.attackCd;
@@ -901,6 +915,59 @@
         if (explicit) return explicit;
         if (Math.hypot(track?.vx || 0, track?.vy || 0) > 12) return 'move';
         return 'idle';
+      }
+
+      enemyDisplaySize(entity) {
+        const radius = Math.max(10, Number(entity?.r) || 16);
+        const boss = entity?.kind === 'boss' || entity?.kind === 'midBoss';
+        return boss
+          ? Math.max(BOSS_MIN_DISPLAY_SIZE, radius * BOSS_RADIUS_SCALE)
+          : Math.max(REGULAR_ENEMY_MIN_DISPLAY_SIZE, radius * REGULAR_ENEMY_RADIUS_SCALE);
+      }
+
+      stabilizeEnemyFacing(track, entity, player, stateName) {
+        if (!track) return 1;
+        const sampleTime = Number.isFinite(this.stateTime) ? this.stateTime : (Number(track.time) || 0);
+        const radius = Math.max(10, Number(entity?.r) || 16);
+        const deltaX = (Number(player?.x) || 0) - (Number(entity?.x) || 0);
+        const deadZone = Math.max(ENEMY_FACING_DEAD_ZONE, radius * 0.75);
+        const candidate = Math.abs(deltaX) > deadZone ? (deltaX < 0 ? -1 : 1) : 0;
+        const actionLocked = stateName === 'attack'
+          || stateName === 'hurt'
+          || stateName === 'telegraph'
+          || stateName === 'recover';
+
+        // Spawn facing may be chosen immediately so an enemy never arrives
+        // looking away. Every later reversal must survive the dwell below.
+        if (!track.enemyFacingInitialized) {
+          track.enemyFacingInitialized = true;
+          if (candidate) track.facing = candidate;
+          track.facingCandidate = 0;
+          track.facingCandidateSince = sampleTime;
+          return track.facing;
+        }
+
+        // Keep the authored release/recoil pose facing one direction. Entering
+        // the contact dead zone also clears a pending reversal, so tiny position
+        // oscillations around Mogu cannot accumulate across separate contacts.
+        if (actionLocked || !candidate || candidate === track.facing) {
+          track.facingCandidate = 0;
+          track.facingCandidateSince = sampleTime;
+          return track.facing;
+        }
+
+        if (track.facingCandidate !== candidate) {
+          track.facingCandidate = candidate;
+          track.facingCandidateSince = sampleTime;
+          return track.facing;
+        }
+
+        if (sampleTime - (Number(track.facingCandidateSince) || 0) >= ENEMY_FACING_HOLD_SECONDS) {
+          track.facing = candidate;
+          track.facingCandidate = 0;
+          track.facingCandidateSince = sampleTime;
+        }
+        return track.facing;
       }
 
       actorVariant(role, entity) {
@@ -982,10 +1049,9 @@
         const track = this.sampleMotion('player', p);
         sprite.setPosition(Number(p.x) || 0, Number(p.y) || 0);
         sprite.setFlipX?.(track.facing < 0);
-        // V2 cells share an exact baseline and fill more of their 256px cell.
-        // 116px keeps Mogu's painted body near 84–96px and avoids enlarging
-        // edge noise, while the authoritative collision radius stays untouched.
-        sprite.setDisplaySize?.(116, 116);
+        // Display scale is presentation-only. The authoritative collision
+        // radius remains untouched while Mogu occupies less of the phone view.
+        sprite.setDisplaySize?.(PLAYER_DISPLAY_SIZE, PLAYER_DISPLAY_SIZE);
         sprite.setDepth?.(40 + (Number(p.y) || 0) * 0.001);
         sprite.setAlpha?.((Number(p.invuln) || 0) > 0 && !reducedMotion ? 0.78 : 1);
         const cueRemaining = Number(state.levelUpCue?.remaining) || 0;
@@ -1008,19 +1074,19 @@
           seen.add(id);
           const boss = entity.kind === 'boss' || entity.kind === 'midBoss';
           const role = boss ? 'boss' : 'enemy';
+          const size = this.enemyDisplaySize(entity);
           let record = this.enemySprites.get(id);
           if (!record || record.role !== role) {
             record?.sprite?.destroy?.();
-            const radius = Math.max(10, Number(entity.r) || 16);
-            const sprite = this.createActorSprite(role, id, boss ? radius * 5.15 : radius * 4.35);
+            const sprite = this.createActorSprite(role, id, size);
             record = { sprite, role, retiring: false };
             this.enemySprites.set(id, record);
           }
           record.retiring = false;
           const sprite = record.sprite;
           const track = this.sampleMotion(`enemy:${id}`, entity);
-          const radius = Math.max(10, Number(entity.r) || 16);
-          const size = boss ? Math.max(184, radius * 5.15) : Math.max(68, radius * 4.35);
+          const stateName = this.inferredState(role, entity, track);
+          if (!boss) this.stabilizeEnemyFacing(track, entity, player, stateName);
           sprite.setPosition(Number(entity.x) || 0, Number(entity.y) || 0);
           sprite.setDisplaySize?.(size, size);
           sprite.setFlipX?.(!boss && track.facing < 0);
@@ -1030,7 +1096,6 @@
           else if (entity.kind === 'rare') sprite.setTint?.(0xffd978);
           else if (entity.kind === 'midBoss') sprite.setTint?.(0xd9c4ff);
           else sprite.clearTint?.();
-          const stateName = this.inferredState(role, entity, track);
           this.setActorAnimation(sprite, role, stateName, this.actorVariant(role, entity));
           this.applyProceduralActorMotion(sprite, role, entity, stateName, id);
         }
@@ -1170,6 +1235,12 @@
           scaleX = 1.04;
           scaleY = 0.9;
         }
+
+        // Normal enemy paintings already carry directional motion in their
+        // atlas frames. Keep their procedural life in translation and squash /
+        // stretch, while removing the extra tilt that amplified flip changes
+        // into a spinning impression. Bosses and friendly actors retain tilt.
+        if (role === 'enemy') rotation = 0;
 
         const baseX = Number(entity?.x) || 0;
         const baseY = Number(entity?.y) || 0;
@@ -1382,7 +1453,7 @@
 
         const level = Math.max(1, Math.floor(Number(cue.level) || Number(player.lv) || 1));
         this.levelUpText?.setText?.(`LEVEL UP!\nLv.${level}`);
-        this.levelUpText?.setPosition?.(x, y - 94 - progress * 10);
+        this.levelUpText?.setPosition?.(x, y - PLAYER_LEVEL_CUE_OFFSET_Y - progress * 10);
         this.levelUpText?.setAlpha?.(fade);
         this.levelUpText?.setScale?.(1 + (reducedMotion ? 0 : Math.sin(progress * Math.PI) * 0.12));
         this.levelUpText?.setVisible?.(true);
@@ -1400,7 +1471,7 @@
         const y = Number(player.y) || 0;
         const pct = Math.max(0, Math.min(1, (Number(player.hp) || 0) / Math.max(1, Number(player.maxHp) || 1)));
         const width = 64;
-        const top = y - 62;
+        const top = y - PLAYER_STATUS_OFFSET_Y;
         this.statusGraphics.fillStyle(0x070612, 0.72);
         this.statusGraphics.fillRoundedRect(x - width / 2, top, width, 7, 3);
         this.statusGraphics.fillStyle(pct < 0.28 ? 0xff7895 : 0x86e495, 0.96);

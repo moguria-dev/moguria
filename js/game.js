@@ -101,7 +101,7 @@ window.MoguriaGame = (() => {
     else if(window.MoguriaMeta) MoguriaMeta.applyEquipmentToPlayer(player);
     state={ mode:'run', runId:String(options.runId||options.activeRun?.runId||''), startedAt:Number(options.activeRun?.startedAt)||Date.now(), p:player, enemies:[], bullets:[], enemyBullets:[], mines:[], fx:[], drops:[], companions:[], scheduled:[], dungeon:MoguriaDungeon.create(checkpoint?.dungeon?.seed||Date.now()), time:0, last:performance.now(), spawnCd:0, floor:1,
       wave:0, maxWave:MoguriaConfig.run.maxWave, timeLimit:MoguriaConfig.run.timeLimit||480, waveState:'ready', waveSpawned:0, waveTarget:0, waveClearTimer:0, cleared:false, timeout:false, introTimer:2.15, bossAlertTimer:0, clearTimer:0, mobEvent:null,
-      stats:{kills:0,maxDamage:0,totalDamage:0,shots:0,crits:0,hitsTaken:0,dodges:0,explosions:0,poisonKills:0,rareKills:0,bossKills:0,combo:0,bestCombo:0}, rerolls:MoguriaConfig.run.rerolls, bans:2, bannedSkills:[], pendingChoice:null, levelUpCue:null, defeatCue:null, collectAllSchedule:null, shake:0, hitStop:0, flash:0, particles:[], comboTimer:0, awakenTimer:0, dangerPulse:0, nearMissCd:0, bossPhaseTimer:0, artifactWaves:{}, mapBounds:{...MoguriaConfig.map}, depthCueShown:false, criticalCueCd:0, chainCueCd:0, returnGlow:0, checkpointElapsed:0, hudAt:0, finalizing:false };
+      stats:{kills:0,maxDamage:0,totalDamage:0,shots:0,crits:0,hitsTaken:0,dodges:0,explosions:0,poisonKills:0,rareKills:0,bossKills:0,combo:0,bestCombo:0}, rerolls:MoguriaConfig.run.rerolls, artifactRerolls:Math.max(0,Math.floor(Number(MoguriaConfig.run.artifactRerolls??3))), bans:2, bannedSkills:[], pendingChoice:null, levelUpCue:null, defeatCue:null, collectAllSchedule:null, shake:0, hitStop:0, flash:0, particles:[], comboTimer:0, awakenTimer:0, dangerPulse:0, nearMissCd:0, bossPhaseTimer:0, artifactWaves:{}, mapBounds:{...MoguriaConfig.map}, depthCueShown:false, criticalCueCd:0, chainCueCd:0, returnGlow:0, checkpointElapsed:0, hudAt:0, finalizing:false };
     if(checkpoint) restoreCheckpoint(checkpoint);
     else { state.p.x=0; state.p.y=0; state.p.hp=state.p.maxHp; state.collectAllSchedule=createCollectAllSchedule(0); }
     if(!checkpoint?.collectAllSchedule) persistCheckpoint('collect-all-plan');
@@ -145,6 +145,7 @@ window.MoguriaGame = (() => {
       player:MoguriaPlayer.snapshot(state.p),
       stats:{...state.stats},
       rerolls:state.rerolls,
+      artifactRerolls:state.artifactRerolls,
       bans:state.bans,
       bannedSkills:[...(state.bannedSkills||[])],
       artifactWaves:{...(state.artifactWaves||{})},
@@ -172,6 +173,8 @@ window.MoguriaGame = (() => {
     state.stats={...state.stats,...(checkpoint.stats&&typeof checkpoint.stats==='object'?checkpoint.stats:{})};
     const savedRerolls=Number(checkpoint.rerolls);
     if(Number.isFinite(savedRerolls)) state.rerolls=Math.max(0,Math.floor(savedRerolls));
+    const savedArtifactRerolls=Number(checkpoint.artifactRerolls);
+    if(Number.isFinite(savedArtifactRerolls)) state.artifactRerolls=Math.max(0,Math.floor(savedArtifactRerolls));
     state.bans=Math.max(0,Math.floor(Number(checkpoint.bans) || 0));
     state.bannedSkills=Array.isArray(checkpoint.bannedSkills)?checkpoint.bannedSkills.filter(x=>typeof x==='string'):[];
     state.artifactWaves=checkpoint.artifactWaves&&typeof checkpoint.artifactWaves==='object'?{...checkpoint.artifactWaves}:{};
@@ -361,12 +364,95 @@ window.MoguriaGame = (() => {
     if(state.mode!=='pause') return;
     document.getElementById('pauseModal').classList.add('hidden'); state.mode='run'; state.last=performance.now();
   }
+
+  function skillArtMarkup(skill,className='skill-icon__art'){
+    const visual=MoguriaSkills.iconVisualForSkill?.(skill);
+    if(!visual) return `<span class="${className}" aria-hidden="true">${skill?.icon||'✦'}</span>`;
+    return `<span class="${className}" data-skill-atlas="${visual.family}" data-cell="${visual.cell}" aria-hidden="true"></span>`;
+  }
+
+  function powerDetailMarkup(power,type){
+    const level=type==='skill'&&!power.fusion?` Lv.${state.p.skillLevels?.[power.id]||1}`:'';
+    const kind=type==='artifact'?'アーティファクト':power.fusion?'合体スキル':'食べた力';
+    return `<b>${power.name}${level}</b><span>${kind}</span><small>${(power.tags||[]).join(' / ')}｜${power.desc||''}</small>`;
+  }
+
+  function renderOwnedPowers(containerId,detailId,options={}){
+    const container=document.getElementById(containerId);
+    const detail=document.getElementById(detailId);
+    if(!container) return false;
+    const includeSkills=options.skills!==false;
+    const includeArtifacts=!!options.artifacts;
+    const entries=[];
+    if(includeSkills) for(const skill of state.p.skills||[]) entries.push({power:skill,type:'skill'});
+    if(includeArtifacts) for(const artifact of state.p.artifacts||[]) entries.push({power:artifact,type:'artifact'});
+    container.innerHTML='';
+    if(detail){ detail.hidden=true; detail.innerHTML=''; }
+    if(!entries.length){
+      const empty=document.createElement('div');
+      empty.className=options.pause?'pause-power-empty':'owned-powers__empty empty';
+      empty.textContent=includeArtifacts&&!includeSkills?'まだ見つけていません':'まだ力を食べていません';
+      container.appendChild(empty);
+      return true;
+    }
+    for(const {power,type} of entries){
+      const button=document.createElement('button');
+      const isArtifact=type==='artifact';
+      const visualKind=isArtifact?visualKindForArtifact(power):visualKindForSkill(power);
+      button.type='button';
+      button.className=`${options.pause?'pause-power':'owned-power'}${isArtifact?' is-artifact':''}`;
+      button.dataset.powerType=type;
+      button.dataset.kvKind=visualKind;
+      if(isArtifact) button.dataset.artifactId=power.id;
+      else { button.dataset.skillId=power.id; button.dataset.iconId=power.id; }
+      button.setAttribute('aria-label',`${power.name}の詳細を見る`);
+      button.setAttribute('aria-pressed','false');
+      const level=!isArtifact&&!power.fusion?(state.p.skillLevels?.[power.id]||1):0;
+      const art=isArtifact
+        ? `<span class="${options.pause?'pause-power__glyph':'owned-power__glyph'}" aria-hidden="true">${power.icon||'🏺'}</span>`
+        : skillArtMarkup(power,options.pause?'pause-power__art':'owned-power__art');
+      button.innerHTML=art+(level?`<small class="${options.pause?'pause-power__level':'owned-power__level'}">${level}</small>`:'');
+      button.addEventListener('click',()=>{
+        const wasSelected=button.getAttribute('aria-pressed')==='true';
+        for(const child of container.children||[]){ child.setAttribute?.('aria-pressed','false'); child.classList?.remove('is-selected'); }
+        if(!detail||wasSelected){ if(detail){detail.hidden=true;detail.innerHTML='';} return; }
+        button.setAttribute('aria-pressed','true'); button.classList.add('is-selected');
+        detail.innerHTML=powerDetailMarkup(power,type); detail.hidden=false;
+      });
+      container.appendChild(button);
+    }
+    return true;
+  }
+
+  function bindPausePowerTabs(){
+    const skillTab=document.getElementById('pauseSkillTab'),artifactTab=document.getElementById('pauseArtifactTab');
+    const skillGrid=document.getElementById('pauseSkillGrid'),artifactGrid=document.getElementById('pauseArtifactGrid');
+    if(!skillTab||!artifactTab||!skillGrid||!artifactGrid) return;
+    const select=(kind)=>{
+      const skills=kind==='skills';
+      skillTab.setAttribute('aria-selected',String(skills)); artifactTab.setAttribute('aria-selected',String(!skills));
+      skillGrid.hidden=!skills; artifactGrid.hidden=skills;
+      const detail=document.getElementById('pausePowerDetail'); if(detail){ detail.hidden=true; detail.innerHTML=''; }
+    };
+    skillTab.onclick=()=>select('skills'); artifactTab.onclick=()=>select('artifacts');
+    select('skills');
+  }
+
   function renderPause(){
-    const p=state.p, wrap=document.getElementById('pauseSkills');
-    document.getElementById('pauseSummary').textContent=`Wave ${Math.max(1,state.wave)}/${state.maxWave}｜Lv.${p.lv}｜HP ${Math.max(0,Math.floor(p.hp))}/${p.maxHp}`;
-    const artHtml = p.artifacts && p.artifacts.length ? '<h3 class="pause-subhead">アーティファクト</h3>'+p.artifacts.map(a=>`<div class="pause-skill artifact-row"><span class="ico">${a.icon||'🏺'}</span><span><b>${a.name}</b><small>${a.tags.join(' / ')}｜${a.desc}</small></span></div>`).join('') : '';
-    if(!p.skills.length){ wrap.innerHTML=artHtml+'<div class="item"><b>まだ何も食べていません</b><small>レベルアップで食べた力がここに並びます。</small></div>'; return; }
-    wrap.innerHTML=artHtml+'<h3 class="pause-subhead">食べたスキル</h3>'+p.skills.map(s=>`<div class="pause-skill"><span class="ico">${s.icon||'🍽️'}</span><span><b>${s.name}${s.fusion?' ✦':` Lv.${p.skillLevels?.[s.id]||1}`}</b><small>${s.tags.join(' / ')}｜${s.desc}</small></span></div>`).join('');
+    const p=state.p;
+    const wave=Math.max(1,state.wave),hp=`${Math.max(0,Math.floor(p.hp))} / ${p.maxHp}`;
+    const summary=document.getElementById('pauseSummary'); if(summary){ summary.classList.remove('is-error'); summary.textContent=`Wave ${wave}/${state.maxWave}｜Lv.${p.lv}｜HP ${Math.max(0,Math.floor(p.hp))}/${p.maxHp}`; }
+    const waveValue=document.getElementById('pauseWaveValue'); if(waveValue) waveValue.textContent=`${wave} / ${state.maxWave}`;
+    const levelValue=document.getElementById('pauseLevelValue'); if(levelValue) levelValue.textContent=`Lv.${p.lv}`;
+    const hpValue=document.getElementById('pauseHpValue'); if(hpValue) hpValue.textContent=hp;
+    if(document.getElementById('pauseSkillGrid')){
+      renderOwnedPowers('pauseSkillGrid','pausePowerDetail',{skills:true,artifacts:false,pause:true});
+      renderOwnedPowers('pauseArtifactGrid','pausePowerDetail',{skills:false,artifacts:true,pause:true});
+      bindPausePowerTabs();
+      return;
+    }
+    const wrap=document.getElementById('pauseSkills');
+    if(wrap) wrap.innerHTML='<div class="pause-power-empty">まだ力を食べていません</div>';
   }
   function applyDamageToPlayer(rawDamage, invuln=.55){
     const p=state.p;
@@ -510,7 +596,7 @@ window.MoguriaGame = (() => {
   function openArtifactChoice(wave,savedChoiceIds=[]){
     state.mode='artifact';
     const available=new Map(MoguriaSkills.artifacts.filter(a=>!state.p.artifacts.some(owned=>owned.id===a.id)).map(a=>[a.id,a]));
-    const choices=[];
+    let choices=[];
     for(const id of savedChoiceIds||[]){ const choice=available.get(id); if(choice&&!choices.some(a=>a.id===id)) choices.push(choice); }
     for(const choice of MoguriaSkills.weightedArtifactChoices(3,state.p.artifacts)){
       if(choices.length>=3) break;
@@ -518,41 +604,61 @@ window.MoguriaGame = (() => {
     }
     rememberPendingChoice('artifact',wave,choices);
     const wrap=document.getElementById('artifactChoices');
-    wrap.innerHTML='';
-    for(const a of choices){
-      const btn=document.createElement('button');
-      btn.type='button';
-      btn.className='skill-card artifact-choice';
-      const visualKind=visualKindForArtifact(a);
-      btn.dataset.artifactId=a.id;
-      btn.dataset.kvKind=visualKind;
-      btn.setAttribute('aria-label',`${a.name}を選ぶ。${a.desc}`);
-      btn.innerHTML=`<div class="skill-head"><span class="skill-icon" data-kv-kind="${visualKind}" aria-hidden="true"></span><b>${a.name}</b></div><span>${a.desc}</span><em>${a.tags.map(t=>`<i class="tag ${tagClass(t)}">${t}</i>`).join('')}</em><strong class="artifact-choice__pick" aria-hidden="true">選ぶ</strong>`;
-      let chosen=false;
-      const choose=(ev)=>{
-        if(ev){ev.preventDefault();ev.stopPropagation();}
-        if(chosen || !state || state.mode!=='artifact') return;
-        chosen=true;
-        MoguriaAudio?.play('artifact');
-        state.p.artifacts.push(a);
-        a.apply(state.p,state);
-        state.artifactWaves[wave]=true;
-        state.pendingChoice=null;
-        state.flash=Math.max(state.flash,.18); sparkleBurst(state.p.x,state.p.y,34,'#ffe27c');
-        document.getElementById('artifactModal').classList.add('hidden');
-        toast(`${a.name}を手に入れた！`);
-        state.mode='run'; state.last=performance.now();
-        startNextWave();
-        persistCheckpoint('artifact');
-        window.MoguriaBattleV3?.sync?.(state);
-      };
-      btn.addEventListener('click', choose, {passive:false});
-      wrap.appendChild(btn);
+    const rerollBtn=document.getElementById('artifactRerollBtn');
+    const rerollCount=document.getElementById('artifactRerollCount');
+    function renderChoices(){
+      wrap.innerHTML='';
+      if(rerollCount) rerollCount.textContent=state.artifactRerolls;
+      if(rerollBtn) rerollBtn.disabled=state.artifactRerolls<=0;
+      for(const a of choices){
+        const btn=document.createElement('button');
+        btn.type='button';
+        btn.className='skill-card artifact-choice';
+        const visualKind=visualKindForArtifact(a);
+        btn.dataset.artifactId=a.id;
+        btn.dataset.kvKind=visualKind;
+        btn.setAttribute('aria-label',`${a.name}を選ぶ。${a.desc}`);
+        btn.innerHTML=`<div class="skill-head"><span class="skill-icon" data-kv-kind="${visualKind}" aria-hidden="true"><span class="skill-icon__glyph">${a.icon||'🏺'}</span></span><b>${a.name}</b></div><span>${a.desc}</span><em>${a.tags.map(t=>`<i class="tag ${tagClass(t)}">${t}</i>`).join('')}</em><strong class="artifact-choice__pick" aria-hidden="true">選ぶ</strong>`;
+        let chosen=false;
+        const choose=(ev)=>{
+          if(ev){ev.preventDefault();ev.stopPropagation();}
+          if(chosen || !state || state.mode!=='artifact') return;
+          chosen=true;
+          MoguriaAudio?.play('artifact');
+          state.p.artifacts.push(a);
+          a.apply(state.p,state);
+          state.artifactWaves[wave]=true;
+          state.pendingChoice=null;
+          state.flash=Math.max(state.flash,.18); sparkleBurst(state.p.x,state.p.y,34,'#ffe27c');
+          document.getElementById('artifactModal').classList.add('hidden');
+          toast(`${a.name}を手に入れた！`);
+          state.mode='run'; state.last=performance.now();
+          startNextWave();
+          persistCheckpoint('artifact');
+          window.MoguriaBattleV3?.sync?.(state);
+        };
+        btn.addEventListener('click', choose, {passive:false});
+        wrap.appendChild(btn);
+      }
+      window.MoguriaKVVisualRefresh?.decorateAll?.();
     }
-    window.MoguriaKVVisualRefresh?.decorateAll?.();
+    if(rerollBtn){
+      rerollBtn.onclick=(ev)=>{
+        ev.preventDefault(); ev.stopPropagation();
+        if(!state||state.mode!=='artifact'||state.artifactRerolls<=0) return;
+        state.artifactRerolls--;
+        choices=MoguriaSkills.weightedArtifactChoices(3,state.p.artifacts);
+        rememberPendingChoice('artifact',wave,choices);
+        renderChoices();
+        persistCheckpoint('artifact-reroll');
+      };
+    }
+    renderOwnedPowers('artifactOwnedSkills','artifactOwnedDetail',{skills:true,artifacts:true});
+    renderChoices();
     const title=document.getElementById('artifactTitle');
     if(title) title.textContent = wave===3 ? '前半のアーティファクト' : '中盤のアーティファクト';
     document.getElementById('artifactModal').classList.remove('hidden');
+    persistCheckpoint('artifact-choice');
   }
 
   function battleStep(dt){
@@ -1097,7 +1203,7 @@ window.MoguriaGame = (() => {
       state.p.nextExp = Math.floor(MoguriaConfig.exp.base + Math.pow(state.p.lv, MoguriaConfig.exp.power) * MoguriaConfig.exp.scale); if(state.p.expDiscount>0){ state.p.nextExp=Math.floor(state.p.nextExp*MoguriaConfig.exp.discountRate); state.p.expDiscount--; }
     }
     updateHud();
-    const available=new Map(MoguriaSkills.skills.filter(s=>(state.p.skillLevels?.[s.id]||0)<(MoguriaSkills.MAX_SKILL_LEVEL||5)&&!state.bannedSkills.includes(s.id)).map(s=>[s.id,s]));
+    const available=new Map(MoguriaSkills.skills.filter(s=>(state.p.skillLevels?.[s.id]||0)<(MoguriaSkills.MAX_SKILL_LEVEL||5)&&!state.bannedSkills.includes(s.id)&&MoguriaSkills.isSkillEligible(s,state.p)).map(s=>[s.id,s]));
     let choices=[];
     for(const id of options.choiceIds||[]){ const choice=available.get(id); if(choice&&!choices.some(s=>s.id===id)) choices.push(choice); }
     for(const choice of MoguriaSkills.weightedChoices(3,state.p,state.bannedSkills)){
@@ -1131,14 +1237,17 @@ window.MoguriaGame = (() => {
       if(rerollBtn) rerollBtn.disabled=state.rerolls<=0;
       for(const s of choices){
         const btn=document.createElement('div');
-        btn.className='skill-card '+s.rarity;
+        const choiceMeta=MoguriaSkills.choiceMetadataForSkill?.(s,state.p)||{kind:'new',badge:'NEW',relationship:''};
+        btn.className=`skill-card ${s.rarity}${choiceMeta.kind==='enhancement'?' is-enhancement':choiceMeta.kind==='new'?' is-new':''}`;
         const visualKind=visualKindForSkill(s);
         btn.dataset.skillId=s.id;
         btn.dataset.kvKind=visualKind;
+        btn.dataset.choiceKind=choiceMeta.kind;
         const currentLv = state.p.skillLevels?.[s.id] || 0;
-        btn.innerHTML=`<div class="skill-head"><span class="skill-icon" data-kv-kind="${visualKind}" aria-hidden="true">${s.icon||'🍽️'}</span><b>${s.name}<small class="skill-lv">Lv.${currentLv}→${currentLv+1}</small></b></div><span>${s.desc}</span><em>${s.tags.map(t=>`<i class="tag ${tagClass(t)}">${t}</i>`).join('')}</em><button class="ban-skill" type="button">封印 ${state.bans}</button>`;
+        const relationship=choiceMeta.relationship?`<small class="skill-card__relationship">↳ ${choiceMeta.relationship}</small>`:'';
+        btn.innerHTML=`<div class="skill-head"><span class="skill-icon" data-kv-kind="${visualKind}" data-icon-id="${s.id}" aria-hidden="true">${skillArtMarkup(s)}</span><b>${s.name}<small class="skill-lv">Lv.${currentLv}→${currentLv+1}</small><small class="skill-card__badge skill-card__badge--${choiceMeta.kind}">${choiceMeta.badge}</small></b></div><span>${s.desc}</span>${relationship}<em>${s.tags.map(t=>`<i class="tag ${tagClass(t)}">${t}</i>`).join('')}</em><button class="ban-skill" type="button">封印 ${state.bans}</button>`;
         const banBtn=btn.querySelector('.ban-skill');
-        if(banBtn){ banBtn.disabled=state.bans<=0; banBtn.addEventListener('click',(ev)=>{ ev.preventDefault(); ev.stopPropagation(); if(!state||state.mode!=='choice'||state.bans<=0) return; state.bans--; state.bannedSkills.push(s.id); MoguriaAudio?.play('select'); choices=MoguriaSkills.weightedChoices(3,state.p,state.bannedSkills); rememberPendingChoice('skill',state.pendingChoice?.wave??state.wave,choices); renderChoices(); }); }
+        if(banBtn){ banBtn.disabled=state.bans<=0; banBtn.addEventListener('click',(ev)=>{ ev.preventDefault(); ev.stopPropagation(); if(!state||state.mode!=='choice'||state.bans<=0) return; state.bans--; state.bannedSkills.push(s.id); MoguriaAudio?.play('select'); choices=MoguriaSkills.weightedChoices(3,state.p,state.bannedSkills); rememberPendingChoice('skill',state.pendingChoice?.wave??state.wave,choices); renderChoices(); persistCheckpoint('skill-ban'); }); }
         let chosen=false;
         const choose=(ev)=>{
           if(ev){ ev.preventDefault(); ev.stopPropagation(); }
@@ -1174,8 +1283,10 @@ window.MoguriaGame = (() => {
         choices=MoguriaSkills.weightedChoices(3,state.p,state.bannedSkills);
         rememberPendingChoice('skill',state.pendingChoice?.wave??state.wave,choices);
         renderChoices();
+        persistCheckpoint('skill-reroll');
       };
     }
+    renderOwnedPowers('levelOwnedSkills','levelOwnedDetail',{skills:true,artifacts:false});
     renderChoices();
     document.getElementById('levelModal').classList.remove('hidden');
   }
@@ -1203,7 +1314,7 @@ window.MoguriaGame = (() => {
     }
     state.mode='settlementError'; state.finalizing=false;
     const summary=document.getElementById('pauseSummary');
-    if(summary) summary.textContent='冒険記録を保存できませんでした。空き容量を確認して、保存を再試行してください。';
+    if(summary){ summary.textContent='冒険記録を保存できませんでした。空き容量を確認して、保存を再試行してください。'; summary.classList.add('is-error'); }
     const resume=document.getElementById('resumeBtn');
     if(resume) resume.textContent='保存を再試行';
     document.getElementById('pauseModal')?.classList.remove('hidden');

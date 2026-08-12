@@ -39,8 +39,9 @@ function recordingGraphics() {
   const calls = [];
   const graphics = { calls };
   for (const method of [
-    'clear', 'fillStyle', 'fillCircle', 'fillRect', 'lineStyle', 'strokeCircle',
-    'strokeRect', 'beginPath', 'moveTo', 'lineTo', 'closePath', 'fillPath'
+    'clear', 'fillStyle', 'fillCircle', 'fillRect', 'fillRoundedRect', 'lineStyle',
+    'strokeCircle', 'strokeRect', 'strokeRoundedRect', 'beginPath', 'moveTo',
+    'lineTo', 'closePath', 'fillPath'
   ]) {
     graphics[method] = (...args) => { calls.push([method, ...args]); return graphics; };
   }
@@ -361,8 +362,8 @@ test('continuous Mogu rig owns frame zero and applies one blended pose per Phase
   assert.equal(sprite.x, 7);
   assert.equal(sprite.y, 24);
   assert.equal(sprite.rotation, -0.2);
-  assert.ok(Math.abs(sprite.scaleX - (116 / 256 * 1.1)) < 1e-12);
-  assert.ok(Math.abs(sprite.scaleY - (116 / 256 * 0.9)) < 1e-12);
+  assert.ok(Math.abs(sprite.scaleX - (82 / 256 * 1.1)) < 1e-12);
+  assert.ok(Math.abs(sprite.scaleY - (82 / 256 * 0.9)) < 1e-12);
   assert.equal(sprite.moguriaState, 'rig:attack');
   assert.ok(stops >= 2, 'atlas playback must remain stopped while the rig owns Mogu');
 
@@ -400,7 +401,7 @@ test('a failed continuous rig falls back to the existing Mogu atlas in the same 
     setRotation() { return this; },
     setScale() { return this; },
     setFlipX() { return this; },
-    setDisplaySize() { return this; },
+    setDisplaySize(width, height) { this.displayWidth = width; this.displayHeight = height; return this; },
     setDepth() { return this; },
     setAlpha() { return this; }
   };
@@ -418,6 +419,8 @@ test('a failed continuous rig falls back to the existing Mogu atlas in the same 
 
   assert.equal(scene.playerRig, null);
   assert.equal(sprite.moguriaRigControlled, false);
+  assert.equal(sprite.displayWidth, 82);
+  assert.equal(sprite.displayHeight, 82);
   assert.equal(scene.animationPauseSignature, '', 'fallback pause/resume must be reapplied after a rig failure');
   assert.equal(atlasCalls, 1);
   assert.equal(proceduralCalls, 1);
@@ -587,6 +590,103 @@ test('a short enemy attack timer remains latched through its full release sequen
   harness.context.MoguriaBattleV3.stop({ destroy: true, restoreLegacy: true });
 });
 
+test('battle actors use the compact presentation scale without changing boss hierarchy', () => {
+  const harness = createHarness();
+  harness.context.MoguriaBattleV3.boot({ parent: harness.parent });
+  const scene = harness.makeScene();
+
+  assert.equal(scene.enemyDisplaySize({ kind:'normal', r:10 }), 54);
+  assert.equal(scene.enemyDisplaySize({ kind:'normal', r:16 }), 56);
+  assert.equal(scene.enemyDisplaySize({ kind:'normal', r:21 }), 73.5);
+  assert.equal(scene.enemyDisplaySize({ kind:'midBoss', r:28 }), 184);
+  assert.equal(scene.enemyDisplaySize({ kind:'boss', r:36 }), 185.4);
+
+  const sprite = {
+    moguriaState: '',
+    setPosition() { return this; },
+    setFlipX() { return this; },
+    setDisplaySize(width, height) { this.displayWidth = width; this.displayHeight = height; return this; },
+    setDepth() { return this; },
+    setAlpha() { return this; }
+  };
+  scene.playerSprite = sprite;
+  scene.sampleMotion = () => ({ facing:1, attackSerial:0 });
+  scene.inferredState = () => 'idle';
+  scene.applyPlayerRig = () => false;
+  scene.setActorAnimation = () => {};
+  scene.applyProceduralActorMotion = () => {};
+  scene.syncPlayer({ mode:'run', levelUpCue:null }, { x:0, y:0, hp:100, invuln:0 });
+  assert.equal(sprite.displayWidth, 82);
+  assert.equal(sprite.displayHeight, 82);
+
+  harness.context.MoguriaBattleV3.stop({ destroy: true, restoreLegacy: true });
+});
+
+test('enemy facing ignores close jitter, dwells before reversal, and locks through actions', () => {
+  const harness = createHarness();
+  harness.context.MoguriaBattleV3.boot({ parent: harness.parent });
+  const scene = harness.makeScene();
+  const track = { facing:1, time:0 };
+  const entity = { x:30, y:0, r:16 };
+  const player = { x:0, y:0 };
+
+  scene.stateTime = 0;
+  assert.equal(scene.stabilizeEnemyFacing(track, entity, player, 'move'), -1, 'spawn should face Mogu immediately');
+
+  entity.x = -30;
+  scene.stateTime = 0.01;
+  assert.equal(scene.stabilizeEnemyFacing(track, entity, player, 'move'), -1);
+  entity.x = 30;
+  scene.stateTime = 0.06;
+  assert.equal(scene.stabilizeEnemyFacing(track, entity, player, 'move'), -1, 'brief sign jitter must clear the pending reversal');
+  entity.x = -30;
+  scene.stateTime = 0.08;
+  assert.equal(scene.stabilizeEnemyFacing(track, entity, player, 'attack'), -1, 'attack pose must keep its facing');
+  scene.stateTime = 0.18;
+  assert.equal(scene.stabilizeEnemyFacing(track, entity, player, 'hurt'), -1, 'hurt pose must keep its facing');
+  scene.stateTime = 0.28;
+  assert.equal(scene.stabilizeEnemyFacing(track, entity, player, 'telegraph'), -1, 'telegraph pose must keep its facing');
+  scene.stateTime = 0.38;
+  assert.equal(scene.stabilizeEnemyFacing(track, entity, player, 'recover'), -1, 'recover pose must keep its facing');
+
+  scene.stateTime = 0.41;
+  assert.equal(scene.stabilizeEnemyFacing(track, entity, player, 'move'), -1);
+  scene.stateTime = 0.52;
+  assert.equal(scene.stabilizeEnemyFacing(track, entity, player, 'move'), -1, 'reversal must dwell for about 120ms');
+  scene.stateTime = 0.54;
+  assert.equal(scene.stabilizeEnemyFacing(track, entity, player, 'move'), 1, 'sustained reversal should eventually commit');
+
+  entity.x = 5;
+  scene.stateTime = 0.7;
+  assert.equal(scene.stabilizeEnemyFacing(track, entity, player, 'move'), 1, 'contact dead zone must preserve facing');
+
+  harness.context.MoguriaBattleV3.stop({ destroy: true, restoreLegacy: true });
+});
+
+test('enemy sampled velocity cannot override an action-locked facing', () => {
+  const harness = createHarness();
+  harness.context.MoguriaBattleV3.boot({ parent: harness.parent });
+  const scene = harness.makeScene();
+  const player = { x:0, y:0 };
+  const entity = { x:30, y:0, r:16, hp:10, visualState:'move', attackVisualTimer:0 };
+
+  scene.stateTime = 0;
+  let track = scene.sampleMotion('enemy:facing-lock', entity);
+  assert.equal(scene.stabilizeEnemyFacing(track, entity, player, 'move'), -1);
+
+  // A ranged retreat or overlap correction may move right while the enemy is
+  // still facing and attacking Mogu to its left. Velocity must not flip it.
+  scene.stateTime = 0.02;
+  entity.x = 36;
+  entity.visualState = 'attack';
+  entity.attackVisualTimer = 0.3;
+  track = scene.sampleMotion('enemy:facing-lock', entity);
+  assert.ok(track.vx > 6);
+  assert.equal(scene.stabilizeEnemyFacing(track, entity, player, 'attack'), -1);
+
+  harness.context.MoguriaBattleV3.stop({ destroy: true, restoreLegacy: true });
+});
+
 test('enemy art receives distinct deterministic motion by state', () => {
   const harness = createHarness();
   harness.context.MoguriaBattleV3.boot({ parent: harness.parent });
@@ -606,7 +706,7 @@ test('enemy art receives distinct deterministic motion by state', () => {
   assert.notEqual(sprite.y, 18);
   assert.notEqual(sprite.x, 0);
   assert.notEqual(sprite.scaleX, 0.5);
-  assert.ok(Number.isFinite(sprite.rotation));
+  assert.equal(sprite.rotation, 0, 'normal enemy atlas must not receive an extra procedural tilt');
 
   harness.context.MoguriaBattleV3.stop({ destroy: true, restoreLegacy: true });
 });
@@ -649,8 +749,26 @@ test('collect-all drop and level-up cue receive distinct visual treatment', () =
   assert.equal(scene.syncLevelUpCue({ levelUpCue: { remaining: 0.55, duration: 0.75, level: 6 } }, { x: 10, y: 20, lv: 6 }), true);
   assert.equal(label.text, 'LEVEL UP!\nLv.6');
   assert.equal(label.visible, true);
+  assert.ok(Math.abs(label.y - (20 - 72 - (1 - .55 / .75) * 10)) < 1e-12);
   assert.equal(scene.lastCueCamera.type, 'zoom');
   assert.ok(scene.effectGraphics.calls.some(call => call[0] === 'strokeCircle'));
+
+  harness.context.MoguriaBattleV3.stop({ destroy: true, restoreLegacy: true });
+});
+
+test('player status bar follows the compact Mogu presentation', () => {
+  const harness = createHarness();
+  harness.context.MoguriaBattleV3.boot({ parent: harness.parent });
+  const scene = harness.makeScene();
+  scene.statusGraphics = recordingGraphics();
+
+  scene.drawPlayerStatus(
+    { dangerPulse:0, awakenTimer:0, returnGlow:0 },
+    { x:10, y:20, hp:50, maxHp:100 }
+  );
+
+  const background = scene.statusGraphics.calls.find(call => call[0] === 'fillRoundedRect');
+  assert.deepEqual(background, ['fillRoundedRect', -22, -28, 64, 7, 3]);
 
   harness.context.MoguriaBattleV3.stop({ destroy: true, restoreLegacy: true });
 });

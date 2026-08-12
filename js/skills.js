@@ -78,12 +78,145 @@ window.MoguriaSkills = (() => {
     {id:'study_notebook', icon:'📘', name:'もぐ研究ノート', tags:['成長','救済'], weight:3, desc:'経験値効率が上がり、悪い序盤から巻き返しやすい。', apply:p=>{p.xpBonus+=.28;p.magnetRadius+=34;p.visual.star+=2;}}
 
   ];
+
+  const ATLAS_BASE = 'assets/images/skill-icons/';
+  const iconVisuals = {
+    poison_seed:['poison',0,'poison'], poison_stack:['poison',1,'poison'], poison_cloud:['poison',2,'poison'], toxic_burst:['poison',3,'poison'],
+    spark_pop:['blast',0,'fire'], boom_cookie:['blast',1,'fire'], chain_pop:['blast',2,'fire'], sleepy_mine:['combat',3,'fire'],
+    quick_berry:['move',0,'ice'], blink_mint:['move',1,'ice'], afterimage:['move',2,'ice'], soft_step:['move',3,'ice'],
+    guard_nut:['guard',0,'guard'], thorn_bun:['guard',1,'guard'], sleepy_shell:['guard',2,'guard'], mogu_field:['guard',3,'guard'],
+    mini_mogu:['summon',0,'summon'], friend_jam:['summon',1,'summon'], bye_pop:['summon',2,'summon'], big_field:['summon',3,'guard'],
+    star_meteor:['star',2,'star'], meteor_party:['star',2,'star'], thunder_gum:['combat',2,'star'], storm_soda:['combat',2,'star'],
+    pierce_skewer:['star',0,'star'], split_mochi:['star',1,'star'], fan_cookie:['blast',3,'fire'], crit_sugar:['star',3,'star'],
+    hungry_fang:['combat',0,'star'], star_drop:['support',3,'star'], growth_honey:['support',2,'star'], ice_syrup:['support',0,'ice'],
+    moon_orbit:['combat',1,'star'], orbit_storm:['combat',1,'star'], mine_garden:['combat',3,'fire'], mogu_vamp:['support',1,'poison']
+  };
+
+  const skillRequirements = Object.freeze({
+    poison_stack:{capability:'poison-source',label:'毒を与える力'},
+    poison_cloud:{capability:'poison-source',label:'毒を与える力'},
+    toxic_burst:{capability:'poison-source',label:'毒を与える力'},
+    boom_cookie:{capability:'explosion-source',label:'爆発を起こす力'},
+    chain_pop:{capability:'explosion-source',label:'爆発を起こす力'},
+    friend_jam:{capability:'summon-source',label:'こもぐを呼ぶ力'},
+    bye_pop:{capability:'summon-source',label:'こもぐを呼ぶ力'}
+  });
+
+  const skillCapabilityProviders = Object.freeze({
+    poison_seed:['poison-source'],
+    spark_pop:['explosion-source'], toxic_burst:['explosion-source'], afterimage:['explosion-source'], sleepy_shell:['explosion-source'],
+    bye_pop:['explosion-source'], star_meteor:['explosion-source'], meteor_party:['explosion-source'], sleepy_mine:['explosion-source'], mine_garden:['explosion-source'],
+    mini_mogu:['summon-source']
+  });
+
+  const artifactCapabilityProviders = Object.freeze({
+    violet_engine:['poison-source','explosion-source'], pop_crown:['explosion-source'], little_parade:['summon-source'],
+    trap_lunchbox:['explosion-source']
+  });
+
+  function makeIconVisual(entry){
+    const [family,cell,kind]=entry||['support',0,'cave'];
+    const safeCell=Math.max(0,Math.min(3,Math.floor(Number(cell)||0)));
+    return Object.freeze({
+      family,
+      atlas:`${ATLAS_BASE}skill-atlas-${family}.webp`,
+      cell:safeCell,
+      x:safeCell%2?100:0,
+      y:safeCell>1?100:0,
+      kind
+    });
+  }
+
+  for(const skill of skills){
+    skill.iconVisual=makeIconVisual(iconVisuals[skill.id]);
+    if(skillRequirements[skill.id]) skill.requirement=skillRequirements[skill.id];
+    if(skillCapabilityProviders[skill.id]) skill.provides=skillCapabilityProviders[skill.id];
+  }
+  for(const artifact of artifacts){
+    if(artifactCapabilityProviders[artifact.id]) artifact.provides=artifactCapabilityProviders[artifact.id];
+  }
+
+  function definitionId(entry){ return typeof entry==='string'?entry:entry?.id; }
+  function ownedDefinitions(pOrOwned){
+    const source=pOrOwned&&typeof pOrOwned==='object'?pOrOwned:{};
+    const ownedSkills=Array.isArray(source)?source:(Array.isArray(source.skills)?source.skills:[]);
+    const skillIds=new Set(ownedSkills.map(definitionId).filter(Boolean));
+    for(const [id,level] of Object.entries(source.skillLevels||{})){ if(Number(level)>0) skillIds.add(id); }
+    const artifactIds=new Set((Array.isArray(source.artifacts)?source.artifacts:[]).map(definitionId).filter(Boolean));
+    return {skillIds,artifactIds};
+  }
+
+  function capabilitySources(pOrOwned,capability){
+    const {skillIds,artifactIds}=ownedDefinitions(pOrOwned);
+    const sources=[];
+    for(const id of skillIds){
+      if(!(skillCapabilityProviders[id]||[]).includes(capability)) continue;
+      const source=skills.find(skill=>skill.id===id);
+      if(source) sources.push({id:source.id,name:source.name,type:'skill'});
+    }
+    for(const id of artifactIds){
+      if(!(artifactCapabilityProviders[id]||[]).includes(capability)) continue;
+      const source=artifacts.find(artifact=>artifact.id===id);
+      if(source) sources.push({id:source.id,name:source.name,type:'artifact'});
+    }
+    return sources;
+  }
+
+  function requirementForSkill(skillOrId){
+    const id=definitionId(skillOrId);
+    return id?skillRequirements[id]||null:null;
+  }
+
+  function isSkillEligible(skillOrId,pOrOwned){
+    const requirement=requirementForSkill(skillOrId);
+    return !requirement||capabilitySources(pOrOwned,requirement.capability).length>0;
+  }
+
+  function enhancementSourceForSkill(skillOrId,pOrOwned){
+    const requirement=requirementForSkill(skillOrId);
+    if(!requirement) return null;
+    const sources=capabilitySources(pOrOwned,requirement.capability);
+    return sources.length?{...sources[0],capability:requirement.capability,label:requirement.label}:null;
+  }
+
+  function choiceMetadataForSkill(skillOrId,pOrOwned){
+    const skill=typeof skillOrId==='string'?skills.find(entry=>entry.id===skillOrId):skillOrId;
+    if(!skill) return {eligible:false,kind:'unknown',badge:'',relationship:'',source:null};
+    const source=enhancementSourceForSkill(skill,pOrOwned);
+    const level=skillLevel(pOrOwned,skill.id);
+    if(skill.requirement){
+      return {eligible:!!source,kind:'enhancement',badge:'強化',relationship:source?`${source.name}を強くする`:'前提の力が必要',source};
+    }
+    return {eligible:true,kind:level>0?'levelup':'new',badge:level>0?'LEVEL UP':'NEW',relationship:'',source:null};
+  }
+
+  function iconVisualForSkill(skillOrId){
+    const skill=typeof skillOrId==='string'?
+      (skills.find(entry=>entry.id===skillOrId)||fusions.find(entry=>entry.id===skillOrId)):
+      skillOrId;
+    return skill?.iconVisual||makeIconVisual();
+  }
+
+  function iconAssetForSkill(skillOrId){ return iconVisualForSkill(skillOrId).atlas; }
+
+  function iconVisualForArtifact(artifactOrId){
+    const artifact=typeof artifactOrId==='string'?artifacts.find(entry=>entry.id===artifactOrId):artifactOrId;
+    const tags=new Set(artifact?.tags||[]);
+    const kind=tags.has('毒')?'poison':tags.has('召喚')?'summon':(tags.has('爆発')||tags.has('設置'))?'fire':
+      (tags.has('氷')||tags.has('回避')||tags.has('速度'))?'ice':(tags.has('防御')||tags.has('反撃')||tags.has('回復')||tags.has('領域'))?'guard':'star';
+    return {family:kind==='fire'?'blast':kind==='ice'?'move':kind==='guard'?'guard':kind==='summon'?'summon':kind==='poison'?'poison':'star',cell:0,x:0,y:0,kind};
+  }
+
   function weightedArtifactChoices(count, owned){
     const taken = new Set((owned||[]).map(a=>a.id));
-    const weighted=[];
-    for(const a of artifacts){ if(taken.has(a.id)) continue; for(let i=0;i<(a.weight||3);i++) weighted.push(a); }
+    const pool=artifacts.filter(a=>!taken.has(a.id));
     const out=[];
-    while(out.length<count && weighted.length){ const pick=weighted[Math.floor(Math.random()*weighted.length)]; if(!out.find(x=>x.id===pick.id)) out.push(pick); }
+    while(out.length<count && pool.length){
+      const total=pool.reduce((sum,a)=>sum+Math.max(1,Number(a.weight)||3),0);
+      let cursor=Math.random()*total,index=0;
+      for(;index<pool.length-1;index++){ cursor-=Math.max(1,Number(pool[index].weight)||3); if(cursor<0) break; }
+      out.push(pool.splice(index,1)[0]);
+    }
     return out;
   }
 
@@ -94,6 +227,13 @@ window.MoguriaSkills = (() => {
     {id:'fusion_safe_flower_bomb', icon:'🌷', name:'まもり花火畑', requires:{mogu_field:3,sleepy_mine:2}, tags:['防御','設置','爆発'], desc:'領域と爆弾が合体。守りながら足元に花火を咲かせる。', apply:p=>{p.auraDamage+=8;p.auraRadius=Math.max(p.auraRadius+30,122);p.mine=true;p.mineRate=Math.max(1.3,p.mineRate-1.0);p.explosionPower+=14;p.visual.guard+=3;p.visual.fire+=2;}},
     {id:'fusion_little_meteor_parade', icon:'🐾', name:'こもぐ星ふり隊', requires:{mini_mogu:3,star_meteor:2}, tags:['召喚','自動','攻撃'], desc:'こもぐと星雨が合体。仲間たちが星を呼びやすくなる。', apply:p=>{p.summons+=2;p.summonRate*=.72;p.meteor=true;p.meteorRate=Math.max(1.55,p.meteorRate-1.2);p.visual.summon+=3;p.visual.star+=2;}}
   ];
+  const fusionIconVisuals = Object.freeze({
+    fusion_toxic_star_firework:['poison',3,'poison'],
+    fusion_storm_orbit:['combat',2,'star'],
+    fusion_safe_flower_bomb:['guard',3,'guard'],
+    fusion_little_meteor_parade:['summon',2,'summon']
+  });
+  for(const fusion of fusions) fusion.iconVisual=makeIconVisual(fusionIconVisuals[fusion.id]);
   function skillLevel(pOrOwned, id){
     if(pOrOwned && pOrOwned.skillLevels) return pOrOwned.skillLevels[id]||0;
     const owned=Array.isArray(pOrOwned)?pOrOwned:[];
@@ -101,19 +241,20 @@ window.MoguriaSkills = (() => {
   }
   function weightedChoices(count, owned, banned){
     const levelMap = owned && owned.skillLevels ? owned.skillLevels : null;
-    const list = levelMap ? skills.filter(s => (levelMap[s.id]||0) < MAX_SKILL_LEVEL) : skills.filter(s => (owned.filter(o=>o.id===s.id).length < MAX_SKILL_LEVEL));
+    const ownedList=Array.isArray(owned)?owned:[];
+    const list = levelMap ? skills.filter(s => (levelMap[s.id]||0) < MAX_SKILL_LEVEL) : skills.filter(s => (ownedList.filter(o=>o.id===s.id).length < MAX_SKILL_LEVEL));
     const ban = new Set(banned||[]);
-    const pool = list.filter(s=>!ban.has(s.id));
-    const weighted = [];
-    for (const s of pool) {
-      const lv = levelMap ? (levelMap[s.id]||0) : (Array.isArray(owned)?owned.filter(o=>o.id===s.id).length:0);
-      const w = (s.rarity === 'legendary' ? 1 : s.rarity === 'rare' ? 3 : 7) + (lv>0 ? 2 : 0);
-      for (let i=0;i<w;i++) weighted.push(s);
-    }
+    const pool = list.filter(s=>!ban.has(s.id)&&isSkillEligible(s,owned));
     const out=[];
-    while(out.length<count && weighted.length){
-      const pick = weighted[Math.floor(Math.random()*weighted.length)];
-      if(!out.find(x=>x.id===pick.id)) out.push(pick);
+    while(out.length<count && pool.length){
+      const weights=pool.map(s=>{
+        const lv=levelMap?(levelMap[s.id]||0):ownedList.filter(o=>o.id===s.id).length;
+        return (s.rarity==='legendary'?1:s.rarity==='rare'?3:7)+(lv>0?2:0);
+      });
+      const total=weights.reduce((sum,value)=>sum+value,0);
+      let cursor=Math.random()*total,index=0;
+      for(;index<pool.length-1;index++){ cursor-=weights[index]; if(cursor<0) break; }
+      out.push(pool.splice(index,1)[0]);
     }
     return out;
   }
@@ -147,5 +288,11 @@ window.MoguriaSkills = (() => {
     if(got('mogu_vamp') && got('hungry_fang')) s.push('はらぺこ吸収');
     return [...new Set(s)];
   }
-  return { skills, artifacts, fusions, MAX_SKILL_LEVEL, weightedChoices, weightedArtifactChoices, checkFusions, detectSynergies };
+  return {
+    skills, artifacts, fusions, MAX_SKILL_LEVEL,
+    skillRequirements, skillCapabilityProviders, artifactCapabilityProviders,
+    capabilitySources, requirementForSkill, isSkillEligible, enhancementSourceForSkill, choiceMetadataForSkill,
+    iconVisualForSkill, iconAssetForSkill, iconVisualForArtifact,
+    weightedChoices, weightedArtifactChoices, checkFusions, detectSynergies
+  };
 })();

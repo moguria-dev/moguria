@@ -38,6 +38,7 @@
     run: freeze({
       maxWave: 12,
       rerolls: 3,
+      artifactRerolls: 3,
       timeLimit: 480
     }),
 
