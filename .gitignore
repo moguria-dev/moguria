@@ -1,0 +1,24 @@
+# Local dependencies and generated reports
+node_modules/
+coverage/
+artifacts/
+playwright-report/
+test-results/
+_site/
+_site.moguria-generated
+
+# Logs, temporary output, and local environment files
+*.log
+*.tmp
+*.zip
+.env
+.env.*
+!.env.example
+
+# OS and editor noise
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/

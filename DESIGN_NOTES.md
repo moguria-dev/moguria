@@ -1,5 +1,7 @@
 # Moguria Design Notes
 
+> 履歴資料です。現在の実装・version・性能値・運用手順の正本ではありません。現行状態は `docs/CURRENT_STATE.md`、構造は `docs/ARCHITECTURE.md`、数値は `config/project-state.json` を参照してください。
+
 ## 変えてはいけない核
 
 - 毎回壊れビルドを探すかわいい地獄。

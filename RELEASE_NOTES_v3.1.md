@@ -1,5 +1,7 @@
 # Moguria v3.1
 
+> 過去releaseの記録です。現在仕様や公開手順を定義しません。現行状態は `docs/CURRENT_STATE.md`、公開は `docs/DEPLOYMENT.md` を参照してください。
+
 ## 目的
 ホーム画面だけを、画像1の方向性に近い「Moguの部屋」として刷新する。
 

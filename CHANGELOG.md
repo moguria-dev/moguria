@@ -1,4 +1,14 @@
-# v3.2.1 — battle-v3 QA hardening
+# Changelog
+
+## Unreleased — development environment hardening
+
+- Added machine-readable project state, asset inventory, animation policy, and validation contracts under `config/`.
+- Standardized development on task branches and pull requests to protected `main`; retained `develop-homeui2` only as the temporary legacy Pages source with automatic merge forbidden.
+- Added CI and a manual GitHub Pages workflow so merging to `main` and authorizing deployment remain separate operations after migration.
+- Added canonical development, architecture, asset, animation, testing, deployment, recovery, save, security, and agent-environment guidance plus contribution templates.
+- Pinned the Node runtime and added project, asset, HTML, Service Worker, test, and preflight validation gates.
+
+## v3.2.1 — battle-v3 QA hardening
 
 - スキル／アーティファクト選択中の保存復帰と、リロール0回の保持を修正
 - 読込・Phaser起動にタイムアウトと安全な再試行を追加
@@ -25,14 +35,10 @@
 - ガチャ結果に小さな光の演出を追加
 - 光と影の統一感を強化
 
-# CHANGELOG
-
 ## v2.2
 - 画面外のボス・中ボス方向を示す専用誘導矢印を追加。
 - レア敵の黄色い星矢印と、ボス用の紫の警戒矢印を区別。
 - ボスが画面外に出ても位置と圧が分かるように調整。
-
-# Changelog
 
 ## v1.9.0
 - 敵同士が重なりにくい押し出し処理を追加。
@@ -44,8 +50,6 @@
 ## v1.7.0
 - 雷連鎖が遠すぎる敵へ飛びにくいよう、初撃距離・連鎖距離・プレイヤーからの上限距離を追加。
 - コントローラーの標準表示位置を少し上へ調整。
-
-# CHANGELOG
 
 ## v1.3.0 - 軽量化・拡張耐性基盤
 - Asset Manifestを追加。
@@ -104,13 +108,6 @@
 - 連続撃破時の「もぐ連鎖」表示を追加
 - ボスを少し不穏な花のような見た目へ調整
 - WebAudioによる軽量な仮SEを追加
-
-## v2.1
-- レア敵の挙動を「Moguから逃げ続ける」から「自由に動き、端に留まりにくい」方式へ変更。
-- レア敵出現・撃破時の光演出を追加。
-- Waveクリア時の小さな帰還光リングを追加。
-- ボス撃破時に不穏な消失リングと粒子演出を追加。
-- スキルを食べた瞬間の光演出を強化。
 
 ## v2.1
 - レア敵の挙動を「Moguから逃げ続ける」から「自由に動き、端に留まりにくい」方式へ変更。

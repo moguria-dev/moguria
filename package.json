@@ -1,0 +1,21 @@
+{
+  "name": "moguria",
+  "version": "3.2.1",
+  "private": true,
+  "description": "Moguria static browser game validation tooling",
+  "license": "UNLICENSED",
+  "type": "commonjs",
+  "engines": {
+    "node": "24.14.0"
+  },
+  "scripts": {
+    "test": "node --test",
+    "validate:project": "node scripts/validate-project-state.mjs",
+    "validate:assets": "node scripts/validate-assets.mjs",
+    "validate:service-worker": "node scripts/validate-service-worker.mjs",
+    "validate:html": "node scripts/validate-html.mjs",
+    "prepare:pages": "node scripts/prepare-pages.mjs",
+    "preflight": "node scripts/preflight.mjs",
+    "ci": "node scripts/preflight.mjs"
+  }
+}

@@ -1,0 +1,2817 @@
+{
+  "schemaVersion": 1,
+  "generatedFile": "assets/manifest.json",
+  "budgetSource": "config/project-state.json#/performanceBudgets",
+  "inventoryPolicy": {
+    "assetRoot": "assets",
+    "entrypoint": "index.html",
+    "followEntrypointStylesAndScripts": true,
+    "additionalSourceFiles": [
+      "js/battle-v3-loader.js",
+      "js/battle-v3-scene.js",
+      "js/mogu-rig.js",
+      "assets/images/battle-v3/atlas.json"
+    ],
+    "discoverExtensions": [
+      ".json",
+      ".png",
+      ".svg",
+      ".webp"
+    ],
+    "stripQueryAndFragment": true,
+    "unreferencedPolicySource": "config/project-state.json#/validation/unreferencedAssetPolicy",
+    "lifecycleGovernance": {
+      "existingRuntimeBackfill": "runtime-active with audit-backfill-unknown approval is allowed only for unchanged legacy files",
+      "newOrChangedAsset": "approved status, approvedAt, sourceMasterId and durable provenance are required",
+      "enforcement": "integrity hashes bind backfill records; any byte change fails until governance metadata is completed"
+    }
+  },
+  "runtimeManifest": {
+    "version": "3.2.1-battle-v3",
+    "policy": {
+      "initialAudio": "metadata-only",
+      "lazyLoad": true,
+      "remoteAssets": false
+    },
+    "critical": [
+      {
+        "id": "home_v2_background",
+        "type": "image",
+        "src": "assets/images/home-v2/home_bg_base.webp"
+      },
+      {
+        "id": "home_v2_mogu",
+        "type": "image",
+        "src": "assets/images/home-v2/mogu_home_idle.png"
+      },
+      {
+        "id": "home_v2_star_companion",
+        "type": "image",
+        "src": "assets/images/home-v2/star_companion_home.png"
+      },
+      {
+        "id": "home_v2_logo",
+        "type": "image",
+        "src": "assets/images/home-v2/logo_moguria_home.png"
+      },
+      {
+        "id": "home_v2_frame",
+        "type": "image",
+        "src": "assets/images/home-v2/frame_glass_gold_9slice.png"
+      },
+      {
+        "id": "home_v2_button",
+        "type": "image",
+        "src": "assets/images/home-v2/button_pearl_9slice.png"
+      },
+      {
+        "id": "home_v2_button_gold",
+        "type": "image",
+        "src": "assets/images/home-v2/button_gold_9slice.png"
+      },
+      {
+        "id": "home_v2_icon_snack",
+        "type": "image",
+        "src": "assets/images/home-v2/icon_snack.png"
+      },
+      {
+        "id": "home_v2_icon_dex",
+        "type": "image",
+        "src": "assets/images/home-v2/icon_dex.png"
+      },
+      {
+        "id": "home_v2_icon_logs",
+        "type": "image",
+        "src": "assets/images/home-v2/icon_logs.png"
+      },
+      {
+        "id": "home_v2_icon_gacha",
+        "type": "image",
+        "src": "assets/images/home-v2/icon_gacha.png"
+      },
+      {
+        "id": "home_v2_icon_equip",
+        "type": "image",
+        "src": "assets/images/home-v2/icon_equip.png"
+      },
+      {
+        "id": "home_v2_icon_dungeon",
+        "type": "image",
+        "src": "assets/images/home-v2/icon_dungeon.png"
+      },
+      {
+        "id": "home_v2_icon_outing",
+        "type": "image",
+        "src": "assets/images/home-v2/icon_outing.png"
+      },
+      {
+        "id": "home_v2_currency_star",
+        "type": "image",
+        "src": "assets/images/home-v2/currency_star.png"
+      },
+      {
+        "id": "home_v2_currency_coin",
+        "type": "image",
+        "src": "assets/images/home-v2/currency_coin.png"
+      },
+      {
+        "id": "home_v2_currency_gem",
+        "type": "image",
+        "src": "assets/images/home-v2/currency_gem.png"
+      },
+      {
+        "id": "home_v2_expedition_mogu",
+        "type": "image",
+        "src": "assets/images/home-v2/expedition_mogu.png"
+      }
+    ],
+    "lazy": [],
+    "packs": [
+      {
+        "id": "stage-yawaraka-forest",
+        "label": "やわらか森",
+        "assets": []
+      },
+      {
+        "id": "battle-v3",
+        "label": "星影洞窟 battle-v3",
+        "assets": [
+          {
+            "id": "battle_v3_mogu",
+            "type": "image",
+            "src": "assets/images/battle-v3/mogu-atlas-hd-v2.png?v=20260812-battle-motion-2"
+          },
+          {
+            "id": "battle_v3_enemies",
+            "type": "image",
+            "src": "assets/images/battle-v3/enemy-atlas-v2.png?v=20260812-battle-motion-2"
+          },
+          {
+            "id": "battle_v3_companions",
+            "type": "image",
+            "src": "assets/images/battle-v3/companion-atlas.png?v=20260812-battle-motion-2"
+          },
+          {
+            "id": "battle_v3_bosses",
+            "type": "image",
+            "src": "assets/images/battle-v3/boss-atlas-v2.png?v=20260812-battle-motion-2"
+          },
+          {
+            "id": "battle_v3_far",
+            "type": "image",
+            "src": "assets/images/battle-v3/bg-far.webp?v=20260812-battle-motion-2"
+          },
+          {
+            "id": "battle_v3_mid",
+            "type": "image",
+            "src": "assets/images/battle-v3/bg-mid.webp?v=20260812-battle-motion-2"
+          },
+          {
+            "id": "battle_v3_ground",
+            "type": "image",
+            "src": "assets/images/battle-v3/bg-ground.webp?v=20260812-battle-motion-2"
+          },
+          {
+            "id": "battle_v3_foreground",
+            "type": "image",
+            "src": "assets/images/battle-v3/bg-foreground.webp?v=20260812-battle-motion-2"
+          },
+          {
+            "id": "battle_v3_atlas_manifest",
+            "type": "json",
+            "src": "assets/images/battle-v3/atlas.json?v=20260812-battle-motion-2"
+          }
+        ]
+      },
+      {
+        "id": "audio-basic",
+        "label": "基本SE/BGM",
+        "assets": []
+      }
+    ],
+    "images": {
+      "home_v2_background": "assets/images/home-v2/home_bg_base.webp",
+      "home_v2_mogu": "assets/images/home-v2/mogu_home_idle.png",
+      "home_v2_star_companion": "assets/images/home-v2/star_companion_home.png",
+      "home_v2_logo": "assets/images/home-v2/logo_moguria_home.png",
+      "home_v2_icon_snack": "assets/images/home-v2/icon_snack.png",
+      "home_v2_icon_dex": "assets/images/home-v2/icon_dex.png",
+      "home_v2_icon_logs": "assets/images/home-v2/icon_logs.png",
+      "home_v2_icon_gacha": "assets/images/home-v2/icon_gacha.png",
+      "home_v2_icon_equip": "assets/images/home-v2/icon_equip.png",
+      "home_v2_icon_dungeon": "assets/images/home-v2/icon_dungeon.png",
+      "home_v2_icon_outing": "assets/images/home-v2/icon_outing.png",
+      "home_v2_currency_star": "assets/images/home-v2/currency_star.png",
+      "home_v2_currency_coin": "assets/images/home-v2/currency_coin.png",
+      "home_v2_currency_gem": "assets/images/home-v2/currency_gem.png",
+      "home_v2_expedition_mogu": "assets/images/home-v2/expedition_mogu.png",
+      "home_v2_frame": "assets/images/home-v2/frame_glass_gold_9slice.png",
+      "home_v2_button": "assets/images/home-v2/button_pearl_9slice.png",
+      "home_v2_button_gold": "assets/images/home-v2/button_gold_9slice.png"
+    }
+  },
+  "legacyUncatalogedReferences": [
+    {
+      "path": "assets/images/battle-v2/battle_arena.webp",
+      "sha256": "28e7b597b285735f482e16c2ec24224aec307b62532f0ff70abc097c46a3a143"
+    },
+    {
+      "path": "assets/images/battle-v2/pause_mogu.webp",
+      "sha256": "fd6eb0192c5fd6661f10703f860b5a9b8f034546f02d961fa223f0a6fcb7043b"
+    },
+    {
+      "path": "assets/images/battle-v2/result_mogu.webp",
+      "sha256": "958f0ac012a780f0a04cbadcc478baf66b9e730808756a09862d7a3bebc393e0"
+    },
+    {
+      "path": "assets/images/battle-v2/result_return.webp",
+      "sha256": "02f46b8a98c4ffa7e4fb65384499b96d1b9224cdbebd2b9482235f7932b65295"
+    },
+    {
+      "path": "assets/images/battle-v3/atlas.json",
+      "sha256": "1f3ed322cc866d24a314e90b2038d8d289502f712d2ad924dea44ff3c742c83d"
+    },
+    {
+      "path": "assets/images/home/glass_panel.png",
+      "sha256": "6d97e9aec68202228cbd263a6913d138ccf722b0fcfa318c886768e318381b1f"
+    },
+    {
+      "path": "assets/images/home/gold_button.png",
+      "sha256": "71403151f1d7434d02bf38dcee69b8d797ccccbad8569429fd24f4f08e9d3a1d"
+    },
+    {
+      "path": "assets/images/home/home_cave_base.webp",
+      "sha256": "464af880e50d4947aa51b0952a4381d8dfa0b78c352da43cf2ea8d1161ea071e"
+    },
+    {
+      "path": "assets/images/home/home_cave_crystal_sprite.png",
+      "sha256": "79ffac69e3231c0acd3f13da77c3081111d732513f8c26892012d4077c6f06f7"
+    },
+    {
+      "path": "assets/images/home/home_cave_depth_wash.webp",
+      "sha256": "fc25407cf0ae66313fd51268559ba9a4da816a26c57cbb95ad2f54188676c829"
+    },
+    {
+      "path": "assets/images/home/home_cave_lamp_glow.png",
+      "sha256": "6e3c76069d6c9278ce345fbcdd1d3611acbb86255b63efa371e1d95ddbc9dbeb"
+    },
+    {
+      "path": "assets/images/home/home_cave_star_particle.png",
+      "sha256": "48ea76902380fdf97929b20e84ab1474a7db4b737b34c023577f84c7a35298d8"
+    },
+    {
+      "path": "assets/images/home/home_room_bg.png",
+      "sha256": "867eb00a410872138df65eb6cf2af292ba41c0950f3a7a01cf5f0ef4668722ec"
+    },
+    {
+      "path": "assets/images/home/home_room_bg_v31b.png",
+      "sha256": "867eb00a410872138df65eb6cf2af292ba41c0950f3a7a01cf5f0ef4668722ec"
+    },
+    {
+      "path": "assets/images/home/mogu_home.png",
+      "sha256": "e1f71b222b37dfe797ed64279e040272f3ead2ed3f1274efaf1a1b23b7953040"
+    },
+    {
+      "path": "assets/images/kv-icons/artifact_core.png",
+      "sha256": "af31625570dad18aa70ef7dabf36aada2af282dc9cee91ff2b116773c515268a"
+    },
+    {
+      "path": "assets/images/kv-icons/skill_cave.png",
+      "sha256": "c5bc0a5fa4ae0a28fb2bc093209fe12130b7ad3106fd706b01dd65a9d0f61e71"
+    },
+    {
+      "path": "assets/images/kv-icons/skill_fire.png",
+      "sha256": "38f614f85060d9b6092b4229e27e9dc957445787bbe44c80a3e47ce99d475a1e"
+    },
+    {
+      "path": "assets/images/kv-icons/skill_guard.png",
+      "sha256": "55b340a9e49f174f624745d8d95ad5697155ce9420b36e45c0f10337d0829881"
+    },
+    {
+      "path": "assets/images/kv-icons/skill_ice.png",
+      "sha256": "c6bfc2b1d2885732913f41d9712a86291056396e29c183cd92691e5b0adf8430"
+    },
+    {
+      "path": "assets/images/kv-icons/skill_poison.png",
+      "sha256": "1ff48744f197d4288b6a1f39977f338a63c7726a36c760f4b420c5d87ed231db"
+    },
+    {
+      "path": "assets/images/kv-icons/skill_star.png",
+      "sha256": "cc90e4b932c3a162d0a0d60d1a3586b94a213b6888687532f1cc3e591169179d"
+    },
+    {
+      "path": "assets/images/kv-icons/skill_summon.png",
+      "sha256": "04ca7c2e026f905e91f8193f3178d8fd3b6a73f15fbb9d3746fec0100fb4d0f4"
+    },
+    {
+      "path": "assets/images/kv-sprites/mogu_home_kv.png",
+      "sha256": "e1f71b222b37dfe797ed64279e040272f3ead2ed3f1274efaf1a1b23b7953040"
+    },
+    {
+      "path": "assets/images/kv-sprites/mogu_player.png",
+      "sha256": "104b42156f929ea94dd725909ad4dbbf725368576d9e104b1f234bddb9265203"
+    },
+    {
+      "path": "assets/images/kv-ui/button_icon_round.png",
+      "sha256": "e599430184420f80b5fb8a883c8633de730312f4c2b0f10adbc9c7385ff2f3b8"
+    },
+    {
+      "path": "assets/images/kv-ui/button_primary.png",
+      "sha256": "d8fcd43aa43376a259e919d61d993f97dc0ec22942776c56842f3851a28b43c7"
+    },
+    {
+      "path": "assets/images/kv-ui/button_secondary.png",
+      "sha256": "956519fd90f595b52a030c87d1ad4aa432f9fb75dee2e418a9df70af28def7eb"
+    },
+    {
+      "path": "assets/images/kv-ui/button_small.png",
+      "sha256": "39fe09af64253b7dea6d4542187369e10043d8a6580f05bd67d15f851d9f6e5e"
+    },
+    {
+      "path": "assets/images/kv-ui/currency_pill.png",
+      "sha256": "559a298ef014a81159919c861d7ab52a5438933348cf975988a8be908749a67a"
+    },
+    {
+      "path": "assets/images/kv-ui/dock_glass.png",
+      "sha256": "00e453350c826762c679b9424faae8c8589bc98c03782f298cdc8622a89f633a"
+    },
+    {
+      "path": "assets/images/kv-ui/hud_pill.png",
+      "sha256": "064c9a3498ead6812e752d1dc217d950cfca8e186a6769bba53092d516ddaa90"
+    },
+    {
+      "path": "assets/images/kv-ui/panel_glass_large.png",
+      "sha256": "bc67b03c27e8976a789227446a52b4a3b2569017a2520c5bf240bdfd587e1f83"
+    },
+    {
+      "path": "assets/images/kv-ui/panel_glass_modal.png",
+      "sha256": "7f3fd4624937ff0484337e636f712f22ffaa0a6a781038389619c49a5559b286"
+    },
+    {
+      "path": "assets/images/kv-ui/panel_glass_small.png",
+      "sha256": "ad7d917ca10920f63eeff50a11c2ba67cecc19cbb4dacdec9a8102ff0174df94"
+    },
+    {
+      "path": "assets/images/kv-ui/progress_fill.png",
+      "sha256": "17655ca1a7db9dd6f52aaeaa7b2ab4dd3d6a05f62b43acabb283f97d11961ea9"
+    },
+    {
+      "path": "assets/images/kv-ui/progress_frame.png",
+      "sha256": "5644706a30f5503bc6dc26de033cc7eac49201a11db6e41e74caed1a62b44c9b"
+    },
+    {
+      "path": "assets/images/kv-ui/skill_card_common.png",
+      "sha256": "511cd45efa18e0f0aefb8f8056529f1bc38c18f714df4ce40c4186ca24825865"
+    },
+    {
+      "path": "assets/images/kv-ui/skill_card_legendary.png",
+      "sha256": "8f5ef6c6c6b36ee0ca7c22ab4951f9622b94d75e3e1cf25df7bf6ad4a11df4a1"
+    },
+    {
+      "path": "assets/images/kv-ui/skill_card_rare.png",
+      "sha256": "d08ea82cf8a9d0c2feeac8dbc1c7276eb3c7d53b91cbcff92f1ed8d11ff3db58"
+    },
+    {
+      "path": "assets/images/kv-ui/tag_pill.png",
+      "sha256": "b5f8e6e45488b7d3c88ded2c70b198b3b5e896f84bbac403f00d94f0d5ee9afb"
+    },
+    {
+      "path": "assets/images/kv-ui/title_plate.png",
+      "sha256": "399482060417b077954b0291348a138ae70429fe4ea79433314ef826e80e0cd5"
+    },
+    {
+      "path": "assets/images/play-ui/skill_cave.png",
+      "sha256": "71386f970da7c5ceefc79229c9ef4b8320cc94d2b07e2dc8d8865feb17d3edd0"
+    },
+    {
+      "path": "assets/images/play-ui/skill_fire.png",
+      "sha256": "b47ebcf185ea305f2f9a90fbf683ee4a549d3a0c4fc56853ccddd7be8a5e2b1b"
+    },
+    {
+      "path": "assets/images/play-ui/skill_guard.png",
+      "sha256": "bcc402cd6c56bdb1bfcef727097d6743e01048e828d4d2edd456ca98098b641c"
+    },
+    {
+      "path": "assets/images/play-ui/skill_ice.png",
+      "sha256": "fc4a2ff21b9fdaa18ec6475b1e7f2a5271eaacd210b19c0a2991b0b8a8772f4e"
+    },
+    {
+      "path": "assets/images/play-ui/skill_poison.png",
+      "sha256": "9fdfecb4404a404597dab6bfce36a52d4ba48224d88463c36b1adccf6f4b56a6"
+    },
+    {
+      "path": "assets/images/play-ui/skill_star.png",
+      "sha256": "02f1886608b066e628efddc41e349c93b07004e8c004728370a7c98f5c1f7e2c"
+    },
+    {
+      "path": "assets/images/play-ui/skill_summon.png",
+      "sha256": "5f750bfb52dd073fd3c5594d380ddca04fba448efb0ebcae5a5ee7ec059de9e4"
+    },
+    {
+      "path": "assets/manifest.json",
+      "sha256": "4d2f75021c698ef750c47dc95b227162db7f7e83d07c4c7689388424b0845ad7"
+    }
+  ],
+  "legacyBackfill": [
+    {
+      "logicalId": "home_v2_background",
+      "sha256": "86961f789a5d06be3930f3c2cfd80a851b19f501f8450cc91458856f1bf68dd8"
+    },
+    {
+      "logicalId": "home_v2_mogu",
+      "sha256": "a3aaa4f1c6a83edf2605bb0971348598157167aa13317fc38c2982572ae05106"
+    },
+    {
+      "logicalId": "home_v2_star_companion",
+      "sha256": "1344a76aae0197424c8b0adf6dea6023aefb342c49be7c3a27f52cbaacdfe781"
+    },
+    {
+      "logicalId": "home_v2_logo",
+      "sha256": "ee780c927c6bb336dc52309eb041abd8fe3f1b4f8b65ca5dc7f690913ec0b21e"
+    },
+    {
+      "logicalId": "home_v2_frame",
+      "sha256": "7caff4378e74f1c9ed853485c350137695009444fac166e6f0eaa21ad47a9298"
+    },
+    {
+      "logicalId": "home_v2_button",
+      "sha256": "e3b77e8ee9ea2c56c973a0b01bbb5875f29840e5aebd441e3bf432b6f417cc04"
+    },
+    {
+      "logicalId": "home_v2_button_gold",
+      "sha256": "c840e3ba73a5366885e92cfcf25952a26640fe15d2817ec578467987a8dd4b56"
+    },
+    {
+      "logicalId": "home_v2_icon_snack",
+      "sha256": "d5974c6a14ee3504bc7fa701754b8cc1437bd6b88f28e7e4d7c8dd2b4eadaa20"
+    },
+    {
+      "logicalId": "home_v2_icon_dex",
+      "sha256": "295a817a6d4e2f76544d2d703044dd64c13d4460870b8668753f3195270dc598"
+    },
+    {
+      "logicalId": "home_v2_icon_logs",
+      "sha256": "5e94430b50a2295be61e2956996db9a121278922cb06f757143265239dc2178d"
+    },
+    {
+      "logicalId": "home_v2_icon_gacha",
+      "sha256": "6736ed0d26d0135d544cd47f3c9b3e9cb5f0b51ccffbfa2321fa55166f438542"
+    },
+    {
+      "logicalId": "home_v2_icon_equip",
+      "sha256": "d44384c9ed4fb7c4cf0faa1fb0472e31699b5b2afa424e4d4400742d56f5bda6"
+    },
+    {
+      "logicalId": "home_v2_icon_dungeon",
+      "sha256": "209abe0bb79548f3f530bc09696e21828261b2343c904b4ca0d2f93e8d21966e"
+    },
+    {
+      "logicalId": "home_v2_icon_outing",
+      "sha256": "65c8aa3c95a8cc266655f09e001afacb6c13e7a3f325ea179d3d09825f526385"
+    },
+    {
+      "logicalId": "home_v2_currency_star",
+      "sha256": "a45e16ba1888c9c4863132621bfd626f393c6ed317437f5d049b1cef4588a489"
+    },
+    {
+      "logicalId": "home_v2_currency_coin",
+      "sha256": "4a2aeeefba7dc0368aaae670843d524ee24c9ac761bbeaf8999528ccf47ae49f"
+    },
+    {
+      "logicalId": "home_v2_currency_gem",
+      "sha256": "c4415f2ae198624f5604a2a60f74467479dfbf4b1d2cc7f7e109dd481c625bb3"
+    },
+    {
+      "logicalId": "home_v2_expedition_mogu",
+      "sha256": "2f05adff9af2a663ec51c3bd5f3ea258e7e7da5ace2ac99bcad8e1072d7d147b"
+    },
+    {
+      "logicalId": "battle_v3_mogu",
+      "sha256": "4624b0202b23b2da0be16bf1f96e5a72448ff3802627b7dcd1432aebdcd9bdd3"
+    },
+    {
+      "logicalId": "battle_v3_enemies",
+      "sha256": "11ad7e71644a12685f28364692cc0966a874785ab04f2cba58c9bd7ad05c5c30"
+    },
+    {
+      "logicalId": "battle_v3_companions",
+      "sha256": "6372c3eb0891728bdf8c80b0aea653dab350d6b3663208c1f06dab07a94057cf"
+    },
+    {
+      "logicalId": "battle_v3_bosses",
+      "sha256": "727001d5dd78d6429757e8fca7fd49d484b5be96dfa373ba211a315410b53845"
+    },
+    {
+      "logicalId": "battle_v3_far",
+      "sha256": "f8ce96d7c452ec4053623b105c3b260405c4e0c571ab4112ac09040fb109298e"
+    },
+    {
+      "logicalId": "battle_v3_mid",
+      "sha256": "cbb9e05f6ac1711aef822baddf3ecb39c8c7d9b47562fca3cbad436c00f7a9d8"
+    },
+    {
+      "logicalId": "battle_v3_ground",
+      "sha256": "c233008180538bdb6bf8996fe340c978b290fe073fe2eba91abd740d0aa8bfce"
+    },
+    {
+      "logicalId": "battle_v3_foreground",
+      "sha256": "fc81c801ecbea7ef2ff0e4b6467023d788b12dd27b9bfe572603b6c3446c7b25"
+    },
+    {
+      "logicalId": "skill_atlas_blast",
+      "sha256": "6eef4ad6577dfbffcdbd092b723887c1d37fb0576e28f1e15ecfe49920a76331"
+    },
+    {
+      "logicalId": "skill_atlas_combat",
+      "sha256": "33a53a543279fe96e868d80dff9b8a9cad5ed7249ba336ee7466500218316ff9"
+    },
+    {
+      "logicalId": "skill_atlas_fusion",
+      "sha256": "048ea50c66590f204a825bb20d7c7a69857e66b1d94b99e386ab222c4393479a"
+    },
+    {
+      "logicalId": "skill_atlas_guard",
+      "sha256": "76481ab8b61454352b2fcac18ff1b30f4957a92977ba6c8f6fdc82abda104016"
+    },
+    {
+      "logicalId": "skill_atlas_move",
+      "sha256": "c79d8eaac4b3e55eead7b663971d29c79d3270bdafde527fc11f889992552b44"
+    },
+    {
+      "logicalId": "skill_atlas_poison",
+      "sha256": "aacd347952a04ba13d0a574f46056b11201679fe8c4a1f84c411722a3976d691"
+    },
+    {
+      "logicalId": "skill_atlas_star",
+      "sha256": "906f43da37ac942cb7346a89c3455a728ffc4507954bf6f381cf16775e369bd9"
+    },
+    {
+      "logicalId": "skill_atlas_summon",
+      "sha256": "0848154b0266c2ec8c261bef68a2d0f12224303e80f6e81fd8be9bb411452711"
+    },
+    {
+      "logicalId": "skill_atlas_support",
+      "sha256": "159824ab7a09eee7285d4f95e703f405a8ca04d479b4a8818aed0e37f1a148d9"
+    },
+    {
+      "logicalId": "skill_atlas_upgrade",
+      "sha256": "f467402ff725778d5556cdd5a69e27706bb4bb439be637e35f738a770e1a223a"
+    }
+  ],
+  "catalog": [
+    {
+      "logicalId": "home_v2_background",
+      "path": "assets/images/home-v2/home_bg_base.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "home"
+        ],
+        "states": [
+          "background"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "manifest:3.2.1-battle-v3"
+      },
+      "dimensions": {
+        "width": 768,
+        "height": 1536
+      },
+      "minDisplay": {
+        "width": 390,
+        "height": 844,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "production-art-asset",
+        "source": "unknown",
+        "approvedDate": null
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "5a256b47ec44dc7ed217d66bf47e1c7820a82a52",
+        "sha256": "86961f789a5d06be3930f3c2cfd80a851b19f501f8450cc91458856f1bf68dd8"
+      },
+      "category": "home-ui",
+      "semanticRole": "home.background",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": false,
+        "channels": "srgb"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": null,
+      "approval": {
+        "status": "audit-backfill-unknown",
+        "approvedAt": null
+      }
+    },
+    {
+      "logicalId": "home_v2_mogu",
+      "path": "assets/images/home-v2/mogu_home_idle.png",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "home"
+        ],
+        "states": [
+          "idle"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "manifest:3.2.1-battle-v3"
+      },
+      "dimensions": {
+        "width": 1024,
+        "height": 1024
+      },
+      "minDisplay": {
+        "width": 72,
+        "height": 72,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "production-art-asset",
+        "source": "unknown",
+        "approvedDate": null
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "d1ad241652df6b15af26bafea8be0e10f6388e82",
+        "sha256": "a3aaa4f1c6a83edf2605bb0971348598157167aa13317fc38c2982572ae05106"
+      },
+      "category": "home-ui",
+      "semanticRole": "home.idle",
+      "format": "png",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": null,
+      "approval": {
+        "status": "audit-backfill-unknown",
+        "approvedAt": null
+      }
+    },
+    {
+      "logicalId": "home_v2_star_companion",
+      "path": "assets/images/home-v2/star_companion_home.png",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "home"
+        ],
+        "states": [
+          "idle"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "manifest:3.2.1-battle-v3"
+      },
+      "dimensions": {
+        "width": 512,
+        "height": 512
+      },
+      "minDisplay": {
+        "width": 32,
+        "height": 32,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "production-art-asset",
+        "source": "unknown",
+        "approvedDate": null
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "7276b6d7dad5661d62aff4b69da2f7c277930622",
+        "sha256": "1344a76aae0197424c8b0adf6dea6023aefb342c49be7c3a27f52cbaacdfe781"
+      },
+      "category": "home-ui",
+      "semanticRole": "home.idle",
+      "format": "png",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": null,
+      "approval": {
+        "status": "audit-backfill-unknown",
+        "approvedAt": null
+      }
+    },
+    {
+      "logicalId": "home_v2_logo",
+      "path": "assets/images/home-v2/logo_moguria_home.png",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "home"
+        ],
+        "states": [
+          "brand"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "manifest:3.2.1-battle-v3"
+      },
+      "dimensions": {
+        "width": 1024,
+        "height": 320
+      },
+      "minDisplay": {
+        "width": 150,
+        "height": 47,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "production-art-asset",
+        "source": "unknown",
+        "approvedDate": null
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "3db3efe67c1d60118da9332ebbc51fed347a322c",
+        "sha256": "ee780c927c6bb336dc52309eb041abd8fe3f1b4f8b65ca5dc7f690913ec0b21e"
+      },
+      "category": "home-ui",
+      "semanticRole": "home.brand",
+      "format": "png",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": null,
+      "approval": {
+        "status": "audit-backfill-unknown",
+        "approvedAt": null
+      }
+    },
+    {
+      "logicalId": "home_v2_frame",
+      "path": "assets/images/home-v2/frame_glass_gold_9slice.png",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "home"
+        ],
+        "states": [
+          "frame"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "manifest:3.2.1-battle-v3"
+      },
+      "dimensions": {
+        "width": 384,
+        "height": 384
+      },
+      "minDisplay": {
+        "width": 120,
+        "height": 80,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "production-art-asset",
+        "source": "unknown",
+        "approvedDate": null
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "94ff9de769a5ae234b27ce6deb0a0f2c28d09418",
+        "sha256": "7caff4378e74f1c9ed853485c350137695009444fac166e6f0eaa21ad47a9298"
+      },
+      "category": "home-ui",
+      "semanticRole": "home.frame",
+      "format": "png",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": null,
+      "approval": {
+        "status": "audit-backfill-unknown",
+        "approvedAt": null
+      }
+    },
+    {
+      "logicalId": "home_v2_button",
+      "path": "assets/images/home-v2/button_pearl_9slice.png",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "home"
+        ],
+        "states": [
+          "button"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "manifest:3.2.1-battle-v3"
+      },
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "minDisplay": {
+        "width": 54,
+        "height": 58,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "production-art-asset",
+        "source": "unknown",
+        "approvedDate": null
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "3175f76ac5ad4580be6935d7a0673782cf1e637b",
+        "sha256": "e3b77e8ee9ea2c56c973a0b01bbb5875f29840e5aebd441e3bf432b6f417cc04"
+      },
+      "category": "home-ui",
+      "semanticRole": "home.button",
+      "format": "png",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": null,
+      "approval": {
+        "status": "audit-backfill-unknown",
+        "approvedAt": null
+      }
+    },
+    {
+      "logicalId": "home_v2_button_gold",
+      "path": "assets/images/home-v2/button_gold_9slice.png",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "home"
+        ],
+        "states": [
+          "button"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "manifest:3.2.1-battle-v3"
+      },
+      "dimensions": {
+        "width": 384,
+        "height": 256
+      },
+      "minDisplay": {
+        "width": 83,
+        "height": 83,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "production-art-asset",
+        "source": "unknown",
+        "approvedDate": null
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "b2c87ff32ff748ce3243746ac7dabeff5eaee257",
+        "sha256": "c840e3ba73a5366885e92cfcf25952a26640fe15d2817ec578467987a8dd4b56"
+      },
+      "category": "home-ui",
+      "semanticRole": "home.button",
+      "format": "png",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": null,
+      "approval": {
+        "status": "audit-backfill-unknown",
+        "approvedAt": null
+      }
+    },
+    {
+      "logicalId": "home_v2_icon_snack",
+      "path": "assets/images/home-v2/icon_snack.png",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "home"
+        ],
+        "states": [
+          "menu-icon"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "manifest:3.2.1-battle-v3"
+      },
+      "dimensions": {
+        "width": 512,
+        "height": 512
+      },
+      "minDisplay": {
+        "width": 26,
+        "height": 26,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "production-art-asset",
+        "source": "unknown",
+        "approvedDate": null
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "f13beec0127df02f6388740bdb770fcfd943193b",
+        "sha256": "d5974c6a14ee3504bc7fa701754b8cc1437bd6b88f28e7e4d7c8dd2b4eadaa20"
+      },
+      "category": "home-ui",
+      "semanticRole": "home.menu-icon",
+      "format": "png",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": null,
+      "approval": {
+        "status": "audit-backfill-unknown",
+        "approvedAt": null
+      }
+    },
+    {
+      "logicalId": "home_v2_icon_dex",
+      "path": "assets/images/home-v2/icon_dex.png",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "home"
+        ],
+        "states": [
+          "menu-icon"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "manifest:3.2.1-battle-v3"
+      },
+      "dimensions": {
+        "width": 512,
+        "height": 512
+      },
+      "minDisplay": {
+        "width": 26,
+        "height": 26,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "production-art-asset",
+        "source": "unknown",
+        "approvedDate": null
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "cd7576d4f4b25a8a1af320b8aced646bd75efc89",
+        "sha256": "295a817a6d4e2f76544d2d703044dd64c13d4460870b8668753f3195270dc598"
+      },
+      "category": "home-ui",
+      "semanticRole": "home.menu-icon",
+      "format": "png",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": null,
+      "approval": {
+        "status": "audit-backfill-unknown",
+        "approvedAt": null
+      }
+    },
+    {
+      "logicalId": "home_v2_icon_logs",
+      "path": "assets/images/home-v2/icon_logs.png",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "home"
+        ],
+        "states": [
+          "menu-icon"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "manifest:3.2.1-battle-v3"
+      },
+      "dimensions": {
+        "width": 512,
+        "height": 512
+      },
+      "minDisplay": {
+        "width": 26,
+        "height": 26,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "production-art-asset",
+        "source": "unknown",
+        "approvedDate": null
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "b90a0a33e6aded3f117bdccc30bcb678b8437bd4",
+        "sha256": "5e94430b50a2295be61e2956996db9a121278922cb06f757143265239dc2178d"
+      },
+      "category": "home-ui",
+      "semanticRole": "home.menu-icon",
+      "format": "png",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": null,
+      "approval": {
+        "status": "audit-backfill-unknown",
+        "approvedAt": null
+      }
+    },
+    {
+      "logicalId": "home_v2_icon_gacha",
+      "path": "assets/images/home-v2/icon_gacha.png",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "home"
+        ],
+        "states": [
+          "menu-icon"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "manifest:3.2.1-battle-v3"
+      },
+      "dimensions": {
+        "width": 512,
+        "height": 512
+      },
+      "minDisplay": {
+        "width": 31,
+        "height": 31,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "production-art-asset",
+        "source": "unknown",
+        "approvedDate": null
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "5bf8aa26b4364afa49612379ad840940f3eee3df",
+        "sha256": "6736ed0d26d0135d544cd47f3c9b3e9cb5f0b51ccffbfa2321fa55166f438542"
+      },
+      "category": "home-ui",
+      "semanticRole": "home.menu-icon",
+      "format": "png",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": null,
+      "approval": {
+        "status": "audit-backfill-unknown",
+        "approvedAt": null
+      }
+    },
+    {
+      "logicalId": "home_v2_icon_equip",
+      "path": "assets/images/home-v2/icon_equip.png",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "home"
+        ],
+        "states": [
+          "menu-icon"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "manifest:3.2.1-battle-v3"
+      },
+      "dimensions": {
+        "width": 512,
+        "height": 512
+      },
+      "minDisplay": {
+        "width": 31,
+        "height": 31,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "production-art-asset",
+        "source": "unknown",
+        "approvedDate": null
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "993006abfd3dd24cb275432275ee631cfc9b8bf3",
+        "sha256": "d44384c9ed4fb7c4cf0faa1fb0472e31699b5b2afa424e4d4400742d56f5bda6"
+      },
+      "category": "home-ui",
+      "semanticRole": "home.menu-icon",
+      "format": "png",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": null,
+      "approval": {
+        "status": "audit-backfill-unknown",
+        "approvedAt": null
+      }
+    },
+    {
+      "logicalId": "home_v2_icon_dungeon",
+      "path": "assets/images/home-v2/icon_dungeon.png",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "home"
+        ],
+        "states": [
+          "menu-icon"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "manifest:3.2.1-battle-v3"
+      },
+      "dimensions": {
+        "width": 512,
+        "height": 512
+      },
+      "minDisplay": {
+        "width": 35,
+        "height": 35,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "production-art-asset",
+        "source": "unknown",
+        "approvedDate": null
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "cf74ba172de1290eb5beb8bba5c5ad6eb09c5257",
+        "sha256": "209abe0bb79548f3f530bc09696e21828261b2343c904b4ca0d2f93e8d21966e"
+      },
+      "category": "home-ui",
+      "semanticRole": "home.menu-icon",
+      "format": "png",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": null,
+      "approval": {
+        "status": "audit-backfill-unknown",
+        "approvedAt": null
+      }
+    },
+    {
+      "logicalId": "home_v2_icon_outing",
+      "path": "assets/images/home-v2/icon_outing.png",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "home"
+        ],
+        "states": [
+          "menu-icon"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "manifest:3.2.1-battle-v3"
+      },
+      "dimensions": {
+        "width": 512,
+        "height": 512
+      },
+      "minDisplay": {
+        "width": 31,
+        "height": 31,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "production-art-asset",
+        "source": "unknown",
+        "approvedDate": null
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "00da5f7d514007b261c6beb52c6a77acc8b0bc41",
+        "sha256": "65c8aa3c95a8cc266655f09e001afacb6c13e7a3f325ea179d3d09825f526385"
+      },
+      "category": "home-ui",
+      "semanticRole": "home.menu-icon",
+      "format": "png",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": null,
+      "approval": {
+        "status": "audit-backfill-unknown",
+        "approvedAt": null
+      }
+    },
+    {
+      "logicalId": "home_v2_currency_star",
+      "path": "assets/images/home-v2/currency_star.png",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "home"
+        ],
+        "states": [
+          "currency"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "manifest:3.2.1-battle-v3"
+      },
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "minDisplay": {
+        "width": 18,
+        "height": 18,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "production-art-asset",
+        "source": "unknown",
+        "approvedDate": null
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "0e2cb2fe8ca1d82437e58b100a2c109643229537",
+        "sha256": "a45e16ba1888c9c4863132621bfd626f393c6ed317437f5d049b1cef4588a489"
+      },
+      "category": "home-ui",
+      "semanticRole": "home.currency",
+      "format": "png",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": null,
+      "approval": {
+        "status": "audit-backfill-unknown",
+        "approvedAt": null
+      }
+    },
+    {
+      "logicalId": "home_v2_currency_coin",
+      "path": "assets/images/home-v2/currency_coin.png",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "home"
+        ],
+        "states": [
+          "currency"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "manifest:3.2.1-battle-v3"
+      },
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "minDisplay": {
+        "width": 18,
+        "height": 18,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "production-art-asset",
+        "source": "unknown",
+        "approvedDate": null
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "8874998eee7938886b344c0b8841e02fe45f7ec0",
+        "sha256": "4a2aeeefba7dc0368aaae670843d524ee24c9ac761bbeaf8999528ccf47ae49f"
+      },
+      "category": "home-ui",
+      "semanticRole": "home.currency",
+      "format": "png",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": null,
+      "approval": {
+        "status": "audit-backfill-unknown",
+        "approvedAt": null
+      }
+    },
+    {
+      "logicalId": "home_v2_currency_gem",
+      "path": "assets/images/home-v2/currency_gem.png",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "home"
+        ],
+        "states": [
+          "currency"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "manifest:3.2.1-battle-v3"
+      },
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "minDisplay": {
+        "width": 18,
+        "height": 18,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "production-art-asset",
+        "source": "unknown",
+        "approvedDate": null
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "6c58d4335bece9c58e7ddcc4cf11564d57d8b9f0",
+        "sha256": "c4415f2ae198624f5604a2a60f74467479dfbf4b1d2cc7f7e109dd481c625bb3"
+      },
+      "category": "home-ui",
+      "semanticRole": "home.currency",
+      "format": "png",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": null,
+      "approval": {
+        "status": "audit-backfill-unknown",
+        "approvedAt": null
+      }
+    },
+    {
+      "logicalId": "home_v2_expedition_mogu",
+      "path": "assets/images/home-v2/expedition_mogu.png",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "home"
+        ],
+        "states": [
+          "expedition"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "manifest:3.2.1-battle-v3"
+      },
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "minDisplay": {
+        "width": 48,
+        "height": 48,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "production-art-asset",
+        "source": "unknown",
+        "approvedDate": null
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "9bbb7fe94a0e75bf4e3b181a393847b3fb1bd6b7",
+        "sha256": "2f05adff9af2a663ec51c3bd5f3ea258e7e7da5ace2ac99bcad8e1072d7d147b"
+      },
+      "category": "home-ui",
+      "semanticRole": "home.expedition",
+      "format": "png",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": null,
+      "approval": {
+        "status": "audit-backfill-unknown",
+        "approvedAt": null
+      }
+    },
+    {
+      "logicalId": "battle_v3_mogu",
+      "path": "assets/images/battle-v3/mogu-atlas-hd-v2.png",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "battle"
+        ],
+        "states": [
+          "idle",
+          "move",
+          "attack",
+          "hit"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260812-battle-motion-2"
+      },
+      "dimensions": {
+        "width": 1536,
+        "height": 1024
+      },
+      "minDisplay": {
+        "width": 54,
+        "height": 54,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "production-art-asset",
+        "source": "unknown",
+        "approvedDate": null
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "a8b57a41e37e5537357d2f2654d38f82b3ab0941",
+        "sha256": "4624b0202b23b2da0be16bf1f96e5a72448ff3802627b7dcd1432aebdcd9bdd3"
+      },
+      "category": "battle-actor",
+      "semanticRole": "battle.idle+move+attack+hit",
+      "format": "png",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": null,
+      "approval": {
+        "status": "audit-backfill-unknown",
+        "approvedAt": null
+      }
+    },
+    {
+      "logicalId": "battle_v3_enemies",
+      "path": "assets/images/battle-v3/enemy-atlas-v2.png",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "battle"
+        ],
+        "states": [
+          "idle",
+          "move",
+          "attack",
+          "hit"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260812-battle-motion-2"
+      },
+      "dimensions": {
+        "width": 1152,
+        "height": 768
+      },
+      "minDisplay": {
+        "width": 54,
+        "height": 54,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "production-art-asset",
+        "source": "unknown",
+        "approvedDate": null
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "7f30f5a9c1e4488cbe79ed96476cf988c4eaacf0",
+        "sha256": "11ad7e71644a12685f28364692cc0966a874785ab04f2cba58c9bd7ad05c5c30"
+      },
+      "category": "battle-actor",
+      "semanticRole": "battle.idle+move+attack+hit",
+      "format": "png",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": null,
+      "approval": {
+        "status": "audit-backfill-unknown",
+        "approvedAt": null
+      }
+    },
+    {
+      "logicalId": "battle_v3_companions",
+      "path": "assets/images/battle-v3/companion-atlas.png",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "battle"
+        ],
+        "states": [
+          "idle",
+          "move",
+          "attack",
+          "hit"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260812-battle-motion-2"
+      },
+      "dimensions": {
+        "width": 1024,
+        "height": 512
+      },
+      "minDisplay": {
+        "width": 54,
+        "height": 54,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "production-art-asset",
+        "source": "unknown",
+        "approvedDate": null
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "b074c84911d03373bf5bf7a4a3053760c18cf33c",
+        "sha256": "6372c3eb0891728bdf8c80b0aea653dab350d6b3663208c1f06dab07a94057cf"
+      },
+      "category": "battle-actor",
+      "semanticRole": "battle.idle+move+attack+hit",
+      "format": "png",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": null,
+      "approval": {
+        "status": "audit-backfill-unknown",
+        "approvedAt": null
+      }
+    },
+    {
+      "logicalId": "battle_v3_bosses",
+      "path": "assets/images/battle-v3/boss-atlas-v2.png",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "battle"
+        ],
+        "states": [
+          "idle",
+          "move",
+          "attack",
+          "hit"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260812-battle-motion-2"
+      },
+      "dimensions": {
+        "width": 2048,
+        "height": 512
+      },
+      "minDisplay": {
+        "width": 54,
+        "height": 54,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "production-art-asset",
+        "source": "unknown",
+        "approvedDate": null
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "530c35669a33ff50f11d15711b00e291f5d2aed5",
+        "sha256": "727001d5dd78d6429757e8fca7fd49d484b5be96dfa373ba211a315410b53845"
+      },
+      "category": "battle-actor",
+      "semanticRole": "battle.idle+move+attack+hit",
+      "format": "png",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": null,
+      "approval": {
+        "status": "audit-backfill-unknown",
+        "approvedAt": null
+      }
+    },
+    {
+      "logicalId": "battle_v3_far",
+      "path": "assets/images/battle-v3/bg-far.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "battle"
+        ],
+        "states": [
+          "background"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260812-battle-motion-2"
+      },
+      "dimensions": {
+        "width": 512,
+        "height": 1024
+      },
+      "minDisplay": {
+        "width": 390,
+        "height": 844,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "production-art-asset",
+        "source": "unknown",
+        "approvedDate": null
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "c868b2ce0aaf1231d525d7989db3eea8780a38aa",
+        "sha256": "f8ce96d7c452ec4053623b105c3b260405c4e0c571ab4112ac09040fb109298e"
+      },
+      "category": "battle-background",
+      "semanticRole": "battle.background",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": false,
+        "channels": "srgb"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": null,
+      "approval": {
+        "status": "audit-backfill-unknown",
+        "approvedAt": null
+      }
+    },
+    {
+      "logicalId": "battle_v3_mid",
+      "path": "assets/images/battle-v3/bg-mid.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "battle"
+        ],
+        "states": [
+          "background"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260812-battle-motion-2"
+      },
+      "dimensions": {
+        "width": 512,
+        "height": 1024
+      },
+      "minDisplay": {
+        "width": 390,
+        "height": 844,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "production-art-asset",
+        "source": "unknown",
+        "approvedDate": null
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "199424d716f7400683917f2f7131a5b1f4df7bcc",
+        "sha256": "cbb9e05f6ac1711aef822baddf3ecb39c8c7d9b47562fca3cbad436c00f7a9d8"
+      },
+      "category": "battle-background",
+      "semanticRole": "battle.background",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": false,
+        "channels": "srgb"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": null,
+      "approval": {
+        "status": "audit-backfill-unknown",
+        "approvedAt": null
+      }
+    },
+    {
+      "logicalId": "battle_v3_ground",
+      "path": "assets/images/battle-v3/bg-ground.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "battle"
+        ],
+        "states": [
+          "background"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260812-battle-motion-2"
+      },
+      "dimensions": {
+        "width": 512,
+        "height": 1024
+      },
+      "minDisplay": {
+        "width": 390,
+        "height": 844,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "production-art-asset",
+        "source": "unknown",
+        "approvedDate": null
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "bc47db3950f9154832e46fe70d42b42ffc0adebe",
+        "sha256": "c233008180538bdb6bf8996fe340c978b290fe073fe2eba91abd740d0aa8bfce"
+      },
+      "category": "battle-background",
+      "semanticRole": "battle.background",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": false,
+        "channels": "srgb"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": null,
+      "approval": {
+        "status": "audit-backfill-unknown",
+        "approvedAt": null
+      }
+    },
+    {
+      "logicalId": "battle_v3_foreground",
+      "path": "assets/images/battle-v3/bg-foreground.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "battle"
+        ],
+        "states": [
+          "background"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260812-battle-motion-2"
+      },
+      "dimensions": {
+        "width": 512,
+        "height": 1024
+      },
+      "minDisplay": {
+        "width": 390,
+        "height": 844,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "production-art-asset",
+        "source": "unknown",
+        "approvedDate": null
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "88e53181a300a177ed250cdf9850dd2fd385e683",
+        "sha256": "fc81c801ecbea7ef2ff0e4b6467023d788b12dd27b9bfe572603b6c3446c7b25"
+      },
+      "category": "battle-background",
+      "semanticRole": "battle.background",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": false,
+        "channels": "srgb"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": null,
+      "approval": {
+        "status": "audit-backfill-unknown",
+        "approvedAt": null
+      }
+    },
+    {
+      "logicalId": "skill_atlas_blast",
+      "path": "assets/images/skill-icons/skill-atlas-blast.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "skill-choice"
+        ],
+        "states": [
+          "card-icon",
+          "owned-icon"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260813-icon-legibility-1"
+      },
+      "dimensions": {
+        "width": 512,
+        "height": 512
+      },
+      "minDisplay": {
+        "width": 26,
+        "height": 26,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "production-art-asset",
+        "source": "unknown",
+        "approvedDate": null
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "7a6ee951da2f64137058169d440b6b03a73b168c",
+        "sha256": "6eef4ad6577dfbffcdbd092b723887c1d37fb0576e28f1e15ecfe49920a76331"
+      },
+      "category": "skill-icon",
+      "semanticRole": "skill-choice.card-icon+owned-icon",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": null,
+      "approval": {
+        "status": "audit-backfill-unknown",
+        "approvedAt": null
+      }
+    },
+    {
+      "logicalId": "skill_atlas_combat",
+      "path": "assets/images/skill-icons/skill-atlas-combat.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "skill-choice"
+        ],
+        "states": [
+          "card-icon",
+          "owned-icon"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260813-icon-legibility-1"
+      },
+      "dimensions": {
+        "width": 512,
+        "height": 512
+      },
+      "minDisplay": {
+        "width": 26,
+        "height": 26,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "production-art-asset",
+        "source": "unknown",
+        "approvedDate": null
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "6d0b87be2ceefbc4d5cc765aea7386fb9ca7a185",
+        "sha256": "33a53a543279fe96e868d80dff9b8a9cad5ed7249ba336ee7466500218316ff9"
+      },
+      "category": "skill-icon",
+      "semanticRole": "skill-choice.card-icon+owned-icon",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": null,
+      "approval": {
+        "status": "audit-backfill-unknown",
+        "approvedAt": null
+      }
+    },
+    {
+      "logicalId": "skill_atlas_fusion",
+      "path": "assets/images/skill-icons/skill-atlas-fusion.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "skill-choice"
+        ],
+        "states": [
+          "card-icon",
+          "owned-icon"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260813-icon-legibility-1"
+      },
+      "dimensions": {
+        "width": 512,
+        "height": 512
+      },
+      "minDisplay": {
+        "width": 26,
+        "height": 26,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "production-art-asset",
+        "source": "unknown",
+        "approvedDate": null
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "81c93161071366f47bc8b7a14c11f7a3d13e1e61",
+        "sha256": "048ea50c66590f204a825bb20d7c7a69857e66b1d94b99e386ab222c4393479a"
+      },
+      "category": "skill-icon",
+      "semanticRole": "skill-choice.card-icon+owned-icon",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": null,
+      "approval": {
+        "status": "audit-backfill-unknown",
+        "approvedAt": null
+      }
+    },
+    {
+      "logicalId": "skill_atlas_guard",
+      "path": "assets/images/skill-icons/skill-atlas-guard.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "skill-choice"
+        ],
+        "states": [
+          "card-icon",
+          "owned-icon"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260813-icon-legibility-1"
+      },
+      "dimensions": {
+        "width": 512,
+        "height": 512
+      },
+      "minDisplay": {
+        "width": 26,
+        "height": 26,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "production-art-asset",
+        "source": "unknown",
+        "approvedDate": null
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "05bcefbc7a15f2f8e90390fff19d653ff6061a25",
+        "sha256": "76481ab8b61454352b2fcac18ff1b30f4957a92977ba6c8f6fdc82abda104016"
+      },
+      "category": "skill-icon",
+      "semanticRole": "skill-choice.card-icon+owned-icon",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": null,
+      "approval": {
+        "status": "audit-backfill-unknown",
+        "approvedAt": null
+      }
+    },
+    {
+      "logicalId": "skill_atlas_move",
+      "path": "assets/images/skill-icons/skill-atlas-move.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "skill-choice"
+        ],
+        "states": [
+          "card-icon",
+          "owned-icon"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260813-icon-legibility-1"
+      },
+      "dimensions": {
+        "width": 512,
+        "height": 512
+      },
+      "minDisplay": {
+        "width": 26,
+        "height": 26,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "production-art-asset",
+        "source": "unknown",
+        "approvedDate": null
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "4ccccd9106f1e5db0f51a5a225218596a305928b",
+        "sha256": "c79d8eaac4b3e55eead7b663971d29c79d3270bdafde527fc11f889992552b44"
+      },
+      "category": "skill-icon",
+      "semanticRole": "skill-choice.card-icon+owned-icon",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": null,
+      "approval": {
+        "status": "audit-backfill-unknown",
+        "approvedAt": null
+      }
+    },
+    {
+      "logicalId": "skill_atlas_poison",
+      "path": "assets/images/skill-icons/skill-atlas-poison.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "skill-choice"
+        ],
+        "states": [
+          "card-icon",
+          "owned-icon"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260813-icon-legibility-1"
+      },
+      "dimensions": {
+        "width": 512,
+        "height": 512
+      },
+      "minDisplay": {
+        "width": 26,
+        "height": 26,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "production-art-asset",
+        "source": "unknown",
+        "approvedDate": null
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "80dfcbba477d7277054f36968ccd79c3ae5542a5",
+        "sha256": "aacd347952a04ba13d0a574f46056b11201679fe8c4a1f84c411722a3976d691"
+      },
+      "category": "skill-icon",
+      "semanticRole": "skill-choice.card-icon+owned-icon",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": null,
+      "approval": {
+        "status": "audit-backfill-unknown",
+        "approvedAt": null
+      }
+    },
+    {
+      "logicalId": "skill_atlas_star",
+      "path": "assets/images/skill-icons/skill-atlas-star.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "skill-choice"
+        ],
+        "states": [
+          "card-icon",
+          "owned-icon"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260813-icon-legibility-1"
+      },
+      "dimensions": {
+        "width": 512,
+        "height": 512
+      },
+      "minDisplay": {
+        "width": 26,
+        "height": 26,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "production-art-asset",
+        "source": "unknown",
+        "approvedDate": null
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "0ddb635ef0382cd390f9083f8a019f7f09a9c35c",
+        "sha256": "906f43da37ac942cb7346a89c3455a728ffc4507954bf6f381cf16775e369bd9"
+      },
+      "category": "skill-icon",
+      "semanticRole": "skill-choice.card-icon+owned-icon",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": null,
+      "approval": {
+        "status": "audit-backfill-unknown",
+        "approvedAt": null
+      }
+    },
+    {
+      "logicalId": "skill_atlas_summon",
+      "path": "assets/images/skill-icons/skill-atlas-summon.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "skill-choice"
+        ],
+        "states": [
+          "card-icon",
+          "owned-icon"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260813-icon-legibility-1"
+      },
+      "dimensions": {
+        "width": 512,
+        "height": 512
+      },
+      "minDisplay": {
+        "width": 26,
+        "height": 26,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "production-art-asset",
+        "source": "unknown",
+        "approvedDate": null
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "50600d5907cb370d381197d46e85e31c0625513b",
+        "sha256": "0848154b0266c2ec8c261bef68a2d0f12224303e80f6e81fd8be9bb411452711"
+      },
+      "category": "skill-icon",
+      "semanticRole": "skill-choice.card-icon+owned-icon",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": null,
+      "approval": {
+        "status": "audit-backfill-unknown",
+        "approvedAt": null
+      }
+    },
+    {
+      "logicalId": "skill_atlas_support",
+      "path": "assets/images/skill-icons/skill-atlas-support.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "skill-choice"
+        ],
+        "states": [
+          "card-icon",
+          "owned-icon"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260813-icon-legibility-1"
+      },
+      "dimensions": {
+        "width": 512,
+        "height": 512
+      },
+      "minDisplay": {
+        "width": 26,
+        "height": 26,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "production-art-asset",
+        "source": "unknown",
+        "approvedDate": null
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "b8bc9af1b8a70e8aa8c28b3dbba113f446630b0d",
+        "sha256": "159824ab7a09eee7285d4f95e703f405a8ca04d479b4a8818aed0e37f1a148d9"
+      },
+      "category": "skill-icon",
+      "semanticRole": "skill-choice.card-icon+owned-icon",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": null,
+      "approval": {
+        "status": "audit-backfill-unknown",
+        "approvedAt": null
+      }
+    },
+    {
+      "logicalId": "skill_atlas_upgrade",
+      "path": "assets/images/skill-icons/skill-atlas-upgrade.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "skill-choice"
+        ],
+        "states": [
+          "card-icon",
+          "owned-icon"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260813-icon-legibility-1"
+      },
+      "dimensions": {
+        "width": 512,
+        "height": 512
+      },
+      "minDisplay": {
+        "width": 26,
+        "height": 26,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "production-art-asset",
+        "source": "unknown",
+        "approvedDate": null
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "a8914cd0dde7e3e63c670d4a6169b4ae40f234d0",
+        "sha256": "f467402ff725778d5556cdd5a69e27706bb4bb439be637e35f738a770e1a223a"
+      },
+      "category": "skill-icon",
+      "semanticRole": "skill-choice.card-icon+owned-icon",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": null,
+      "approval": {
+        "status": "audit-backfill-unknown",
+        "approvedAt": null
+      }
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+# CODEOWNERS becomes enforceable only when the target branch/ruleset requires
+# owner review. The repository owner remains the default reviewer.
+* @moguria-dev
+
+# High-risk contracts and publication paths.
+/config/ @moguria-dev
+/js/save.js @moguria-dev
+/js/game.js @moguria-dev
+/js/battle-v3-loader.js @moguria-dev
+/js/battle-v3-scene.js @moguria-dev
+/service-worker.js @moguria-dev
+/docs/DEPLOYMENT.md @moguria-dev
+/docs/SAVE_SCHEMA.md @moguria-dev
+/.github/ @moguria-dev

@@ -1,0 +1,139 @@
+name: Bug report
+description: Report a reproducible Moguria defect without including private save data.
+title: "[Bug] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you. Please preserve the failing state before clearing browser data or applying recovery steps. Do not paste a complete save if it contains information you do not want public.
+
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      description: Use the displayed version, project-state app version, or commit SHA when known.
+      placeholder: "3.2.1-battle-v3 / 699a23f"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: location
+    attributes:
+      label: Where did it happen?
+      options:
+        - Public GitHub Pages
+        - localhost development server
+        - Feature or preview branch
+        - Other static host
+    validations:
+      required: true
+
+  - type: input
+    id: url_branch
+    attributes:
+      label: URL and branch
+      description: Include the URL and branch if known. Remove private query values.
+      placeholder: "https://moguria-dev.github.io/moguria/ — branch名（分かる場合）"
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: Device, OS and browser
+      placeholder: "iPhone SE (3rd gen), iOS 26.6, Safari"
+    validations:
+      required: true
+
+  - type: input
+    id: viewport
+    attributes:
+      label: Viewport or orientation
+      placeholder: "390×844 portrait"
+
+  - type: dropdown
+    id: screen
+    attributes:
+      label: Area
+      options:
+        - Startup/loading
+        - Home
+        - Equipment/gacha/meta
+        - Battle movement/combat
+        - Skill or artifact choice
+        - Pause/give-up
+        - Result/reward
+        - Save/resume
+        - Assets/animation
+        - Deployment/cache
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened?
+      description: Include visible text and whether input, audio or animation continued.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+      placeholder: |
+        1. Open ...
+        2. Choose ...
+        3. Reload ...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: frequency
+    attributes:
+      label: Reproduction frequency
+      options:
+        - Every time
+        - Often
+        - Sometimes
+        - Once
+        - Unable to retry without losing state
+    validations:
+      required: true
+
+  - type: textarea
+    id: run_state
+    attributes:
+      label: Relevant run state
+      description: Wave, HP, selected skills/artifacts, rerolls, pause/choice state, new run or resumed run. Do not paste the complete save.
+
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Console, network or Pages diagnostics
+      description: Paste only relevant errors. State whether #debug, reduced motion, low quality, or a Service Worker registration was active.
+      render: text
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Screenshots or video
+      description: Attach evidence and indicate the exact moment to inspect.
+
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety checks
+      options:
+        - label: I have not cleared site data or used destructive Git recovery commands as part of this report.
+          required: true
+        - label: I removed private or sensitive data from attachments and logs.
+          required: true
