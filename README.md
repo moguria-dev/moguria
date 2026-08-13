@@ -1,46 +1,86 @@
-# Moguria v3.2.1 — battle-v3
+# Moguria
 
-スマホ向けブラウザローグライトRPG「Moguria」の `develop-homeui2` 戦闘刷新版です。
+Moguria is a mobile-first browser roguelite RPG about a small Mogu that eats powers, explores a star-lit dungeon, and grows into a build worth trying “one more time.” The application is currently static HTML/CSS/JavaScript with a Phaser-powered battle presentation layer and local browser persistence.
 
-## この版の主な変更
+The current machine-readable project state is `config/project-state.json`. Do not copy its branch, version, budget, or deployment values into new documents without also defining how they stay synchronized.
 
-- Phaser 4.2.1を戦闘開始時だけ読み込み、4枚のKV背景を継ぎ目なく奥行き合成し、アトラスアニメーションを単一Sceneで描画します。
-- Mogu・通常敵・仲間・ボスを本番アトラスへ置換し、仲間は独立追従・独立射撃します。
-- ボス行動を「予兆→攻撃→硬直」の状態機械に変更しました。
-- save v3で途中再開、runId単位の原子的な報酬精算、二重付与防止に対応しました。
-- 装備効果を実戦闘パラメータへ接続し、装備レベルを全効果へ反映します。
-- 選択画面を含む途中再開、読込タイムアウト／再試行、PC表示幅、背景・キャラクター動作を `node --test` で検証できます。
+## Current baseline highlights
 
-- 公開GitHub Pagesでは `#dev` / `?dev=1` だけで開発メニューが出ないようにしました。
-- セーブ保存・読み込みを `try/catch` で保護し、壊れたセーブJSONを `moguria.corrupt.*` に退避できるようにしました。
-- 開発ブランチでは Service Worker を標準OFFにし、古い `moguria-core-*` キャッシュを起動時に掃除します。
-- ホーム画面のスタートボタンを `innerHTML` 丸ごと差し替えず、アイコンを保持したまま文言だけ更新します。
-- ホーム画面初期化の多重実行を防止しました。
-- 図鑑・記録・装備・ガチャ・おでかけUIで、動的値をHTMLエスケープしてから描画します。
-- ホーム背景にCSSベースの洞窟光、ランプ火、光粒子、鉱石きらめき、Mogu呼吸演出を追加しました。
-- `prefers-reduced-motion` に対応しました。
+- Phaser 4.2.1 is loaded only when battle is prepared. One battle Scene presents four depth-composited backgrounds and production atlases for Mogu, regular enemies, companions, and bosses.
+- Companions follow and fire independently; boss actions use a telegraph → execute → recovery state sequence.
+- Save payload version 3 supports active-run checkpoints, interrupted choice recovery, one-time `runId` settlement, and duplicate-reward prevention.
+- All 15 equipment definitions apply level-scaled effects to battle parameters rather than display-only values.
+- Startup and battle loading have timeouts and retry paths; automated coverage includes save/resume, renderer/DOM sizing, backgrounds, animation, assets, and system overlays.
+- Public hosts cannot enable the development menu only by adding `#dev` or `?dev=1`.
+- Save reads/writes are guarded; malformed JSON is quarantined under `moguria.corrupt.*` when browser storage permits.
+- Service Worker registration is off and old `moguria-core-*` registrations/caches are cleaned by the current startup policy.
+- Home initialization is guarded against duplicate execution, and the start control updates its label without replacing its icon markup.
+- Dynamic values in meta screens are escaped before HTML insertion.
+- Home includes lightweight cave light, lamp, particle, crystal, and Mogu breathing presentation with `prefers-reduced-motion` support.
 
-## 起動方法
+## Run locally
 
-ローカルサーバー経由で開いてください。
+Serve the repository root over HTTP:
 
 ```bash
 python3 -m http.server 8000
 ```
 
-その後、ブラウザで `http://localhost:8000/` を開きます。
+Open `http://localhost:8000/`.
 
-## 開発メニュー
+Development helpers are intentionally local-only:
 
-開発メニューは以下の条件をすべて満たす時だけ表示されます。
+- `#debug` enables the FPS/asset debug panel.
+- `#dev` or `?dev=1` enables the development menu only when the host is allowed by `MoguriaConfig.security`.
+- The public GitHub Pages origin must not expose the development menu.
 
-- `localhost` または `127.0.0.1` で開いている
-- URL末尾に `#dev` または `?dev=1` がある
-- `MoguriaConfig.security.devToolsEnabled` が `true`
+Do not open the application directly with `file://`; the supported development path is a local HTTP server.
 
-公開URLでは `#dev` を付けても表示されません。
+## Test
 
-## Service Worker
+Run the current complete Node test suite from the repository root:
 
-`develop-homeui` ではキャッシュ事故を避けるため、`MoguriaConfig.assets.registerServiceWorker` を `false` にしています。
-リリースで有効化する場合は、`service-worker.js` の `CACHE_NAME` と `CORE_ASSETS` を更新してください。
+```bash
+node --test tests/*.test.js
+```
+
+Then perform the change-specific browser checks in `docs/TESTING.md`. A passing Node suite is not a substitute for visual or public-site QA.
+
+## Runtime outline
+
+- `index.html` loads classic scripts in dependency order; the project is not currently ESM-based.
+- `js/main.js` coordinates startup and critical asset loading.
+- `js/game.js` is authoritative for combat, waves, rewards, and checkpoints.
+- `js/battle-v3-loader.js` loads the vendored Phaser build, continuous Mogu rig, and battle scene only when battle is prepared.
+- `js/battle-v3-scene.js` renders battle state without owning game progression.
+- `js/save.js` normalizes save payloads to version 3 in localStorage.
+- `assets/manifest.json` remains the manifest read by the current runtime.
+
+See `docs/ARCHITECTURE.md` for the full ownership map.
+
+## Deployment
+
+The public site is currently served by GitHub Pages from `develop-homeui2` at repository root:
+
+<https://moguria-dev.github.io/moguria/>
+
+In this configuration, pushing or merging to the Pages source branch publishes the site. File editing, commit, push, merge, and publication are not interchangeable permissions. Follow `docs/DEPLOYMENT.md` before any release action.
+
+Service Worker registration is currently disabled. Do not enable it merely as part of a version update; see `docs/DEPLOYMENT.md`.
+
+## Documentation
+
+- `AGENTS.md` — repository-wide operating and safety rules
+- `docs/SOURCE_OF_TRUTH.md` — authority and synchronization rules
+- `docs/CURRENT_STATE.md` — current supported state and known limitations
+- `docs/ARCHITECTURE.md` — module ownership and runtime flow
+- `docs/ASSETS.md` — canonical/runtime manifest relationship and asset lifecycle
+- `docs/ANIMATION.md` — animation state contract and QA
+- `docs/SAVE_SCHEMA.md` — save version 3 invariants and migration
+- `docs/TESTING.md` — automated and manual verification
+- `docs/DEPLOYMENT.md` — current GitHub Pages release path
+- `docs/RECOVERY.md` — non-destructive diagnosis and recovery
+- `docs/AGENT_ENVIRONMENT.md` — Codex, Skill, sandbox, network and connector boundaries
+- `SECURITY.md` — client trust boundary and private vulnerability reporting
+
+`CHANGELOG.md` and versioned release notes are historical records. They must not override the current project state, code, manifests, tests, or GitHub settings.

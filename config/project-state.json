@@ -1,0 +1,153 @@
+{
+  "schemaVersion": 1,
+  "project": {
+    "name": "Moguria",
+    "repository": "moguria-dev/moguria",
+    "publicUrl": "https://moguria-dev.github.io/moguria/"
+  },
+  "canonicalRules": {
+    "id": "moguria-development-rules",
+    "version": "3.0.0",
+    "effectiveDate": "2026-08-14",
+    "sha256": "9950741898d91396543bc6f76653e1ec39d42c9a9f6418e39d8f04232288d817"
+  },
+  "branches": {
+    "default": "main",
+    "development": "main",
+    "release": "main",
+    "legacyPagesBranch": {
+      "branch": "develop-homeui2",
+      "automaticMergeAllowed": false
+    },
+    "legacyDivergence": {
+      "branch": "develop",
+      "relativeTo": "develop-homeui2",
+      "auditBaseline": {
+        "ahead": 7,
+        "behind": 59,
+        "contains": ["legacy-kv", "screenshots", "styles", "home-deltas"],
+        "informationalOnly": true
+      },
+      "automaticMergeAllowed": false
+    }
+  },
+  "deployment": {
+    "provider": "github-pages",
+    "sourcePath": "/",
+    "artifactPaths": [
+      "index.html",
+      "style.css",
+      "VERSION.txt",
+      "service-worker.js",
+      "assets",
+      "css",
+      "data",
+      "js",
+      "vendor",
+      ".nojekyll"
+    ],
+    "current": {
+      "mode": "legacy-branch",
+      "sourceBranch": "develop-homeui2",
+      "publishesOnPush": true
+    },
+    "target": {
+      "mode": "github-actions",
+      "sourceBranch": "main",
+      "publishesOnPush": false,
+      "trigger": "workflow_dispatch",
+      "workflow": ".github/workflows/deploy-pages.yml"
+    },
+    "migrationStatus": "planned"
+  },
+  "runtime": {
+    "nodeVersion": "24.14.0",
+    "entrypoint": "index.html",
+    "moduleMode": "classic-browser-scripts",
+    "serviceWorker": {
+      "enabled": false,
+      "configFile": "js/config.js",
+      "scriptFile": "service-worker.js"
+    }
+  },
+  "versions": {
+    "display": "3.2.1",
+    "application": "3.2.1-battle-v3",
+    "saveSchema": 3,
+    "assetManifest": "3.2.1-battle-v3",
+    "animationManifest": 2
+  },
+  "performanceBudgets": {
+    "criticalTransferBytes": 4194304,
+    "criticalDecodedBytes": 25165824,
+    "battlePackTransferBytes": 5242880,
+    "singleRuntimeAssetBytes": 1572864,
+    "initialStylesheetBytes": 358400,
+    "initialScriptBytes": 358400,
+    "dynamicBattleScriptBytes": 1572864
+  },
+  "validation": {
+    "commands": {
+      "project": "npm run validate:project",
+      "assets": "npm run validate:assets",
+      "serviceWorker": "npm run validate:service-worker",
+      "html": "npm run validate:html",
+      "tests": "node --test",
+      "preflight": "npm run ci"
+    },
+    "assetSource": "config/asset-manifest.json",
+    "assetRuntimeOutput": "assets/manifest.json",
+    "animationSource": "config/animation-manifest.json",
+    "animationRuntimeOutput": "assets/images/battle-v3/atlas.json",
+    "dynamicBattleScripts": [
+      "vendor/phaser/phaser-arcade-physics-4.2.1.min.js",
+      "js/mogu-rig.js",
+      "js/battle-v3-scene.js"
+    ],
+    "existingTestFiles": [
+      "tests/asset-manager.test.js",
+      "tests/battle-v3-loader.test.js",
+      "tests/battle-v3-scene.test.js",
+      "tests/game-resume.test.js",
+      "tests/main-startup.test.js",
+      "tests/mogu-rig.test.js",
+      "tests/save-v3.test.js",
+      "tests/skill-icon-assets.test.js",
+      "tests/system-overlays.test.js",
+      "tests/development-environment.test.js"
+    ],
+    "requiredFiles": [
+      ".nvmrc",
+      ".nojekyll",
+      "package.json",
+      ".github/workflows/ci.yml",
+      ".github/workflows/deploy-pages.yml",
+      "config/project-state.json",
+      "config/asset-manifest.json",
+      "config/animation-manifest.json",
+      "scripts/preflight.mjs",
+      "scripts/prepare-pages.mjs",
+      "scripts/validate-project-state.mjs",
+      "scripts/validate-assets.mjs",
+      "scripts/validate-html.mjs",
+      "scripts/validate-service-worker.mjs",
+      "index.html",
+      "style.css",
+      "js/config.js",
+      "js/main.js",
+      "js/game.js",
+      "js/save.js",
+      "assets/manifest.json",
+      "assets/images/battle-v3/atlas.json",
+      "service-worker.js",
+      "vendor/phaser/phaser-arcade-physics-4.2.1.min.js",
+      "vendor/phaser/LICENSE.md"
+    ],
+    "unreferencedAssetPolicy": "warn",
+    "requireImageMagickForPreflight": true
+  },
+  "generated": {
+    "assetManifest": "assets/manifest.json",
+    "animationManifest": "assets/images/battle-v3/atlas.json"
+  }
+}

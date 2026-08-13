@@ -1,14 +1,5 @@
-# Moguria develop-homeui2 Final Visual Implementation
+# 廃止済みのWebアップロード手順
 
-このZIPはGitHub Webアップロード用です。展開後の中身を develop-homeui2 由来の作業ブランチのリポジトリ直下へアップロードしてください。
+このファイルが以前説明していたZIP／GitHub Webアップロード方式と `assets/images/moguria-final/**` は、現在の開発・公開経路では使用しません。過去のZIPを現行branchへ上書きしないでください。
 
-対象ブランチ: develop-homeui2
-方式: アップロードのみ
-変更範囲: ビジュアル/UIレイヤー、画像素材、index.html、service-worker.js
-変更しない範囲: save.js、game.js、player.js、dungeon.js、skills.js、enemies.js、data/
-
-主な追加:
-- css/moguria-final-ui.css
-- js/moguria-final-ui.js
-- assets/images/moguria-final/**
-- assets/images/home-icons/*.png の刷新
+現在の変更管理は `AGENTS.md`、公開は `docs/DEPLOYMENT.md`、素材は `docs/ASSETS.md` を参照してください。
