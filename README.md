@@ -60,11 +60,11 @@ See `docs/ARCHITECTURE.md` for the full ownership map.
 
 ## Deployment
 
-The public site is currently served by GitHub Pages from `develop-homeui2` at repository root:
+The public site is deployed to GitHub Pages from protected `main` by the manual-only `.github/workflows/deploy-pages.yml` workflow:
 
 <https://moguria-dev.github.io/moguria/>
 
-In this configuration, pushing or merging to the Pages source branch publishes the site. File editing, commit, push, merge, and publication are not interchangeable permissions. Follow `docs/DEPLOYMENT.md` before any release action.
+Pushing or merging does not publish the site. File editing, commit, push, merge, workflow dispatch, and publication are separate permissions. Follow `docs/DEPLOYMENT.md` before any release action.
 
 Service Worker registration is currently disabled. Do not enable it merely as part of a version update; see `docs/DEPLOYMENT.md`.
 

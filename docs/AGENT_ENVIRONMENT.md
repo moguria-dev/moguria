@@ -83,4 +83,4 @@ Record mutable provider/tool observations in `docs/CURRENT_STATE.md` only when t
 
 ## Audited environment note
 
-The 2026-08-14 audit could read repository metadata, branch state, files and GitHub Pages source. Administrative Pages/protection endpoints were unavailable/forbidden through the connected GitHub tooling, so provider settings changes require an authorized repository administrator and independent verification. This observation is restated in `docs/CURRENT_STATE.md`; it is not a promise about future connector capabilities.
+The 2026-08-14 post-migration audit could read repository metadata, branch state, the active repository ruleset, Pages mode, workflow runs, jobs, and deployment records. The Pages source change and ruleset creation were performed by the authorized repository administrator in GitHub's UI; provider settings still require the authority and tool capability available in the active session. This observation is restated in `docs/CURRENT_STATE.md`; it is not a promise about future connector capabilities.

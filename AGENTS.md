@@ -41,7 +41,7 @@ Until automated generation is installed, a change to a canonical manifest and it
 ## Git and publication safety
 
 - The repository is `moguria-dev/moguria`.
-- The current Pages source is `develop-homeui2` at `/`. A push or merge to that source branch publishes the site; push and publication cannot be treated as independent operations in the current configuration.
+- GitHub Pages is deployed from protected `main` only by an authorized manual `workflow_dispatch` of `.github/workflows/deploy-pages.yml`. A push or merge does not publish the site.
 - Stage, commit, push, PR creation, merge, deployment, release, and rollback are separate actions and each requires the authorization applicable to that action. A request to edit files authorizes none of them.
 - Never force-push. Never discard the worktree wholesale. Never use broad restore, clean, or hard-reset operations.
 - Diagnose with read-only commands first. Recovery must follow `docs/RECOVERY.md`.

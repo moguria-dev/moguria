@@ -2,35 +2,35 @@
 
 Deployment is an explicit release action. Creating or editing files, opening a pull request, merging a pull request, and publishing GitHub Pages are separate authorities. The machine-readable branch and deployment state is `config/project-state.json`.
 
-## Current migration state
+## Current release state
 
 | Item | Current value |
 | --- | --- |
 | Provider | GitHub Pages |
 | Public URL | `https://moguria-dev.github.io/moguria/` |
-| Mode | `legacy-branch` |
-| Pages source | `develop-homeui2`, repository root |
-| Publish trigger | Every push or merge to `develop-homeui2` |
-| Migration status | `planned` |
+| Mode | `github-actions` |
+| Release source | protected `main` |
+| Workflow | `.github/workflows/deploy-pages.yml` |
+| Publish trigger | authorized manual `workflow_dispatch` |
+| Publish on push | `false` |
+| Migration status | `complete` |
 | Service Worker | Disabled |
 
-`develop-homeui2` is only the temporary legacy Pages source. It is not the development branch, integration branch, pull-request target, or release branch. `config/project-state.json.branches.legacyPagesBranch.automaticMergeAllowed` is `false`; do not automatically merge `main`, task branches, or the historical `develop` branch into it.
+`develop-homeui2` is retained only as a recoverable legacy branch. It is not the development branch, integration branch, pull-request target, release branch, or active publication path. `config/project-state.json.branches.legacyPagesBranch.automaticMergeAllowed` is `false`; do not automatically merge `main`, task branches, or the historical `develop` branch into it.
 
-While legacy Pages remains active, any push or merge to `develop-homeui2` is a publication. It therefore requires both repository-write authority and explicit publication authority for that operation.
-
-At the 2026-08-14 audit baseline, the Pages source was `develop-homeui2` at `/`, the branch was unprotected, and administrative Pages/branch-protection endpoints were unavailable to the configured GitHub connector (`403`). An authorized repository administrator must verify and change those settings through GitHub. This is an audit-time capability note, not a permanent connector limitation.
-
-## Target release flow
-
-The target flow is:
+The active release path is:
 
 ```text
 task branch -> pull request -> protected main -> authorized workflow_dispatch -> GitHub Pages
 ```
 
-Target values in `config/project-state.json` are:
+Merging a pull request into `main` neither authorizes nor triggers deployment. A separately authorized actor must manually dispatch the Pages workflow for an approved full commit SHA. The workflow deploys only the prepared artifact from `main` and does not mutate source branches.
 
-| Item | Target value |
+The migration was verified with workflow run `31750308477` from 2026-08-14 07:31:34 to 07:32:56 JST: both `Preflight release candidate` and `Deploy approved main artifact` succeeded for `120c33b118940174bb0046dc42eedfcefe6c97d3`. The latest resulting `github-pages` deployment record was `5897163613` on ref `main` at the same full SHA, and post-deployment public QA passed at the Pages URL.
+
+Current values in `config/project-state.json` are:
+
+| Item | Current value |
 | --- | --- |
 | Development and release branch | `main` |
 | Mode | `github-actions` |
@@ -39,13 +39,11 @@ Target values in `config/project-state.json` are:
 | Trigger | `workflow_dispatch` |
 | Publish on push | `false` |
 
-Merging a pull request into `main` neither authorizes nor triggers deployment. A separately authorized actor must manually dispatch the Pages workflow for an approved full commit SHA. The workflow must deploy only the prepared artifact from `main` and must not mutate source branches.
+The active `Moguria main protection` ruleset requires pull requests and the strict `Dependency-free preflight` check, and blocks deletion and non-fast-forward updates. Its approval count is zero and review-thread resolution is not required. Do not document either review setting as enabled unless the live ruleset changes. Keep `develop-homeui2` isolated as a recoverable legacy branch; do not use it as an integration path.
 
-Protect `main` with required CI and pull-request review. Disable force-push and branch deletion. Keep `develop-homeui2` isolated as a recoverable legacy source until migration has been verified; do not use it as an integration path.
+## Completed migration record
 
-## Migration procedure
-
-An authorized repository administrator should perform and record these steps:
+The migration completed these steps:
 
 1. Confirm that `main` contains the reviewed runtime tree, validators, CI workflow, and Pages workflow.
 2. Enable protection on `main`: required pull requests, required CI, no force-push, and no deletion.
@@ -53,7 +51,7 @@ An authorized repository administrator should perform and record these steps:
 4. Change GitHub Pages build/deployment source from legacy branch publishing to GitHub Actions.
 5. Dispatch the workflow for an approved full SHA on `main`.
 6. Verify the workflow run, environment/deployment record, deployed full SHA, public URL, and critical user flow.
-7. Only after successful verification, update `config/project-state.json.deployment.current` and `migrationStatus` to the observed settings.
+7. After successful verification, update `config/project-state.json.deployment.current` and `migrationStatus` to the observed settings.
 8. Preserve the legacy branch until rollback and retention decisions are explicitly approved.
 
 Do not claim the target state is active merely because workflow files exist in the repository.
@@ -81,14 +79,12 @@ Record observed values and date in `docs/CURRENT_STATE.md` only when the audit b
 | Open or update a pull request | Explicit PR authorization |
 | Merge to protected `main` | Explicit merge authorization and satisfied branch rules |
 | Dispatch the target Pages workflow | Separate explicit deployment authorization |
-| Push or merge to current `develop-homeui2` | Explicit write and publication authorization because it publishes immediately |
+| Write to legacy `develop-homeui2` | Explicit branch-write authorization; it is not an active publication path under the current workflow configuration |
 | Change Pages or branch-protection settings | Authorized repository administrator |
 
 Never infer stage, commit, push, pull request, merge, release, workflow dispatch, or deployment permission from an implementation request.
 
-## Target release procedure
-
-After migration to the target state:
+## Release procedure
 
 1. Confirm repository, task branch, target branch `main`, and exact full SHA.
 2. Inspect staged and unstaged scope; exclude unrelated files, source-only art, debug output, and secrets.
@@ -100,12 +96,12 @@ After migration to the target state:
 8. Verify the Actions run, Pages deployment record, public URL, changed asset paths, console, and critical flow.
 9. Report branch, deployed full SHA, checks, public result, and any remaining uncertainty.
 
-Until migration is complete, follow the current-state warning above: a write to `develop-homeui2` publishes immediately.
+Do not use `develop-homeui2` for ordinary releases. Any recovery that writes or redeploys legacy content requires explicit rollback and deployment authorization.
 
 ## Service Worker and rollback
 
 Service Worker registration remains disabled. Enabling it is a distinct reviewed change requiring `validation.commands.serviceWorker`, offline/update testing, cache-version planning, and a rollback path.
 
-For a target Actions deployment rollback, redeploy a previously verified full SHA through the authorized manual workflow. Do not rewrite shared history, force-push, use destructive clean/restore commands, or copy a broad directory over the repository. During the legacy phase, reverting or pushing `develop-homeui2` is itself a publication and needs explicit authorization.
+For an Actions deployment rollback, prepare a reviewed forward fix or revert through protected `main`, then separately authorize and dispatch the manual workflow for the new merged full SHA. The current workflow checks out `main`, rejects non-`main` refs, and does not accept an arbitrary historical SHA. Do not rewrite shared history, force-push, use destructive clean/restore commands, or copy a broad directory over the repository. Re-activating or writing the retained legacy branch is a distinct recovery decision and needs explicit authorization.
 
 After publication or rollback, report what was deployed, the full SHA, verification performed, and whether public QA was completed or remains unverified.

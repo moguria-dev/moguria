@@ -66,10 +66,23 @@ Never solve an uncertain local regression by erasing all changes.
 2. Decide whether a forward fix or a revert commit is safer.
 3. Creating a revert commit requires commit authorization.
 4. Merging/pushing the revert requires the corresponding GitHub authority.
-5. If the target is the current Pages source, the push/merge also publishes and therefore requires publication authority.
+5. Determine whether the forward fix only needs a merge to protected `main` or also a separately authorized Pages workflow dispatch; under the current workflow configuration, the merge itself does not publish.
 6. Test the result locally and verify the public result after an authorized publication.
 
 Preserve history. Never rewrite the public branch to hide a bad release.
+
+## Published regression recovery
+
+The current Pages workflow publishes the checked-out `main` ref and rejects non-`main` refs. It does not accept an arbitrary historical SHA. Therefore the default rollback path is a reviewed forward fix or revert commit on a task branch, followed by a pull request to protected `main`.
+
+1. Record the failing workflow run, deployment record, deployed full SHA, symptom, and last known good full SHA.
+2. Prepare the smallest forward fix or revert on a task branch without rewriting shared history.
+3. Run the canonical preflight and focused regression QA.
+4. Obtain separate authorization for commit/push, pull request, and merge; satisfy the live `main` ruleset.
+5. After the corrective commit is merged, record the new full `main` SHA and obtain separate deployment authorization.
+6. Manually dispatch `.github/workflows/deploy-pages.yml` on `main` and verify the Actions run, `github-pages` deployment SHA, public URL, console, and affected critical flow.
+
+Do not treat `develop-homeui2` as the default rollback path. Re-enabling branch publication, allowing a historical-SHA input, or otherwise changing the workflow is a distinct reviewed settings/workflow migration.
 
 ## Save-data incident
 
@@ -102,4 +115,3 @@ Save/manifest/SW involvement:
 Actions already taken:
 Actions explicitly not yet authorized:
 ```
-

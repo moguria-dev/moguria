@@ -47,9 +47,11 @@
       ".nojekyll"
     ],
     "current": {
-      "mode": "legacy-branch",
-      "sourceBranch": "develop-homeui2",
-      "publishesOnPush": true
+      "mode": "github-actions",
+      "sourceBranch": "main",
+      "publishesOnPush": false,
+      "trigger": "workflow_dispatch",
+      "workflow": ".github/workflows/deploy-pages.yml"
     },
     "target": {
       "mode": "github-actions",
@@ -58,7 +60,7 @@
       "trigger": "workflow_dispatch",
       "workflow": ".github/workflows/deploy-pages.yml"
     },
-    "migrationStatus": "planned"
+    "migrationStatus": "complete"
   },
   "runtime": {
     "nodeVersion": "24.14.0",
