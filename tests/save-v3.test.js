@@ -342,6 +342,7 @@ function createHomeHarness(options = {}) {
   const initialRun = options.activeRun ? clone(options.activeRun) : null;
   let durableSave = v2Save({ belly: options.belly ?? 2, activeRun: initialRun });
   let directSaveCalls = 0;
+  const loading = { visible: false, showCalls: 0, hideCalls: 0, messages: [], restoreFocus: null, focusTarget: '' };
 
   const context = {
     console: { log() {}, warn() {}, error() {} },
@@ -349,6 +350,7 @@ function createHomeHarness(options = {}) {
     Math,
     JSON,
     setInterval: () => 1,
+    setTimeout: callback => { callback(); return 1; },
     document: { getElementById: id => elements[id] || null }
   };
   context.window = context;
@@ -378,11 +380,31 @@ function createHomeHarness(options = {}) {
   context.MoguriaBattleV3Loader = {
     async prepare() {
       events.push('prepare');
+      if (options.prepareGate) return options.prepareGate;
       return options.prepareFailure ? { ok: false, reason: 'battle-load-failed' } : { ok: true };
     }
   };
-  context.MoguriaUI = { show(id) { events.push(`show:${id}`); } };
-  context.MoguriaGame = { start(args) { events.push('game.start'); context.gameStartArgs = args; } };
+  context.MoguriaUI = {
+    show(id) { events.push(`show:${id}`); },
+    showAdventureLoading() { loading.visible = true; loading.showCalls += 1; },
+    updateAdventureLoading(message) { loading.messages.push(message); },
+    hideAdventureLoading(settings = {}) {
+      loading.visible = false;
+      loading.hideCalls += 1;
+      loading.restoreFocus = settings.restoreFocus;
+      loading.focusTarget = settings.focusTarget || '';
+    }
+  };
+  context.MoguriaGame = {
+    start(args) {
+      events.push('game.start');
+      context.gameStartArgs = args;
+      if (options.gameStartGate) return options.gameStartGate;
+      if (options.gameStartThrow) throw new Error('renderer start failed synchronously');
+      if (options.gameStartFailure) return false;
+      return undefined;
+    }
+  };
   context.MoguriaMeta = { load: () => clone(durableSave) };
   vm.createContext(context);
   vm.runInContext(readScript('js/home.js'), context, { filename: 'js/home.js' });
@@ -392,6 +414,7 @@ function createHomeHarness(options = {}) {
     context,
     elements,
     events,
+    loading,
     get durableSave() { return durableSave; },
     get directSaveCalls() { return directSaveCalls; },
     clickStart: () => elements.startBtn.onclick()
@@ -429,6 +452,10 @@ test('home does not consume belly or enter game when preparation or save fails',
     assert.deepEqual(harness.events, ['prepare']);
     assert.equal(harness.durableSave.belly, 2);
     assert.match(harness.elements.homeLine.textContent, /準備に失敗/);
+    assert.equal(harness.loading.visible, false);
+    assert.equal(harness.loading.restoreFocus, false);
+    assert.equal(harness.loading.focusTarget, 'startBtn');
+    assert.equal(harness.elements.startBtn.disabled, false);
   });
 
   await t.test('startRun persistence failure', async () => {
@@ -437,5 +464,52 @@ test('home does not consume belly or enter game when preparation or save fails',
     assert.deepEqual(harness.events, ['prepare', 'startRun']);
     assert.equal(harness.durableSave.belly, 2);
     assert.match(harness.elements.homeLine.textContent, /保存できませんでした/);
+    assert.equal(harness.loading.visible, false);
+    assert.equal(harness.loading.restoreFocus, false);
+    assert.equal(harness.loading.focusTarget, 'startBtn');
   });
+});
+
+test('home cleans up the loading surface when renderer start throws synchronously', async () => {
+  const harness = createHomeHarness({ belly: 2, gameStartThrow: true });
+  await harness.clickStart();
+
+  assert.deepEqual(harness.events, ['prepare', 'startRun', 'show:game', 'game.start', 'show:home']);
+  assert.equal(harness.loading.visible, false);
+  assert.equal(harness.loading.focusTarget, 'startBtn');
+  assert.match(harness.elements.homeLine.textContent, /準備に失敗/);
+  assert.match(harness.loading.messages.at(-1), /準備に失敗/);
+});
+
+test('home keeps a blocking loading surface through prepare and renderer start and ignores double taps', async () => {
+  let releasePrepare;
+  let releaseGameStart;
+  const prepareGate = new Promise(resolve => { releasePrepare = resolve; });
+  const gameStartGate = new Promise(resolve => { releaseGameStart = resolve; });
+  const harness = createHomeHarness({ belly: 2, prepareGate, gameStartGate });
+
+  const pending = harness.clickStart();
+  const duplicate = harness.clickStart();
+  await Promise.resolve();
+
+  assert.equal(harness.loading.visible, true);
+  assert.equal(harness.loading.showCalls, 1);
+  assert.equal(harness.elements.startBtn.disabled, true);
+  assert.deepEqual(harness.events, ['prepare']);
+
+  releasePrepare({ ok: true });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(harness.events, ['prepare', 'startRun', 'show:game', 'game.start']);
+  assert.equal(harness.loading.visible, true, 'loading remains until the asynchronous renderer is ready');
+  assert.match(harness.loading.messages.at(-1), /入口/);
+
+  releaseGameStart(true);
+  await Promise.all([pending, duplicate]);
+  assert.equal(harness.loading.visible, false);
+  assert.equal(harness.loading.hideCalls, 1);
+  assert.equal(harness.loading.restoreFocus, false);
+  assert.equal(harness.elements.startBtn.disabled, false);
+  assert.equal(harness.events.filter(event => event === 'prepare').length, 1);
+  assert.equal(harness.events.filter(event => event === 'startRun').length, 1);
+  assert.equal(harness.events.filter(event => event === 'game.start').length, 1);
 });

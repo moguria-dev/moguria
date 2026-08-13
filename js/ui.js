@@ -2,11 +2,151 @@ window.MoguriaUI = (() => {
   let initialized = false;
   let lastFocused = null;
   let noticeTimer = 0;
+  let confirmRequest = null;
+  let loadingFocused = null;
+  let blockedAppState = null;
 
   const ENTITY = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
   const esc = (value) => String(value ?? '').replace(/[&<>"']/g, ch => ENTITY[ch]);
   const attr = esc;
   const asArray = (value) => Array.isArray(value) ? value : [];
+
+  function canFocus(element){
+    return Boolean(element && typeof element.focus === 'function');
+  }
+
+  function rememberFocusedElement(){
+    const active = document.activeElement;
+    return canFocus(active) ? active : null;
+  }
+
+  function overlayIsOpen(id){
+    const element = document.getElementById(id);
+    return Boolean(element && !element.classList.contains('hidden'));
+  }
+
+  function blockApplication(){
+    const app = document.getElementById('app');
+    if (!app || blockedAppState) return;
+    blockedAppState = {
+      inert: Boolean(app.inert || app.hasAttribute?.('inert')),
+      ariaHidden: app.getAttribute?.('aria-hidden')
+    };
+    app.inert = true;
+    app.setAttribute?.('inert', '');
+    app.setAttribute?.('aria-hidden', 'true');
+  }
+
+  function releaseApplicationIfClear(){
+    if (overlayIsOpen('confirmDialog') || overlayIsOpen('adventureLoading')) return;
+    const app = document.getElementById('app');
+    const previous = blockedAppState;
+    blockedAppState = null;
+    if (!app || !previous) return;
+    app.inert = previous.inert;
+    if (previous.inert) app.setAttribute?.('inert', '');
+    else app.removeAttribute?.('inert');
+    if (previous.ariaHidden == null) app.removeAttribute?.('aria-hidden');
+    else app.setAttribute?.('aria-hidden', previous.ariaHidden);
+  }
+
+  function setDialogText(id, value){
+    const element = document.getElementById(id);
+    if (element) element.textContent = String(value ?? '');
+  }
+
+  function closeConfirmDialog(accepted){
+    const request = confirmRequest;
+    if (!request) return;
+    confirmRequest = null;
+    const dialog = document.getElementById('confirmDialog');
+    if (dialog) dialog.classList.add('hidden');
+    releaseApplicationIfClear();
+    if (!accepted && canFocus(request.focused) && request.focused.isConnected !== false) request.focused.focus();
+    else document.body?.focus?.();
+    request.resolve(Boolean(accepted));
+  }
+
+  function confirmAction(options = {}){
+    const dialog = document.getElementById('confirmDialog');
+    const cancelButton = document.getElementById('confirmCancelBtn');
+    const acceptButton = document.getElementById('confirmAcceptBtn');
+    if (!dialog || !cancelButton || !acceptButton || confirmRequest) return Promise.resolve(false);
+
+    const focused = rememberFocusedElement();
+    setDialogText('confirmDialogEyebrow', options.eyebrow || 'CONFIRM');
+    setDialogText('confirmDialogTitle', options.title || '確認');
+    setDialogText('confirmDialogMessage', options.message || 'この操作を続けますか？');
+    cancelButton.textContent = options.cancelLabel || 'やめる';
+    acceptButton.textContent = options.confirmLabel || '続ける';
+    dialog.dataset.tone = options.tone === 'danger' ? 'danger' : 'normal';
+    dialog.classList.remove('hidden');
+    blockApplication();
+
+    return new Promise(resolve => {
+      confirmRequest = { resolve, focused };
+      cancelButton.onclick = () => closeConfirmDialog(false);
+      acceptButton.onclick = () => closeConfirmDialog(true);
+      requestAnimationFrame(() => cancelButton.focus());
+    });
+  }
+
+  function showAdventureLoading(options = {}){
+    const loading = document.getElementById('adventureLoading');
+    const card = document.getElementById('adventureLoadingCard');
+    if (!loading) return;
+    if (loading.classList.contains('hidden')) loadingFocused = rememberFocusedElement();
+    setDialogText('adventureLoadingTitle', options.title || (options.resume ? '冒険を再開中' : '冒険の準備中'));
+    setDialogText('adventureLoadingCost', options.resume ? '続きから再開・おなか消費なし' : '新しい冒険・おなか 1消費');
+    setDialogText('adventureLoadingStatus', options.message || (options.resume
+      ? '続きの冒険を読み込んでいます…'
+      : '戦闘データを読み込んでいます…'));
+    loading.setAttribute('aria-busy', 'true');
+    loading.classList.remove('hidden');
+    blockApplication();
+    requestAnimationFrame(() => card?.focus?.());
+  }
+
+  function updateAdventureLoading(message){
+    setDialogText('adventureLoadingStatus', message);
+  }
+
+  function hideAdventureLoading(options = {}){
+    const loading = document.getElementById('adventureLoading');
+    if (loading) {
+      loading.classList.add('hidden');
+      loading.setAttribute('aria-busy', 'false');
+    }
+    releaseApplicationIfClear();
+    const restore = loadingFocused;
+    loadingFocused = null;
+    if (options.focusTarget) {
+      document.getElementById(options.focusTarget)?.focus?.();
+    } else if (options.restoreFocus !== false && canFocus(restore) && restore.isConnected !== false) {
+      restore.focus();
+    }
+  }
+
+  function trapSystemDialogFocus(event, container){
+    if (event.key !== 'Tab' || !container) return;
+    const nodes = typeof container.querySelectorAll === 'function'
+      ? [...container.querySelectorAll('button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])')].filter(canFocus)
+      : [];
+    if (!nodes.length) {
+      event.preventDefault();
+      container.focus?.();
+      return;
+    }
+    const first = nodes[0];
+    const last = nodes[nodes.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
 
   const META_VIEWS = {
     dex: {
@@ -68,9 +208,7 @@ window.MoguriaUI = (() => {
     const noticeEl = document.getElementById('metaNotice');
     if (!titleEl || !bodyEl || !overlayEl) return;
 
-    if (overlayEl.classList.contains('hidden')) {
-      lastFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    }
+    if (overlayEl.classList.contains('hidden')) lastFocused = rememberFocusedElement();
     titleEl.textContent = config.title;
     if (eyebrowEl) eyebrowEl.textContent = config.eyebrow;
     if (subtitleEl) subtitleEl.textContent = config.subtitle;
@@ -310,7 +448,7 @@ window.MoguriaUI = (() => {
               <strong>Lv.${esc(item.level || 1)}</strong>
               <div class="meta-equip-item__actions">
                 <button type="button" data-equip="${attr(item.uid)}" ${equipped ? 'disabled' : ''}>${equipped ? '装備中' : '装備する'}</button>
-                <button type="button" data-upgrade="${attr(item.uid)}">強化</button>
+                <button type="button" data-upgrade="${attr(item.uid)}" aria-label="${attr(item.name)}を強化">強化</button>
               </div>
             </article>
           `;
@@ -348,14 +486,41 @@ window.MoguriaUI = (() => {
       };
     });
     body.querySelectorAll('[data-upgrade]').forEach(button => {
-      button.onclick = () => {
-        const res = window.MoguriaMeta.upgrade(button.dataset.upgrade);
+      button.onclick = async () => {
+        const preview = window.MoguriaMeta.upgradePreview?.(button.dataset.upgrade);
+        if (!preview?.ok) {
+          showNotice(preview?.message || '強化に必要な素材を確認できませんでした。', 'error');
+          return;
+        }
+        const currentLevel = Math.max(1, Number(preview.item.level) || 1);
+        const materialLevel = Math.max(1, Number(preview.material.level) || 1);
+        const equippedNote = preview.materialEquipped ? '\n装備中の素材は外れます。' : '';
+        const accepted = await confirmAction({
+          eyebrow: 'EQUIPMENT UPGRADE',
+          title: '装備を強化する？',
+          message: `「${preview.item.name}」をLv.${currentLevel + 1}へ強化します。\n素材として「${preview.material.name}」Lv.${materialLevel}を消費します。素材は元に戻せません。${equippedNote}`,
+          confirmLabel: '素材を使って強化',
+          cancelLabel: 'やめる',
+          tone: 'danger'
+        });
+        if (!accepted) return;
+        const res = window.MoguriaMeta.upgrade(button.dataset.upgrade, preview.material.uid, {
+          targetLevel: currentLevel,
+          materialLevel,
+          materialEquipped: preview.materialEquipped
+        });
         if (!res.ok) {
           showNotice(res.message, 'error');
+          requestAnimationFrame(() => button.focus?.());
           return;
         }
         showEquipment();
         showNotice(`「${res.item.name}」がLv.${res.item.level}になりました。`, 'success');
+        requestAnimationFrame(() => {
+          const nextButton = [...document.querySelectorAll('[data-upgrade]')]
+            .find(candidate => candidate.dataset.upgrade === res.item.uid);
+          nextButton?.focus?.();
+        });
       };
     });
   }
@@ -495,9 +660,26 @@ window.MoguriaUI = (() => {
     });
 
     document.addEventListener('keydown', event => {
+      const confirmDialog = document.getElementById('confirmDialog');
+      if (confirmRequest && confirmDialog && !confirmDialog.classList.contains('hidden')) {
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          closeConfirmDialog(false);
+        } else trapSystemDialogFocus(event, confirmDialog);
+        return;
+      }
+      const loading = document.getElementById('adventureLoading');
+      if (loading && !loading.classList.contains('hidden')) {
+        if (event.key === 'Escape' || event.key === 'Tab') event.preventDefault();
+        document.getElementById('adventureLoadingCard')?.focus?.();
+        return;
+      }
       if (event.key === 'Escape') closeMetaOverlay();
     });
   }
 
-  return { init, show, showResult, showDex, showLogs, showEquipment, showGacha, showOuting };
+  return {
+    init, show, showResult, showDex, showLogs, showEquipment, showGacha, showOuting,
+    confirmAction, showAdventureLoading, updateAdventureLoading, hideAdventureLoading
+  };
 })();

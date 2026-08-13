@@ -86,10 +86,10 @@ window.MoguriaSkills = (() => {
     quick_berry:['move',0,'ice'], blink_mint:['move',1,'ice'], afterimage:['move',2,'ice'], soft_step:['move',3,'ice'],
     guard_nut:['guard',0,'guard'], thorn_bun:['guard',1,'guard'], sleepy_shell:['guard',2,'guard'], mogu_field:['guard',3,'guard'],
     mini_mogu:['summon',0,'summon'], friend_jam:['summon',1,'summon'], bye_pop:['summon',2,'summon'], big_field:['summon',3,'guard'],
-    star_meteor:['star',2,'star'], meteor_party:['star',2,'star'], thunder_gum:['combat',2,'star'], storm_soda:['combat',2,'star'],
+    star_meteor:['star',2,'star'], meteor_party:['upgrade',0,'star'], thunder_gum:['combat',2,'star'], storm_soda:['upgrade',2,'star'],
     pierce_skewer:['star',0,'star'], split_mochi:['star',1,'star'], fan_cookie:['blast',3,'fire'], crit_sugar:['star',3,'star'],
     hungry_fang:['combat',0,'star'], star_drop:['support',3,'star'], growth_honey:['support',2,'star'], ice_syrup:['support',0,'ice'],
-    moon_orbit:['combat',1,'star'], orbit_storm:['combat',1,'star'], mine_garden:['combat',3,'fire'], mogu_vamp:['support',1,'poison']
+    moon_orbit:['combat',1,'star'], orbit_storm:['upgrade',1,'star'], mine_garden:['upgrade',3,'fire'], mogu_vamp:['support',1,'poison']
   };
 
   const skillRequirements = Object.freeze({
@@ -228,10 +228,10 @@ window.MoguriaSkills = (() => {
     {id:'fusion_little_meteor_parade', icon:'🐾', name:'こもぐ星ふり隊', requires:{mini_mogu:3,star_meteor:2}, tags:['召喚','自動','攻撃'], desc:'こもぐと星雨が合体。仲間たちが星を呼びやすくなる。', apply:p=>{p.summons+=2;p.summonRate*=.72;p.meteor=true;p.meteorRate=Math.max(1.55,p.meteorRate-1.2);p.visual.summon+=3;p.visual.star+=2;}}
   ];
   const fusionIconVisuals = Object.freeze({
-    fusion_toxic_star_firework:['poison',3,'poison'],
-    fusion_storm_orbit:['combat',2,'star'],
-    fusion_safe_flower_bomb:['guard',3,'guard'],
-    fusion_little_meteor_parade:['summon',2,'summon']
+    fusion_toxic_star_firework:['fusion',0,'poison'],
+    fusion_storm_orbit:['fusion',1,'star'],
+    fusion_safe_flower_bomb:['fusion',2,'guard'],
+    fusion_little_meteor_parade:['fusion',3,'summon']
   });
   for(const fusion of fusions) fusion.iconVisual=makeIconVisual(fusionIconVisuals[fusion.id]);
   function skillLevel(pOrOwned, id){

@@ -57,8 +57,10 @@ window.MoguriaMeta = (() => {
 
   function save(data){
     data = normalize(data);
-    window.MoguriaSave.save(data);
-    return data;
+    const result = window.MoguriaSave.save(data);
+    return result && typeof result === 'object' && 'ok' in result
+      ? result
+      : { ok: true, data };
   }
 
   function todayKey(){
@@ -117,18 +119,41 @@ window.MoguriaMeta = (() => {
     return item;
   }
 
-  function upgrade(uid){
+  function upgradePreview(uid){
     const s = load();
     const item = s.meta.inventory.find(x => x.uid === uid);
     if (!item) return { ok: false, message: '装備が見つかりません' };
-    const mat = s.meta.inventory.find(x => x.uid !== uid && x.slot === item.slot);
-    if (!mat) return { ok: false, message: '同じ部位の装備が素材に必要です' };
+    const material = s.meta.inventory.find(x => x.uid !== uid && x.slot === item.slot);
+    if (!material) return { ok: false, message: '同じ部位の装備が素材に必要です' };
+    const materialEquipped = Object.values(s.meta.equipped).includes(material.uid);
+    return { ok: true, item, material, materialEquipped };
+  }
+
+  function upgrade(uid, materialUid = '', expected = null){
+    const s = load();
+    const item = s.meta.inventory.find(x => x.uid === uid);
+    if (!item) return { ok: false, message: '装備が見つかりません' };
+    const mat = materialUid
+      ? s.meta.inventory.find(x => x.uid === materialUid && x.uid !== uid && x.slot === item.slot)
+      : s.meta.inventory.find(x => x.uid !== uid && x.slot === item.slot);
+    if (!mat) return { ok: false, message: materialUid ? '確認した強化素材が見つかりません。もう一度選び直してください。' : '同じ部位の装備が素材に必要です' };
+    if (expected && typeof expected === 'object') {
+      const targetLevel = Math.max(1, Number(item.level) || 1);
+      const materialLevel = Math.max(1, Number(mat.level) || 1);
+      const materialEquipped = Object.values(s.meta.equipped).includes(mat.uid);
+      if (targetLevel !== Number(expected.targetLevel)
+        || materialLevel !== Number(expected.materialLevel)
+        || materialEquipped !== Boolean(expected.materialEquipped)) {
+        return { ok: false, message: '確認後に装備の状態が変わりました。内容を確認して、もう一度強化してください。' };
+      }
+    }
     item.level = (item.level || 1) + 1;
     s.meta.inventory = s.meta.inventory.filter(x => x.uid !== mat.uid);
     Object.keys(s.meta.equipped).forEach(slot => {
       if (s.meta.equipped[slot] === mat.uid) s.meta.equipped[slot] = null;
     });
-    save(s);
+    const saved = save(s);
+    if (!saved.ok) return { ok: false, message: '装備の強化を保存できませんでした。空き容量を確認して、もう一度ためしてください。', reason: 'save-failed' };
     return { ok: true, item, used: mat };
   }
 
@@ -226,5 +251,5 @@ window.MoguriaMeta = (() => {
     }
   }
 
-  return { EQUIPMENT, CHALLENGES, SLOT_LABELS, RARITY_LABELS, GACHA_COST, normalize, load, save, addCoins, runReward, awardFromRun, pull, equip, upgrade, claimChallenge, equipmentSummary, applyEquipmentToPlayer };
+  return { EQUIPMENT, CHALLENGES, SLOT_LABELS, RARITY_LABELS, GACHA_COST, normalize, load, save, addCoins, runReward, awardFromRun, pull, equip, upgradePreview, upgrade, claimChallenge, equipmentSummary, applyEquipmentToPlayer };
 })();

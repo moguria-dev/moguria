@@ -51,8 +51,9 @@ function createElement(tag = 'div', id = '') {
     setPointerCapture() {},
     click() {
       const event = { preventDefault() {}, stopPropagation() {}, target: this };
-      if (typeof this.onclick === 'function') this.onclick(event);
-      listeners.get('click')?.(event);
+      const result = typeof this.onclick === 'function' ? this.onclick(event) : undefined;
+      const listenerResult = listeners.get('click')?.(event);
+      return result ?? listenerResult;
     },
     getContext() { return {}; }
   };
@@ -75,6 +76,8 @@ function createGameHarness(checkpoint = null, options = {}) {
   const elements = Object.fromEntries(ids.map(id => [id, createElement(id === 'gameCanvas' ? 'canvas' : 'div', id)]));
   elements.game.classList.add('active');
   let savedCheckpoint = null;
+  const confirmRequests = [];
+  const confirmResolvers = [];
   const lifecycle = {};
   let clock = 1000;
   const testMath = Object.create(Math);
@@ -123,7 +126,14 @@ function createGameHarness(checkpoint = null, options = {}) {
     })
   };
   context.MoguriaKVVisualRefresh = { decorateAll() {} };
-  context.MoguriaUI = { show() {}, showResult() {} };
+  context.MoguriaUI = {
+    show() {},
+    showResult(run) { context.lastResult = clone(run); },
+    confirmAction(settings) {
+      confirmRequests.push(clone(settings));
+      return new Promise(resolve => confirmResolvers.push(resolve));
+    }
+  };
   context.MoguriaSave = {
     updateCheckpoint(runId, payload) {
       assert.equal(runId, 'run-resume-test');
@@ -147,6 +157,8 @@ function createGameHarness(checkpoint = null, options = {}) {
     context,
     elements,
     lifecycle,
+    confirmRequests,
+    resolveConfirm(value) { confirmResolvers.shift()?.(value); },
     game: context.MoguriaGame,
     get state() { return context.MoguriaGame.getState(); },
     get savedCheckpoint() { return savedCheckpoint; }
@@ -589,6 +601,58 @@ test('settlement failure exposes a visible retry explanation in the refreshed pa
   assert.equal(harness.elements.resumeBtn.textContent, '保存を再試行');
 });
 
+test('direct give-up confirmation freezes combat, cancellation resumes it, and acceptance settles the run', async () => {
+  const harness = createGameHarness();
+  const state = harness.state;
+  state.introTimer = 0;
+  state.mode = 'run';
+
+  let decision = harness.elements.giveupBtn.click();
+  assert.equal(state.mode, 'pause', 'combat freezes while the confirmation is open');
+  assert.equal(harness.confirmRequests.length, 1);
+  assert.match(harness.confirmRequests[0].message, /途中から再開できなくなります/);
+  assert.match(harness.confirmRequests[0].message, /記録と報酬を確定/);
+
+  harness.resolveConfirm(false);
+  await decision;
+  assert.equal(state.mode, 'run', 'cancelling a direct exit resumes the same run');
+
+  harness.context.MoguriaMeta = { awardFromRun: () => ({ ok: true, amount: 12 }) };
+  harness.context.MoguriaResult = { buildName: () => 'test run', comment: () => 'test', titles: () => [] };
+  decision = harness.elements.giveupBtn.click();
+  assert.equal(state.mode, 'pause');
+  harness.resolveConfirm(true);
+  await decision;
+  assert.equal(state.mode, 'ended');
+  assert.equal(harness.context.lastResult.giveup, true);
+  assert.equal(harness.context.lastResult.coins, 12);
+});
+
+test('pause-sheet home confirmation keeps the sheet paused on cancel and exits only after acceptance', async () => {
+  const harness = createGameHarness();
+  harness.state.introTimer = 0;
+  harness.state.mode = 'run';
+  harness.game.pauseRun();
+  assert.equal(harness.state.mode, 'pause');
+  assert.equal(harness.elements.pauseModal.classList.contains('hidden'), false);
+
+  let decision = harness.elements.pauseGiveupBtn.click();
+  assert.equal(harness.confirmRequests.length, 1);
+  harness.resolveConfirm(false);
+  await decision;
+  assert.equal(harness.state.mode, 'pause');
+  assert.equal(harness.elements.pauseModal.classList.contains('hidden'), false);
+
+  harness.context.MoguriaMeta = { awardFromRun: () => ({ ok: true, amount: 8 }) };
+  harness.context.MoguriaResult = { buildName: () => 'test run', comment: () => 'test', titles: () => [] };
+  decision = harness.elements.pauseGiveupBtn.click();
+  harness.resolveConfirm(true);
+  await decision;
+  assert.equal(harness.state.mode, 'ended');
+  assert.equal(harness.elements.pauseModal.classList.contains('hidden'), true);
+  assert.equal(harness.context.lastResult.giveup, true);
+});
+
 test('settlement error stylesheet replaces the power grid so retry actions cannot be clipped', () => {
   const stylesheet = readScript('css/moguria-battle-refinement.css');
   assert.match(stylesheet, /\.pause-card__summary\.is-error\s*\+\s*\.pause-card__powers\s*\{[^}]*display:\s*none\s*!important/s);
@@ -876,17 +940,34 @@ test('skill icon atlas cells follow their visual families and provide broad reco
   assert.equal(visual('mogu_vamp'), 'support:1');
   assert.equal(visual('pierce_skewer'), 'star:0');
   assert.equal(visual('star_meteor'), 'star:2');
+  assert.equal(visual('meteor_party'), 'upgrade:0');
   assert.equal(visual('moon_orbit'), 'combat:1');
+  assert.equal(visual('orbit_storm'), 'upgrade:1');
   assert.equal(visual('thunder_gum'), 'combat:2');
+  assert.equal(visual('storm_soda'), 'upgrade:2');
   assert.equal(visual('sleepy_mine'), 'combat:3');
+  assert.equal(visual('mine_garden'), 'upgrade:3');
 
-  assert.equal(visual('fusion_toxic_star_firework'), 'poison:3');
-  assert.equal(visual('fusion_storm_orbit'), 'combat:2');
-  assert.equal(visual('fusion_safe_flower_bomb'), 'guard:3');
-  assert.equal(visual('fusion_little_meteor_parade'), 'summon:2');
+  assert.equal(visual('fusion_toxic_star_firework'), 'fusion:0');
+  assert.equal(visual('fusion_storm_orbit'), 'fusion:1');
+  assert.equal(visual('fusion_safe_flower_bomb'), 'fusion:2');
+  assert.equal(visual('fusion_little_meteor_parade'), 'fusion:3');
   assert.equal(new Set(MoguriaSkills.fusions.map(fusion => visual(fusion.id))).size, 4);
 
-  const motifs = new Set(MoguriaSkills.skills.map(skill => visual(skill.id)));
+  const allDefinitions = [...MoguriaSkills.skills, ...MoguriaSkills.fusions];
+  const motifs = new Set(allDefinitions.map(skill => visual(skill.id)));
   assert.equal(MoguriaSkills.skills.length, 36);
-  assert.equal(motifs.size, 32);
+  assert.equal(MoguriaSkills.fusions.length, 4);
+  assert.equal(motifs.size, 40);
+  for(const skill of allDefinitions){
+    const icon = MoguriaSkills.iconVisualForSkill(skill.id);
+    assert.equal(icon.atlas, `assets/images/skill-icons/skill-atlas-${icon.family}.webp`);
+    assert.ok(icon.cell >= 0 && icon.cell <= 3);
+  }
+
+  const stylesheet = readScript('css/moguria-battle-refinement.css');
+  for(const family of ['poison','blast','combat','guard','move','star','summon','support','upgrade','fusion']){
+    assert.match(stylesheet, new RegExp(`data-skill-atlas="${family}"`));
+    assert.match(stylesheet, new RegExp(`skill-atlas-${family}\\.webp`));
+  }
 });

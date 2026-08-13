@@ -11,7 +11,8 @@
  <link rel="stylesheet" href="css/moguria-play-ui.css?v=20260812-battle-v3-2" />
  <link rel="stylesheet" href="css/moguria-battle-world.css?v=20260812-battle-v3-2" />
  <link rel="stylesheet" href="css/moguria-meta-ui.css?v=20260813-gacha-contrast-2" />
- <link rel="stylesheet" href="css/moguria-battle-refinement.css?v=20260813-battle-refinement-1" />
+ <link rel="stylesheet" href="css/moguria-battle-refinement.css?v=20260813-icon-legibility-1" />
+ <link rel="stylesheet" href="css/moguria-system-overlays.css?v=20260813-system-overlays-1" />
 </head>
 <body class="moguria-booting">
  <section id="startupLoader" class="startup-loader" aria-labelledby="startupLoaderTitle" aria-describedby="startupProgressText" aria-busy="true">
@@ -95,7 +96,7 @@
  </div>
  <button id="pauseBtn" class="tiny pause play-pause" aria-label="一時停止"><span aria-hidden="true">Ⅱ</span><b>一時停止</b></button>
  <button id="giveupBtn" class="tiny play-giveup">帰る</button>
- <div id="levelModal" class="modal play-choice-modal hidden">
+ <div id="levelModal" class="modal play-choice-modal hidden" tabindex="-1">
  <div class="modal-card play-choice-sheet">
  <header class="play-choice-header">
  <p class="eyebrow">LEVEL UP</p>
@@ -116,7 +117,7 @@
  </footer>
  </div>
  </div>
- <div id="artifactModal" class="modal artifact-choice-modal hidden" role="dialog" aria-modal="true" aria-labelledby="artifactTitle">
+ <div id="artifactModal" class="modal artifact-choice-modal hidden" role="dialog" aria-modal="true" aria-labelledby="artifactTitle" tabindex="-1">
  <div class="modal-card artifact-card artifact-choice-sheet">
  <header class="artifact-choice-header">
  <span class="artifact-choice-header__core" aria-hidden="true"><img src="assets/images/kv-icons/artifact_core.png" alt="" loading="lazy" decoding="async" /></span>
@@ -214,21 +215,43 @@
  </div>
  </section>
  </div>
+ <section id="adventureLoading" class="system-overlay system-loading hidden" role="dialog" aria-modal="true" aria-labelledby="adventureLoadingTitle" aria-describedby="adventureLoadingStatus" aria-busy="true">
+ <div id="adventureLoadingCard" class="system-dialog system-loading__card" tabindex="-1">
+ <div class="system-loading__orb" aria-hidden="true"><i></i><span>✦</span></div>
+ <p class="system-dialog__eyebrow">STARLIGHT GATE</p>
+ <h2 id="adventureLoadingTitle">冒険の準備中</h2>
+ <p id="adventureLoadingCost" class="system-loading__cost">おなか 1消費</p>
+ <p id="adventureLoadingStatus" class="system-loading__status" role="status" aria-live="polite">戦闘データを読み込んでいます…</p>
+ <span class="system-loading__hint">そのまま少し待ってね</span>
+ </div>
+ </section>
+ <section id="confirmDialog" class="system-overlay system-confirm hidden" role="alertdialog" aria-modal="true" aria-labelledby="confirmDialogTitle" aria-describedby="confirmDialogMessage">
+ <div class="system-dialog system-confirm__card">
+ <span class="system-confirm__mark" aria-hidden="true">✦</span>
+ <p id="confirmDialogEyebrow" class="system-dialog__eyebrow">CONFIRM</p>
+ <h2 id="confirmDialogTitle">確認</h2>
+ <p id="confirmDialogMessage" class="system-confirm__message">この操作を続けますか？</p>
+ <div class="system-confirm__actions">
+ <button id="confirmCancelBtn" class="system-confirm__cancel" type="button">やめる</button>
+ <button id="confirmAcceptBtn" class="system-confirm__accept" type="button">続ける</button>
+ </div>
+ </div>
+ </section>
  <script src="js/config.js?v=20260813-skill-system-1"></script>
  <script src="js/debug.js"></script>
  <script src="js/save.js"></script>
- <script src="js/meta.js"></script>
- <script src="js/skills.js?v=20260813-skill-system-1"></script>
+ <script src="js/meta.js?v=20260813-system-overlays-1"></script>
+ <script src="js/skills.js?v=20260813-icon-legibility-1"></script>
  <script src="js/enemies.js"></script>
  <script src="js/validator.js"></script>
  <script src="js/player.js"></script>
  <script src="js/dungeon.js"></script>
  <script src="js/result.js"></script>
- <script src="js/home.js"></script>
+ <script src="js/home.js?v=20260813-system-overlays-1"></script>
  <script src="js/audio.js"></script>
  <script src="js/battle-v3-loader.js?v=20260813-battle-refinement-2"></script>
- <script src="js/game.js?v=20260813-battle-refinement-1"></script>
- <script src="js/ui.js?v=20260813-meta-ui-1"></script>
+ <script src="js/game.js?v=20260813-system-overlays-1"></script>
+ <script src="js/ui.js?v=20260813-system-overlays-1"></script>
  <script src="js/assetManager.js?v=20260812-startup-loader-1"></script>
  <script src="js/performance.js"></script>
  <script src="js/network.js"></script>

@@ -156,49 +156,61 @@ body.kv-visual-refresh {
 .skill-icon__art[data-skill-atlas="poison"],
 .owned-power__art[data-skill-atlas="poison"],
 .pause-power__art[data-skill-atlas="poison"] {
-  background-image: url("../assets/images/skill-icons/skill-atlas-poison.webp") !important;
+  background-image: url("../assets/images/skill-icons/skill-atlas-poison.webp?v=20260813-icon-legibility-1") !important;
 }
 
 .skill-icon__art[data-skill-atlas="blast"],
 .owned-power__art[data-skill-atlas="blast"],
 .pause-power__art[data-skill-atlas="blast"] {
-  background-image: url("../assets/images/skill-icons/skill-atlas-blast.webp") !important;
+  background-image: url("../assets/images/skill-icons/skill-atlas-blast.webp?v=20260813-icon-legibility-1") !important;
 }
 
 .skill-icon__art[data-skill-atlas="combat"],
 .owned-power__art[data-skill-atlas="combat"],
 .pause-power__art[data-skill-atlas="combat"] {
-  background-image: url("../assets/images/skill-icons/skill-atlas-combat.webp") !important;
+  background-image: url("../assets/images/skill-icons/skill-atlas-combat.webp?v=20260813-icon-legibility-1") !important;
 }
 
 .skill-icon__art[data-skill-atlas="guard"],
 .owned-power__art[data-skill-atlas="guard"],
 .pause-power__art[data-skill-atlas="guard"] {
-  background-image: url("../assets/images/skill-icons/skill-atlas-guard.webp") !important;
+  background-image: url("../assets/images/skill-icons/skill-atlas-guard.webp?v=20260813-icon-legibility-1") !important;
 }
 
 .skill-icon__art[data-skill-atlas="move"],
 .owned-power__art[data-skill-atlas="move"],
 .pause-power__art[data-skill-atlas="move"] {
-  background-image: url("../assets/images/skill-icons/skill-atlas-move.webp") !important;
+  background-image: url("../assets/images/skill-icons/skill-atlas-move.webp?v=20260813-icon-legibility-1") !important;
 }
 
 .skill-icon__art[data-skill-atlas="star"],
 .owned-power__art[data-skill-atlas="star"],
 .pause-power__art[data-skill-atlas="star"] {
-  background-image: url("../assets/images/skill-icons/skill-atlas-star.webp") !important;
+  background-image: url("../assets/images/skill-icons/skill-atlas-star.webp?v=20260813-icon-legibility-1") !important;
 }
 
 .skill-icon__art[data-skill-atlas="summon"],
 .owned-power__art[data-skill-atlas="summon"],
 .pause-power__art[data-skill-atlas="summon"] {
-  background-image: url("../assets/images/skill-icons/skill-atlas-summon.webp") !important;
+  background-image: url("../assets/images/skill-icons/skill-atlas-summon.webp?v=20260813-icon-legibility-1") !important;
 }
 
 .skill-icon__art[data-skill-atlas="support"],
 .owned-power__art[data-skill-atlas="support"],
 .pause-power__art[data-skill-atlas="support"] {
-  background-image: url("../assets/images/skill-icons/skill-atlas-support.webp") !important;
+  background-image: url("../assets/images/skill-icons/skill-atlas-support.webp?v=20260813-icon-legibility-1") !important;
+}
+
+.skill-icon__art[data-skill-atlas="upgrade"],
+.owned-power__art[data-skill-atlas="upgrade"],
+.pause-power__art[data-skill-atlas="upgrade"] {
+  background-image: url("../assets/images/skill-icons/skill-atlas-upgrade.webp?v=20260813-icon-legibility-1") !important;
+}
+
+.skill-icon__art[data-skill-atlas="fusion"],
+.owned-power__art[data-skill-atlas="fusion"],
+.pause-power__art[data-skill-atlas="fusion"] {
+  background-image: url("../assets/images/skill-icons/skill-atlas-fusion.webp?v=20260813-icon-legibility-1") !important;
 }
 
 .skill-icon__art[data-cell="0"],

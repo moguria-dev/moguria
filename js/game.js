@@ -26,7 +26,7 @@ window.MoguriaGame = (() => {
   });
   function init(){
     canvas=document.getElementById('gameCanvas'); ctx=canvas.getContext('2d'); resize();
-    setupStick(); document.getElementById('giveupBtn').onclick=()=>endRun(true); document.getElementById('pauseBtn').onclick=()=>pauseRun(); document.getElementById('resumeBtn').onclick=()=>resumeRun(); document.getElementById('pauseGiveupBtn').onclick=()=>{ document.getElementById('pauseModal').classList.add('hidden'); endRun(true); };
+    setupStick(); document.getElementById('giveupBtn').onclick=()=>requestGiveup(false); document.getElementById('pauseBtn').onclick=()=>pauseRun(); document.getElementById('resumeBtn').onclick=()=>resumeRun(); document.getElementById('pauseGiveupBtn').onclick=()=>requestGiveup(true);
     if(!lifecycleBound){
       lifecycleBound=true;
       document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='hidden') persistCheckpoint('visibility'); });
@@ -113,9 +113,12 @@ window.MoguriaGame = (() => {
     updateHud(true);
     const renderer=window.MoguriaBattleV3;
     if(!renderer?.start) return failStartAfterSession('戦闘画面を開始できませんでした。');
-    Promise.resolve(renderer.start(state,{step:battleStep})).then(()=>renderer.sync?.(state)).catch(error=>{
+    return Promise.resolve().then(()=>renderer.start(state,{step:battleStep})).then(()=>{
+      renderer.sync?.(state);
+      return true;
+    }).catch(error=>{
       console.error('[MoguriaGame] battle-v3 start failed',error);
-      failStartAfterSession('戦闘画面を開始できませんでした。もう一度ためしてね。');
+      return failStartAfterSession('戦闘画面を開始できませんでした。もう一度ためしてね。');
     });
   }
   function failStartAfterSession(message){
@@ -363,6 +366,48 @@ window.MoguriaGame = (() => {
     }
     if(state.mode!=='pause') return;
     document.getElementById('pauseModal').classList.add('hidden'); state.mode='run'; state.last=performance.now();
+  }
+
+  async function requestGiveup(fromPause=false){
+    if(!state || state.finalizing || state.mode==='ended') return false;
+    const wasRunning=state.mode==='run';
+    const isPauseSurface=state.mode==='pause'||state.mode==='settlementError';
+    if((fromPause && !isPauseSurface) || (!fromPause && !wasRunning)) return false;
+    const runId=state.runId;
+    if(wasRunning){
+      persistCheckpoint('giveup-confirm');
+      state.mode='pause';
+    }
+    const confirmAction=window.MoguriaUI?.confirmAction;
+    if(typeof confirmAction!=='function'){
+      if(wasRunning && state?.runId===runId && state.mode==='pause'){
+        state.mode='run'; state.last=performance.now();
+      }
+      return false;
+    }
+    let accepted=false;
+    try{
+      accepted=await confirmAction({
+        eyebrow:'END ADVENTURE',
+        title:'冒険を終えて帰る？',
+        message:'この冒険はここで終了し、途中から再開できなくなります。\nここまでの記録と報酬を確定してホームへ帰ります。',
+        confirmLabel:'終了して帰る',
+        cancelLabel:fromPause?'休憩帳に戻る':'冒険を続ける',
+        tone:'danger'
+      });
+    }catch(error){
+      console.warn('[MoguriaGame] give-up confirmation failed',error);
+    }
+    if(!state || state.runId!==runId || state.finalizing || state.mode==='ended') return false;
+    if(!accepted){
+      if(wasRunning && state.mode==='pause'){
+        state.mode='run'; state.last=performance.now();
+      }
+      return false;
+    }
+    document.getElementById('pauseModal')?.classList.add('hidden');
+    endRun(true);
+    return true;
   }
 
   function skillArtMarkup(skill,className='skill-icon__art'){
@@ -1310,6 +1355,7 @@ window.MoguriaGame = (() => {
       window.MoguriaPerformance?.stop?.();
       window.MoguriaBattleV3?.stop?.({preserveFrame:true});
       MoguriaUI.showResult(state.pendingRun);
+      window.requestAnimationFrame?.(()=>document.getElementById('againBtn')?.focus?.());
       return true;
     }
     state.mode='settlementError'; state.finalizing=false;
@@ -1318,6 +1364,7 @@ window.MoguriaGame = (() => {
     const resume=document.getElementById('resumeBtn');
     if(resume) resume.textContent='保存を再試行';
     document.getElementById('pauseModal')?.classList.remove('hidden');
+    window.requestAnimationFrame?.(()=>resume?.focus?.());
     return false;
   }
   function updateHud(force=false){

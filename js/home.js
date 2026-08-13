@@ -75,8 +75,14 @@ window.MoguriaHome = (() => {
 
     startPending = true;
     renderStartButton(startBtn, true, Boolean(existingRun), true);
+    let gameOpened = false;
+    let adventureStarted = false;
+    window.MoguriaUI?.showAdventureLoading?.({ resume: Boolean(existingRun) });
 
     try {
+      window.MoguriaUI?.updateAdventureLoading?.(existingRun
+        ? '続きの戦闘データを読み込んでいます…'
+        : '戦闘データを読み込んでいます…');
       const loader = window.MoguriaBattleV3Loader;
       if (loader?.prepare) {
         const prepared = await loader.prepare();
@@ -88,6 +94,9 @@ window.MoguriaHome = (() => {
 
       // startRun consumes belly and creates activeRun in the same save. Passing
       // the stored id resumes an interrupted run without consuming it again.
+      window.MoguriaUI?.updateAdventureLoading?.(existingRun
+        ? '冒険の記録を確認しています…'
+        : '新しい冒険を記録しています…');
       const session = window.MoguriaSave.startRun(existingRun
         ? { runId: existingRun.runId }
         : { engine: 'battle-v3' });
@@ -106,13 +115,34 @@ window.MoguriaHome = (() => {
       const activeRun = session.activeRun || session.data?.activeRun || existingRun;
       const resume = Boolean(session.reused || existingRun);
       window.MoguriaUI.show('game');
-      window.MoguriaGame.start({ runId: session.runId, activeRun, resume });
+      gameOpened = true;
+      window.MoguriaUI?.updateAdventureLoading?.('ダンジョンの入口を開いています…');
+      const started = await Promise.resolve(window.MoguriaGame.start({ runId: session.runId, activeRun, resume }));
+      if (started === false) {
+        window.MoguriaUI.show('home');
+        return;
+      }
+      adventureStarted = true;
     } catch (error) {
       console.warn('[MoguriaHome] battle preparation failed', error);
+      if (gameOpened) window.MoguriaUI?.show?.('home');
       setText('homeLine', '冒険の準備に失敗しました。通信を確認して、もう一度ためしてね。');
     } finally {
       startPending = false;
       update();
+      if (!adventureStarted) {
+        window.MoguriaUI?.updateAdventureLoading?.(document.getElementById('homeLine')?.textContent || '冒険を始められませんでした。もう一度ためしてね。');
+        await new Promise(resolve => setTimeout(resolve, 320));
+      }
+      const battleMode = window.MoguriaGame?.getState?.()?.mode;
+      const focusTarget = !adventureStarted ? 'startBtn'
+        : battleMode === 'choice' ? 'levelModal'
+        : battleMode === 'artifact' ? 'artifactModal'
+        : 'pauseBtn';
+      window.MoguriaUI?.hideAdventureLoading?.({
+        restoreFocus: false,
+        focusTarget
+      });
     }
   }
 
