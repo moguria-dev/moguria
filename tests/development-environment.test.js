@@ -25,6 +25,22 @@ test('canonical manifests project exactly to current runtime compatibility files
   );
 });
 
+test('completed deployment state fails closed when any release-control field drifts', async () => {
+  const { completedDeploymentMismatches } = await import('../scripts/validate-project-state.mjs');
+  const target = {
+    mode: 'github-actions',
+    sourceBranch: 'main',
+    publishesOnPush: false,
+    trigger: 'workflow_dispatch',
+    workflow: '.github/workflows/deploy-pages.yml'
+  };
+  assert.deepStrictEqual(completedDeploymentMismatches(target, target), []);
+  for (const field of Object.keys(target)) {
+    const drifted = { ...target, [field]: field === 'publishesOnPush' ? true : `wrong-${field}` };
+    assert.deepStrictEqual(completedDeploymentMismatches(drifted, target), [field]);
+  }
+});
+
 test('service worker remains off and an attempted ON transition detects stale precache files', async () => {
   const { inspectServiceWorker, validateServiceWorker } = await import('../scripts/validate-service-worker.mjs');
   const state = json('config/project-state.json');

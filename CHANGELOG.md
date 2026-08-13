@@ -3,8 +3,8 @@
 ## Unreleased — development environment hardening
 
 - Added machine-readable project state, asset inventory, animation policy, and validation contracts under `config/`.
-- Standardized development on task branches and pull requests to protected `main`; retained `develop-homeui2` only as the temporary legacy Pages source with automatic merge forbidden.
-- Added CI and a manual GitHub Pages workflow so merging to `main` and authorizing deployment remain separate operations after migration.
+- Standardized development on task branches and pull requests to protected `main`; retained `develop-homeui2` only as an isolated recovery branch with automatic merge forbidden.
+- Migrated GitHub Pages to the manual Actions workflow so merging to `main` and authorizing deployment remain separate operations.
 - Added canonical development, architecture, asset, animation, testing, deployment, recovery, save, security, and agent-environment guidance plus contribution templates.
 - Pinned the Node runtime and added project, asset, HTML, Service Worker, test, and preflight validation gates.
 

@@ -47,6 +47,18 @@ export function projectAssetManifest(source, projectState) {
   return runtime;
 }
 
+const COMPLETED_DEPLOYMENT_FIELDS = [
+  'mode',
+  'sourceBranch',
+  'publishesOnPush',
+  'trigger',
+  'workflow'
+];
+
+export function completedDeploymentMismatches(current = {}, target = {}) {
+  return COMPLETED_DEPLOYMENT_FIELDS.filter((field) => current[field] !== target[field]);
+}
+
 export function validateProjectState(root = ROOT) {
   const report = new ValidationReport();
   const state = report.capture('read config/project-state.json', () => readJson(root, 'config/project-state.json'));
@@ -79,14 +91,16 @@ export function validateProjectState(root = ROOT) {
       'planned migration current source must equal legacyPagesBranch');
     report.check(state.deployment.current?.publishesOnPush === true, 'legacy Pages source must truthfully record automatic publication');
   } else {
-    report.check(state.deployment.current?.mode === state.deployment.target?.mode, 'completed migration current mode must equal target mode');
-    report.check(state.deployment.current?.sourceBranch === state.deployment.target?.sourceBranch,
-      'completed migration current source must equal target source');
+    for (const field of completedDeploymentMismatches(state.deployment.current, state.deployment.target)) {
+      report.check(false, `completed migration current ${field} must equal target ${field}`);
+    }
   }
   report.check(state.deployment?.target?.mode === 'github-actions', 'target deployment must use GitHub Actions');
   report.check(state.deployment?.target?.sourceBranch === state.branches.release, 'target deployment must use the release branch');
   report.check(state.deployment?.target?.publishesOnPush === false && state.deployment.target.trigger === 'workflow_dispatch',
     'target deployment must be manual only');
+  report.check(state.deployment?.target?.workflow === '.github/workflows/deploy-pages.yml',
+    'target deployment must use the approved Pages workflow');
 
   const requiredVersions = ['display', 'application', 'saveSchema', 'assetManifest', 'animationManifest'];
   for (const key of requiredVersions) report.check(state.versions?.[key] !== undefined, `versions.${key} is required`);

@@ -86,10 +86,11 @@ Change-type checks:
 
 ## Pre-publication gate
 
-The current and target publication paths have different authority boundaries:
+The current publication path keeps source integration and release authorization separate:
 
-- Current legacy state: `develop-homeui2` is only the temporary Pages source. Every push or merge to it publishes immediately. It is not the development, integration, pull-request target, or release branch, and it must not receive automatic merges.
-- Target state: changes move from a task branch through a pull request to protected `main`; publication then requires a separately authorized manual `workflow_dispatch` of `.github/workflows/deploy-pages.yml`.
+- Changes move from a task branch through a pull request and required CI to protected `main`.
+- Publication then requires a separately authorized manual `workflow_dispatch` of `.github/workflows/deploy-pages.yml`.
+- `develop-homeui2` is retained only as a recoverable legacy branch and must not receive automatic merges.
 
 For either path:
 
@@ -100,6 +101,6 @@ For either path:
 5. Run the additional checks required by save, manifest, animation, Service Worker, or deployment changes.
 6. Record skipped or unavailable checks and obtain the authority required by `docs/DEPLOYMENT.md`.
 
-In the current legacy state, obtain explicit write and publication authorization before touching `develop-homeui2`. In the target state, merge authorization and deployment-dispatch authorization are separate.
+Merge authorization and deployment-dispatch authorization are separate. Writing to the retained legacy branch does not use the approved release path and requires an explicit recovery decision.
 
 After publication, verify the Actions run or legacy Pages build, deployed full SHA, public URL, affected screen/flow, changed-file HTTP status, and major console errors. Record public QA as unverified when browser access is unavailable.

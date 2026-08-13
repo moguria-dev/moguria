@@ -1,6 +1,6 @@
 # Current state
 
-This snapshot was prepared from `moguria-dev/moguria`, branch `develop-homeui2`, at commit `699a23ff76bcec579d82f6a041167f08960a6a75` on 2026-08-14. `config/project-state.json` is the ongoing machine-readable source and must be updated when this snapshot becomes stale.
+This snapshot was prepared from `moguria-dev/moguria`, protected branch `main`, at commit `120c33b118940174bb0046dc42eedfcefe6c97d3` on 2026-08-14. `config/project-state.json` is the ongoing machine-readable source and must be updated when this snapshot becomes stale.
 
 Workflow/approval guidance was checked against `moguria-development-rules` version `3.0.0`, effective `2026-08-14`, SHA-256 `9950741898d91396543bc6f76653e1ec39d42c9a9f6418e39d8f04232288d817`. The authoritative rule metadata is maintained by the Moguria Development Skill; this snapshot is a review anchor, not a second rule source.
 
@@ -22,8 +22,10 @@ Workflow/approval guidance was checked against `moguria-development-rules` versi
 - Entry point: `index.html`.
 - Module mode: classic ordered scripts attached to `window`.
 - Current Pages URL: <https://moguria-dev.github.io/moguria/>.
-- Current Pages source: `develop-homeui2`, path `/`, legacy Pages build.
-- A push or merge to the source branch publishes.
+- Current Pages mode: GitHub Actions (`build_type: workflow`).
+- Release source: protected `main`; publication requires an authorized manual `workflow_dispatch` of `.github/workflows/deploy-pages.yml`.
+- A push or merge does not publish.
+- First Actions deployment: run `31750308477`, successful from 2026-08-14 07:31:34 to 07:32:56 JST for full SHA `120c33b118940174bb0046dc42eedfcefe6c97d3`; the resulting `github-pages` deployment `5897163613` records the same SHA and `main` ref. Post-deployment public QA passed at the Pages URL.
 - Service Worker registration is off in `MoguriaConfig.assets.registerServiceWorker`.
 - The vendored Phaser browser build is under `vendor/phaser/` and is loaded only for battle.
 
@@ -40,8 +42,9 @@ Values above must match `config/project-state.json`; the JSON wins for automatio
 ## Known limitations and risks
 
 - The game is client-only. localStorage and JavaScript can be changed by the player; competitive results are not trustworthy without server validation.
-- The Pages source branch was unprotected at the audited commit and had no required CI checks. Process rules alone do not technically prevent accidental publication.
-- During the 2026-08-14 audit, the GitHub connector could read repository/branch/Pages state, but administrative Pages and branch-protection settings endpoints were unavailable/forbidden (`403`). Settings migration therefore requires an authorized repository administrator and independent UI/read-only verification. This is an audit-time capability note, not a permanent connector limitation.
+- `main` is covered by active ruleset `Moguria main protection` (`20819854`): pull requests are required, deletion and non-fast-forward updates are blocked, and `Dependency-free preflight` is a strict required status check.
+- The live ruleset requires zero approving reviews and does not require review-thread resolution. This accurately supports the current single-maintainer flow, but unresolved review conversations are not technically blocked from merge.
+- GitHub's Pages API still reports the historical `source.branch` value `develop-homeui2` alongside `build_type: workflow`. Actual release evidence is the successful Actions run and latest `github-pages` deployment on `main`; do not infer an active branch-publishing path from that retained source metadata.
 - No tag or GitHub Release existed at the audited commit, so the human version label did not uniquely identify every published change.
 - Multiple prior-generation asset and CSS layers remain in the repository. Their presence does not prove they are unused; removal requires a reference and visual regression audit.
 - `service-worker.js` is disabled and stale. At the audited commit, 51 `CORE_ASSETS` entries referenced absent `assets/images/moguria-final/**` files. Enabling it without repair would risk installation failure.
@@ -49,7 +52,7 @@ Values above must match `config/project-state.json`; the JSON wins for automatio
 
 ## Near-term maintenance goals
 
-1. Have an authorized GitHub administrator switch Pages to the Actions deployment source, protect `main` with required CI/review, disable force-push and deletion, and then verify and record the observed deployment state.
+1. Decide whether review-thread resolution should become mandatory. Keep the approval count at zero unless an independent reviewer is available, to avoid blocking the single-maintainer release path.
 2. Classify active, fallback, source-only, and legacy assets before deleting anything; require reference and visual-regression evidence for removal.
 3. Establish repeatable browser smoke QA and a real-device performance/interaction baseline, including compact iPhone Safari coverage or an equivalent device farm, and link the resulting gates from project-state validation.
 4. Keep `docs/CURRENT_STATE.md` concise; put history in the changelog/releases and durable decisions in ADRs.
