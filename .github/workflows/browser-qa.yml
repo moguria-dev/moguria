@@ -1,0 +1,56 @@
+name: Browser visual QA
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: browser-qa-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  visual-qa:
+    name: Browser QA (${{ matrix.browser }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        browser:
+          - chromium
+          - webkit
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}/moguria-playwright
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+      - name: Set up pinned Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          check-latest: false
+          package-manager-cache: false
+      - name: Install pinned QA dependency
+        run: npm ci --ignore-scripts
+      - name: Install pinned browser and system dependencies
+        run: npx playwright install --with-deps "${{ matrix.browser }}"
+      - name: Capture and audit mobile screens
+        run: npm run qa:browser -- --browser="${{ matrix.browser }}" --output="browser-qa-output/${{ matrix.browser }}"
+      - name: Upload browser QA evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: browser-qa-${{ matrix.browser }}-${{ github.run_id }}
+          path: browser-qa-output/${{ matrix.browser }}
+          if-no-files-found: error
+          retention-days: 14

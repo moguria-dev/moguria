@@ -11,6 +11,7 @@ Current command keys are:
 | `validation.commands.serviceWorker` | `npm run validate:service-worker` | registration state and cache-path safety |
 | `validation.commands.html` | `npm run validate:html` | markup references, duplicate IDs and production HTML contract |
 | `validation.commands.tests` | `node --test` | automated behavior tests |
+| `validation.commands.browser` | `npm run qa:browser` | Chromium/WebKit mobile rendering, interaction and screenshot audit |
 | `validation.commands.preflight` | `npm run ci` | complete publication gate |
 
 ## Automated baseline
@@ -32,6 +33,24 @@ Use the exact Node version declared by `config/project-state.json.runtime.nodeVe
 
 Do not say “tests pass” unless the command completed successfully in the current branch/worktree. Record skipped, unavailable, flaky, or unperformed checks separately.
 
+## Automated browser visual QA
+
+`.github/workflows/browser-qa.yml` runs independently from the dependency-free preflight on pull requests to `main`, pushes to `main`, and manual dispatches. It installs the exact Playwright version from `package-lock.json`, then installs that version's Chromium or WebKit build in an isolated matrix job.
+
+The runner uses only production public APIs plus a version-3 local save/checkpoint fixture; it does not add a production QA route. Each browser captures Home, Mogu図鑑, adventure log, 装備, ガチャ, おでかけ, battle HUD, skill choice, artifact choice, pause, and result at both `390×844` (DPR 3) and `375×667` (DPR 2), with touch/mobile input, `ja-JP`, and `Asia/Tokyo`. A fixed pseudo-random seed makes randomized choices reproducible.
+
+Every run writes `qa-summary.json`, `qa-summary.md`, and viewport screenshots to the ignored `browser-qa-output/` directory. CI uploads that directory even when an audit fails. The audit fails closed for setup/interaction failures, browser console errors, uncaught page errors, failed or HTTP-error same-origin requests, broken visible images, horizontal overflow, missing/undersized primary touch controls, or a near-blank screenshot.
+
+Run a single installed browser locally with:
+
+```bash
+npm ci --ignore-scripts
+npx playwright install --with-deps chromium
+npm run qa:browser -- --browser=chromium
+```
+
+Browser emulation is reproducible visual QA, not an iPhone Safari real-device pass. Actual-device requirements remain governed separately by the real-device gate.
+
 ## Test ownership
 
 | File | Main contracts |
@@ -46,6 +65,7 @@ Do not say “tests pass” unless the command completed successfully in the cur
 | `tests/skill-icon-assets.test.js` | unique atlas cells, alpha/size, CSS mapping and small-size legibility |
 | `tests/system-overlays.test.js` | accessible confirmation/loading overlays and exact equipment mutation |
 | `tests/development-environment.test.js` | project-state, workflow, documentation, ownership and repository-governance contracts |
+| `tests/browser-qa-contract.test.js` | pinned Playwright lock/workflow, viewport/screen matrix, evidence isolation and runner audit contract |
 
 Manifest/project-state validation should additionally check:
 
