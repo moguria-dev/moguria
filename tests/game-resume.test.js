@@ -564,7 +564,36 @@ test('a final-boss collect-all is consumed before the return cue can strand it',
   assert.equal(harness.savedCheckpoint.player.numbers.hp, 84);
 });
 
-test('a real player shot keeps the attack state long enough for all eight frames', () => {
+test('defeat, real magnet travel, and EXP collection expose the growth presentation chain only', () => {
+  const harness = createGameHarness(null, { random: () => .5 });
+  const state = defeatEnemy(harness, 'normal', 913);
+  assert.equal(state.defeatedEnemies.length, 1);
+  assert.equal(state.defeatedEnemies[0].id, '913');
+  assert.equal(state.defeatedEnemies[0].duration, .52);
+  assert.equal(state.fx.some(effect => effect.type === 'absorb'), false);
+
+  const drop = state.drops.find(item => item.kind === 'exp');
+  state.hitStop = 0;
+  drop.forceMagnet = true;
+  harness.game.devStep(.016);
+  assert.equal(drop.magnetActive, true);
+  assert.equal(state.p.munchSerial, 0);
+
+  drop.x = state.p.x + 5;
+  drop.y = state.p.y;
+  harness.game.devStep(.016);
+  assert.equal(drop.dead, true);
+  assert.equal(state.p.munchSerial, 1);
+  assert.ok(state.p.munchTimer > .3);
+
+  assert.equal(harness.game.persistCheckpoint('motion-fields-omitted').ok, true);
+  const savedNumbers = harness.savedCheckpoint.player.numbers;
+  for (const key of ['attackSerial', 'attackStartElapsed', 'attackReleasedSerial', 'hurtSerial', 'munchSerial', 'munchTimer', 'celebrateSerial']) {
+    assert.equal(Object.prototype.hasOwnProperty.call(savedNumbers, key), false, `${key} must remain presentation-only`);
+  }
+});
+
+test('a real player shot enters the approved release marker without delaying the projectile', () => {
   const harness = createGameHarness();
   const state = prepareDropCombat(harness);
   state.p.attackCd = 0;
@@ -576,11 +605,49 @@ test('a real player shot keeps the attack state long enough for all eight frames
 
   harness.game.devStep(.016);
   assert.equal(state.bullets.length, 1);
-  assert.equal(state.p.attackAnimTimer, .62);
+  assert.equal(state.p.attackSerial, 1);
+  assert.equal(state.p.attackReleasedSerial, 1);
+  assert.equal(state.p.attackStartElapsed, .224);
+  assert.equal(state.p.attackAnimTimer, .616);
 
   harness.game.devStep(.033);
-  assert.ok(state.p.attackAnimTimer < .62);
+  assert.ok(state.p.attackAnimTimer < .616);
   assert.ok(state.p.attackAnimTimer > 0);
+});
+
+test('a target-confirmed windup and its real player shot share one action serial', () => {
+  const harness = createGameHarness();
+  const state = prepareDropCombat(harness);
+  state.p.attackCd = .2;
+  state.enemies.push({
+    id: 78, name: 'ぷに虫', x: 180, y: 0, r: 13, hp: 100, maxHp: 100,
+    speed: 0, dmg: 0, exp: 4, behavior: 'chase', kind: 'normal', attackCd: 999,
+    poison: 0, poisonTick: 0, slow: 0, hitFlash: 0
+  });
+
+  harness.game.devStep(.016);
+  assert.equal(state.bullets.length, 0);
+  assert.equal(state.p.attackCueArmed, true);
+  assert.equal(state.p.attackSerial, 1);
+  assert.ok(Math.abs(state.p.attackStartElapsed - .04) < 1e-9);
+
+  for (let frame = 0; frame < 20 && state.bullets.length === 0; frame++) harness.game.devStep(.016);
+  assert.equal(state.bullets.length, 1);
+  assert.equal(state.p.attackSerial, 1);
+  assert.equal(state.p.attackReleasedSerial, 1);
+  assert.equal(state.p.attackCueArmed, false);
+});
+
+test('cooldown alone never creates an empty attack event', () => {
+  const harness = createGameHarness();
+  const state = prepareDropCombat(harness);
+  state.p.attackCd = .1;
+
+  for (let frame = 0; frame < 10; frame++) harness.game.devStep(.016);
+  assert.equal(state.bullets.length, 0);
+  assert.equal(state.p.attackSerial, 0);
+  assert.equal(state.p.attackAnimTimer, 0);
+  assert.equal(state.p.attackCueArmed, false);
 });
 
 test('defeat animation plays before result settlement', () => {
@@ -710,7 +777,7 @@ test('reload during defeat cue restores death instead of undoing it', () => {
   assert.ok(secondPage.state.defeatCue.remaining > .5);
 });
 
-test('a real contact hit exposes an enemy attack animation timer', () => {
+test('a real contact hit seeks the regular-enemy release pose and exposes one serial', () => {
   const harness = createGameHarness(null, { random: () => .9 });
   const state = prepareDropCombat(harness);
   state.p.hp = state.p.maxHp;
@@ -721,7 +788,10 @@ test('a real contact hit exposes an enemy attack animation timer', () => {
   });
 
   harness.game.devStep(.016);
-  assert.equal(state.enemies[0].attackVisualTimer, .3);
+  assert.equal(state.enemies[0].attackSerial, 1);
+  assert.equal(state.enemies[0].attackReleasedSerial, 1);
+  assert.equal(state.enemies[0].attackStartElapsed, .2388);
+  assert.equal(state.enemies[0].attackVisualTimer, .5412);
   assert.ok(state.p.hp < state.p.maxHp);
 });
 

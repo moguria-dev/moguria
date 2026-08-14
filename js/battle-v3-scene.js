@@ -7,13 +7,24 @@
 (function (global) {
   'use strict';
 
-  const VERSION = '3.0.0-phaser-bridge';
+  const VERSION = '3.1.0-motion-rig2';
   const SCENE_KEY = 'MoguriaBattleV3Scene';
   const HOST_ID = 'moguriaBattleV3CanvasHost';
   const TAU = Math.PI * 2;
   const MAX_COMPANIONS = 6;
   const ASSET_VERSION = '20260812-battle-motion-2';
+  const MOTION_VERSION = '20260814-motion-rig2-1';
   const PLAYER_DISPLAY_SIZE = 82;
+  const COMPANION_DISPLAY_SIZE = 50;
+  const COMPANION_SPRING_OMEGA = 12;
+  const COMPANION_SLOTS = Object.freeze([
+    Object.freeze({ back: 42, side: 24, delay: 0 }),
+    Object.freeze({ back: 58, side: -16, delay: 0.03 }),
+    Object.freeze({ back: 62, side: 52, delay: 0.06 }),
+    Object.freeze({ back: 80, side: 12, delay: 0.09 }),
+    Object.freeze({ back: 86, side: -40, delay: 0.12 }),
+    Object.freeze({ back: 98, side: 48, delay: 0.15 })
+  ]);
   const PLAYER_STATUS_OFFSET_Y = 48;
   const PLAYER_LEVEL_CUE_OFFSET_Y = 72;
   const REGULAR_ENEMY_MIN_DISPLAY_SIZE = 54;
@@ -27,7 +38,7 @@
   const VISIBLE_LAYOUT_FRAME_TIMEOUT_MS = 120;
 
   const DEFAULT_ASSETS = Object.freeze({
-    manifest: Object.freeze({ key: 'moguria-v3-atlas-manifest', src: `assets/images/battle-v3/atlas.json?v=${ASSET_VERSION}` }),
+    manifest: Object.freeze({ key: 'moguria-v3-atlas-manifest', src: `assets/images/battle-v3/atlas.json?v=${MOTION_VERSION}` }),
     backgrounds: Object.freeze([
       Object.freeze({ key: 'moguria-v3-bg-far', src: `assets/images/battle-v3/bg-far.webp?v=${ASSET_VERSION}`, scrollFactor: 0.04, alpha: 1 }),
       Object.freeze({ key: 'moguria-v3-bg-mid', src: `assets/images/battle-v3/bg-mid.webp?v=${ASSET_VERSION}`, scrollFactor: 0.18, alpha: 0.34 }),
@@ -55,14 +66,14 @@
     }),
     enemy: Object.freeze({
       idle: Object.freeze({ frames: Object.freeze([0, 1]), fps: 7, repeat: -1 }),
-      move: Object.freeze({ frames: Object.freeze([0, 1, 2, 3]), fps: 10, repeat: -1 }),
-      attack: Object.freeze({ frames: Object.freeze([2, 3, 4, 0, 1]), fps: 13, repeat: 0 }),
-      hurt: Object.freeze({ frames: Object.freeze([5, 0, 1]), fps: 11, repeat: 0 })
+      move: Object.freeze({ frames: Object.freeze([0]), fps: 10, repeat: -1 }),
+      attack: Object.freeze({ frames: Object.freeze([0]), fps: 13, repeat: 0 }),
+      hurt: Object.freeze({ frames: Object.freeze([5]), fps: 11, repeat: 0 })
     }),
     companion: Object.freeze({
-      idle: Object.freeze({ frames: Object.freeze([0, 1]), fps: 8, repeat: -1 }),
-      move: Object.freeze({ frames: Object.freeze([4, 5]), fps: 10, repeat: -1 }),
-      attack: Object.freeze({ frames: Object.freeze([2, 3]), fps: 14, repeat: 0 }),
+      idle: Object.freeze({ frames: Object.freeze([0]), fps: 8, repeat: -1 }),
+      move: Object.freeze({ frames: Object.freeze([0]), fps: 10, repeat: -1 }),
+      attack: Object.freeze({ frames: Object.freeze([2]), fps: 14, repeat: 0 }),
       hurt: Object.freeze({ frames: Object.freeze([6]), fps: 12, repeat: 0 }),
       celebrate: Object.freeze({ frames: Object.freeze([7]), fps: 8, repeat: -1 })
     }),
@@ -78,10 +89,10 @@
 
   const DEFAULT_VARIANT_LAYOUTS = Object.freeze({
     enemy: Object.freeze({
-      soft: Object.freeze({ idle: { frames: [0, 1] }, move: { frames: [0, 1, 2, 3] }, attack: { frames: [2, 3, 4, 0, 1] }, hurt: { frames: [5, 0, 1] } }),
-      bat: Object.freeze({ idle: { frames: [6, 7] }, move: { frames: [6, 7, 8, 9] }, attack: { frames: [8, 9, 10, 6, 7] }, hurt: { frames: [11, 6, 7] } }),
-      stone: Object.freeze({ idle: { frames: [12, 13] }, move: { frames: [12, 13, 14, 15] }, attack: { frames: [14, 15, 16, 12, 13] }, hurt: { frames: [17, 12, 13] } }),
-      ghost: Object.freeze({ idle: { frames: [18, 19] }, move: { frames: [18, 19, 20, 21] }, attack: { frames: [20, 21, 22, 18, 19] }, hurt: { frames: [23, 18, 19] } })
+      soft: Object.freeze({ idle: { frames: [0, 1] }, move: { frames: [0] }, attack: { frames: [0] }, hurt: { frames: [5] } }),
+      bat: Object.freeze({ idle: { frames: [6, 7] }, move: { frames: [6] }, attack: { frames: [6] }, hurt: { frames: [11] } }),
+      stone: Object.freeze({ idle: { frames: [12, 13] }, move: { frames: [12] }, attack: { frames: [12] }, hurt: { frames: [17] } }),
+      ghost: Object.freeze({ idle: { frames: [18, 19] }, move: { frames: [18] }, attack: { frames: [18] }, hurt: { frames: [23] } })
     }),
     boss: Object.freeze({
       midBoss: Object.freeze({ idle: { frames: [0, 1] }, move: { frames: [0, 1, 2, 3] }, attack: { frames: [2, 3, 4, 5, 6, 7] }, hurt: { frames: [6, 7, 0, 1] }, telegraph: { frames: [0, 1, 2, 3] }, recover: { frames: [6, 7, 0, 1] } }),
@@ -240,7 +251,16 @@
     if (atlases && typeof atlases === 'object') {
       for (const role of ['mogu', 'companion']) {
         const states = atlases[role]?.states;
-        if (states && typeof states === 'object') layouts[role] = layoutFromStateMap(states, layouts[role]);
+        if (states && typeof states === 'object') {
+          layouts[role] = layoutFromStateMap(states, layouts[role]);
+          if (role === 'companion') {
+            const neutral = frameDefinition(states.idle).frames[0] ?? 0;
+            const release = frameDefinition(states.attack).frames[0] ?? neutral;
+            layouts.companion.idle = frameDefinition({ frames: [neutral], fps: 8, repeat: -1 }, layouts.companion.idle);
+            layouts.companion.move = frameDefinition({ frames: [neutral], fps: 10, repeat: -1 }, layouts.companion.move);
+            layouts.companion.attack = frameDefinition({ frames: [release], fps: 14, repeat: 0 }, layouts.companion.attack);
+          }
+        }
       }
 
       const enemyStates = atlases.enemy?.states;
@@ -249,12 +269,15 @@
         for (const [variant, states] of Object.entries(enemyStates)) {
           if (!states || typeof states !== 'object') continue;
           const layout = layoutFromStateMap(states, layouts.enemy);
-          composeManifestState(layout, 'move', [states.idle, states.move], { fps: 9, repeat: -1 });
-          // Each enemy atlas row already contains a readable anticipation,
-          // release and neutral pose. Combining those semantic poses produces
-          // real frame animation without substituting the hurt drawing.
-          composeManifestState(layout, 'attack', [states.move, states.attack, states.idle], { fps: 13, repeat: 0 });
-          composeManifestState(layout, 'hurt', [states.hit ?? states.hurt, states.idle], { fps: 11, repeat: 0 });
+          const neutral = frameDefinition(states.idle).frames[0];
+          const hit = frameDefinition(states.hit ?? states.hurt).frames[0];
+          // Regular-enemy side/diagonal paintings (+2/+3/+4 in every row)
+          // change body orientation. Motion Rig 2 therefore holds the front
+          // neutral painting for locomotion and attack, and reserves +5 for
+          // hit only. Boss atlases retain their verified semantic sequences.
+          layout.move = frameDefinition({ frames: [neutral], fps: 9, repeat: -1 }, layout.move);
+          layout.attack = frameDefinition({ frames: [neutral], fps: 13, repeat: 0 }, layout.attack);
+          layout.hurt = frameDefinition({ frames: [hit], fps: 11, repeat: 0 }, layout.hurt);
           variants.enemy[variant] = layout;
         }
         layouts.enemy = copyLayout(variants.enemy.soft || Object.values(variants.enemy)[0] || layouts.enemy);
@@ -580,6 +603,10 @@
         this.enemySprites = new Map();
         this.companionSprites = new Map();
         this.actorTracks = new Map();
+        this.actorRigs = new Map();
+        this.actorRigFailures = new Set();
+        this.projectileVisuals = new Map();
+        this.displayOrigins = new Map();
         this.playerSprite = null;
         this.playerRig = null;
         this.playerRigFailed = false;
@@ -829,55 +856,96 @@
       }
 
       createPlayerRig() {
-        const sprite = this.playerSprite;
+        return Boolean(this.createActorRig('player', 'mogu', this.playerSprite));
+      }
+
+      createActorRig(key, role, sprite) {
         const rigApi = global.MoguriaMoguRig;
-        if (!sprite || sprite.moguriaFallback || typeof rigApi?.createController !== 'function') return false;
+        if (!sprite || sprite.moguriaFallback || role === 'boss' || this.actorRigFailures.has(key) || typeof rigApi?.createController !== 'function') return false;
+        const existing = this.actorRigs.get(key);
+        if (existing) return existing;
         try {
-          const controller = rigApi.createController();
+          const seed = key === 'player' ? 0 : String(key).split('').reduce((sum, char) => sum + char.charCodeAt(0), 0) * 0.013;
+          const controller = rigApi.createController({ role, phaseOffset: (Number(rigApi.profiles?.[role]?.ambientPhase) || 0) + seed });
           if (!controller || typeof controller.update !== 'function') {
             throw new TypeError('MoguriaMoguRig.createController() must return an update-capable controller.');
           }
-          this.playerRig = controller;
-          this.playerRigFailed = false;
+          this.actorRigs.set(key, controller);
+          if (key === 'player') {
+            this.playerRig = controller;
+            this.playerRigFailed = false;
+          }
           sprite.moguriaRigControlled = true;
           sprite.anims?.stop?.();
           sprite.setFrame?.(0);
-          return true;
+          return controller;
         } catch (error) {
-          this.disablePlayerRig(error);
+          this.disableActorRig(key, sprite, error);
           return false;
         }
       }
 
-      disablePlayerRig(error) {
-        const controller = this.playerRig;
-        this.playerRig = null;
+      disableActorRig(key, sprite, error) {
+        const controller = this.actorRigs.get(key) || (key === 'player' ? this.playerRig : null);
+        this.actorRigs.delete(key);
         try { controller?.destroy?.(); } catch {}
+        if (key === 'player') this.playerRig = null;
         this.animationPauseSignature = '';
-        const sprite = this.playerSprite;
         if (sprite) {
           sprite.moguriaRigControlled = false;
           sprite.moguriaState = '';
+          sprite.moguriaRigGlow = 0;
           sprite.setRotation?.(0);
-          sprite.setDisplaySize?.(PLAYER_DISPLAY_SIZE, PLAYER_DISPLAY_SIZE);
         }
-        if (error && !this.playerRigFailed) {
-          this.playerRigFailed = true;
-          global.console?.warn?.('[MoguriaBattleV3] continuous Mogu rig unavailable; using atlas fallback', error);
+        if (error) {
+          const firstFailure = !this.actorRigFailures.has(key);
+          this.actorRigFailures.add(key);
+          if (key === 'player') this.playerRigFailed = true;
+          if (!firstFailure) return;
+          global.console?.warn?.(`[MoguriaBattleV3] ${key} continuous rig unavailable; using atlas fallback`, error);
         }
       }
 
-      applyPlayerRig(sprite, stateName, track, state, p) {
-        const controller = this.playerRig;
+      disablePlayerRig(error) {
+        this.disableActorRig('player', this.playerSprite, error);
+      }
+
+      rigFrameFor(role, stateName, pose, variant) {
+        if (role === 'mogu') return 0;
+        if (role === 'companion') {
+          if (stateName === 'celebrate') return 7;
+          return pose?.stage === 'release' ? 2 : 0;
+        }
+        const layout = this.variantLayouts.enemy?.[variant] || this.layouts.enemy || {};
+        const neutral = frameNumbers(layout.idle, Infinity)[0] ?? 0;
+        const hurt = frameNumbers(layout.hurt, Infinity)[0] ?? neutral;
+        return stateName === 'hurt' && pose?.stage === 'hurt' ? hurt : neutral;
+      }
+
+      applyActorRig(key, sprite, role, stateName, track, state, entity, options = {}) {
+        const controller = this.actorRigs.get(key) || this.createActorRig(key, role, sprite);
         if (!sprite?.moguriaRigControlled || !controller) return false;
-        const advance = ['run', 'levelup', 'defeat'].includes(state?.mode);
-        const cueRemaining = Number(state?.levelUpCue?.remaining) || 0;
-        const attackSerial = Math.max(0, Number(track?.attackSerial) || 0) * 2 + (cueRemaining > 0 ? 1 : 0);
+        const semantic = !['idle', 'move'].includes(stateName);
+        const worldView = this.cameras?.main?.worldView;
+        const baseX = Number(options.x ?? entity?.x) || 0;
+        const baseY = Number(options.y ?? entity?.y) || 0;
+        const inView = !worldView || ![worldView.x, worldView.y, worldView.width, worldView.height].every(Number.isFinite)
+          || (baseX >= worldView.x - 120 && baseX <= worldView.x + worldView.width + 120
+            && baseY >= worldView.y - 120 && baseY <= worldView.y + worldView.height + 120);
+        const advance = ['run', 'levelup', 'defeat'].includes(state?.mode) && (semantic || inView);
+        let eventSerial;
+        if (stateName === 'attack') eventSerial = Math.max(0, Number(track?.attackSerial) || Number(entity?.attackSerial) || 0);
+        else if (stateName === 'hurt') eventSerial = Math.max(0, Number(track?.hurtSerial) || Number(entity?.hurtSerial) || 0);
+        else if (stateName === 'consume') eventSerial = Math.max(0, Number(entity?.munchSerial) || 0);
+        else if (stateName === 'celebrate') eventSerial = Math.max(0, Number(entity?.celebrateSerial) || Number(state?.levelUpCue?.level) || 0);
+        else if (stateName === 'defeat') eventSerial = Math.max(0, Number(entity?.defeatSerial) || 0);
         try {
           controller.setPaused?.(!advance);
           const pose = controller.update({
             state: stateName,
-            attackSerial,
+            eventSerial,
+            startElapsed: stateName === 'attack' ? Math.max(0, Number(entity?.attackStartElapsed) || 0) : 0,
+            durationScale: stateName === 'attack' ? Math.max(0.18, Math.min(1, Number(entity?.attackDurationScale) || 1)) : 1,
             delta: Math.max(0, Number(this.visualFrameDelta) || 0),
             advance,
             reducedMotion,
@@ -891,22 +959,34 @@
           if (![poseX, poseY, rotation, scaleX, scaleY].every(Number.isFinite) || scaleX <= 0 || scaleY <= 0) {
             throw new TypeError('MoguriaMoguRig returned an invalid pose.');
           }
-          const facing = track?.facing < 0 ? -1 : 1;
-          const baseX = Number(p?.x) || 0;
-          const baseY = Number(p?.y) || 0;
-          // The approved continuous treatment deforms one high-resolution
-          // neutral painting instead of replacing it with disconnected poses.
+          const frontFacing = role === 'enemy';
+          const facing = frontFacing ? 1 : (track?.facing < 0 ? -1 : 1);
+          const impactDirection = frontFacing && stateName === 'hurt' && Number(entity?.hurtDirection) < 0 ? -1 : 1;
+          const displaySize = Math.max(1, Number(options.size) || PLAYER_DISPLAY_SIZE);
+          const cellSize = role === 'enemy' ? 192 : 256;
           sprite.anims?.stop?.();
-          sprite.setFrame?.(0);
-          sprite.setPosition?.(baseX + poseX * facing, baseY + poseY);
-          sprite.setRotation?.(rotation * facing);
-          sprite.setScale?.((PLAYER_DISPLAY_SIZE / 256) * scaleX, (PLAYER_DISPLAY_SIZE / 256) * scaleY);
-          sprite.moguriaState = `rig:${pose.state || stateName}`;
+          sprite.setFrame?.(this.rigFrameFor(role, stateName, pose, options.variant));
+          sprite.setPosition?.(baseX + poseX * (frontFacing ? impactDirection : facing), baseY + poseY);
+          sprite.setRotation?.(frontFacing ? 0 : rotation * facing);
+          sprite.setScale?.((displaySize / cellSize) * scaleX, (displaySize / cellSize) * scaleY);
+          sprite.setFlipX?.(!frontFacing && facing < 0);
+          sprite.moguriaState = `rig:${role}:${pose.state || stateName}:${pose.stage || 'idle'}`;
+          sprite.moguriaRigStage = pose.stage || 'idle';
+          sprite.moguriaRigGlow = Math.max(0, Math.min(1, Number(pose.glow) || 0));
           return true;
         } catch (error) {
-          this.disablePlayerRig(error);
+          this.disableActorRig(key, sprite, error);
           return false;
         }
+      }
+
+      applyPlayerRig(sprite, stateName, track, state, p) {
+        return this.applyActorRig('player', sprite, 'mogu', stateName, track, state, p, {
+          x: Number(p?.x) || 0,
+          y: Number(p?.y) || 0,
+          size: PLAYER_DISPLAY_SIZE,
+          variant: this.actorVariant('mogu', p)
+        });
       }
 
       syncState(state) {
@@ -941,7 +1021,11 @@
         const x = Number(entity?.x) || 0;
         const y = Number(entity?.y) || 0;
         const sampleTime = Number.isFinite(this.stateTime) ? this.stateTime : global.performance?.now?.() / 1000 || 0;
-        const attackPresentationSeconds = key === 'player' ? 0.6 : key.startsWith('enemy:') ? 0.42 : 0.18;
+        const role = key === 'player' ? 'mogu' : key.startsWith('companion:') ? 'companion' : 'enemy';
+        const timing = global.MoguriaMoguRig?.attackTimings?.[role] || { duration: role === 'mogu' ? 0.84 : role === 'companion' ? 0.58 : 0.78 };
+        const attackAnimTimer = Math.max(0, Number(entity?.attackAnimTimer) || Number(entity?.attackVisualTimer) || 0);
+        const explicitAttackSerial = Number(entity?.attackSerial);
+        const explicitHurtSerial = Number(entity?.hurtSerial);
         let track = this.actorTracks.get(key);
         if (!track) {
           track = {
@@ -953,13 +1037,14 @@
             facing: 1,
             attackCd: Number(entity?.attackCd) || 0,
             attackUntil: 0,
-            attackAnimTimer: Math.max(0, Number(entity?.attackAnimTimer) || Number(entity?.attackVisualTimer) || 0),
-            attackSerial: Math.max(0, Number(entity?.attackAnimTimer) || Number(entity?.attackVisualTimer) || 0) > 0 ? 1 : 0,
-            semanticAttackUntil: Math.max(0, Number(entity?.attackAnimTimer) || Number(entity?.attackVisualTimer) || 0) > 0
-              ? sampleTime + attackPresentationSeconds
-              : 0,
-            hurtUntil: (Number(entity?.hitFlash) || 0) > 0 ? sampleTime + 0.28 : 0
+            attackAnimTimer,
+            attackSerial: Number.isFinite(explicitAttackSerial) ? explicitAttackSerial : (attackAnimTimer > 0 ? 1 : 0),
+            attackStartElapsed: Math.max(0, Number(entity?.attackStartElapsed) || 0),
+            semanticAttackUntil: attackAnimTimer > 0 ? sampleTime + attackAnimTimer : 0,
+            hurtSerial: Number.isFinite(explicitHurtSerial) ? explicitHurtSerial : 0,
+            hurtUntil: (Number(entity?.hitFlash) || 0) > 0 ? sampleTime + (role === 'enemy' ? 0.52 : 0.26) : 0
           };
+          if (Number(entity?.attackFacing) < 0) track.facing = -1;
           this.actorTracks.set(key, track);
           return track;
         }
@@ -968,27 +1053,34 @@
         const vy = (y - track.y) / dt;
         track.vx += (vx - track.vx) * Math.min(1, dt * 14);
         track.vy += (vy - track.vy) * Math.min(1, dt * 14);
-        // Regular enemies use player-relative facing with a dead zone and dwell
-        // in stabilizeEnemyFacing(). Their collision separation can change the
-        // sampled velocity sign every frame at close range, which previously
-        // made the painted atlas appear to spin. Other actors retain velocity-
-        // driven facing because they do not share that close-contact jitter.
-        if (!key.startsWith('enemy:') && Math.abs(track.vx) > 6) track.facing = track.vx < 0 ? -1 : 1;
+        const actionLocked = sampleTime < Math.max(track.semanticAttackUntil || 0, track.hurtUntil || 0);
+        if (!key.startsWith('enemy:') && !actionLocked && Math.abs(track.vx) > 6) track.facing = track.vx < 0 ? -1 : 1;
         const attackCd = Number(entity?.attackCd);
         if (Number.isFinite(attackCd) && attackCd > track.attackCd + 0.2) track.attackUntil = sampleTime + 0.2;
         track.attackCd = Number.isFinite(attackCd) ? attackCd : track.attackCd;
-        const attackAnimTimer = Math.max(0, Number(entity?.attackAnimTimer) || Number(entity?.attackVisualTimer) || 0);
-        if (attackAnimTimer > track.attackAnimTimer + 0.05) {
+        if (Number.isFinite(explicitAttackSerial) && explicitAttackSerial !== track.attackSerial) {
+          track.attackSerial = explicitAttackSerial;
+          track.attackStartElapsed = Math.max(0, Number(entity?.attackStartElapsed) || 0);
+          const durationScale = Math.max(0.18, Math.min(1, Number(entity?.attackDurationScale) || 1));
+          track.semanticAttackUntil = sampleTime + Math.max(attackAnimTimer, timing.duration * durationScale - track.attackStartElapsed);
+          if (Number(entity?.attackFacing) !== 0) track.facing = Number(entity?.attackFacing) < 0 ? -1 : 1;
+        } else if (!Number.isFinite(explicitAttackSerial) && attackAnimTimer > track.attackAnimTimer + 0.05) {
+          // Compatibility fallback for old/non-core actors.
           track.attackSerial += 1;
-          // Core timers denote real hits/shots. Presentation latches let the
-          // corresponding atlas release finish without changing combat time.
-          track.semanticAttackUntil = sampleTime + attackPresentationSeconds;
+          track.attackStartElapsed = 0;
+          track.semanticAttackUntil = sampleTime + Math.max(attackAnimTimer, timing.duration);
         }
         const hitFlash = Math.max(0, Number(entity?.hitFlash) || 0);
-        if (hitFlash > (track.hitFlash || 0) + 0.01) track.hurtUntil = sampleTime + 0.28;
+        if (Number.isFinite(explicitHurtSerial) && explicitHurtSerial !== track.hurtSerial) {
+          track.hurtSerial = explicitHurtSerial;
+          track.hurtUntil = sampleTime + (role === 'enemy' ? 0.52 : 0.26);
+        } else if (!Number.isFinite(explicitHurtSerial) && hitFlash > (track.hitFlash || 0) + 0.01) {
+          track.hurtSerial += 1;
+          track.hurtUntil = sampleTime + (role === 'enemy' ? 0.52 : 0.26);
+        }
         track.hitFlash = hitFlash;
         const explicitState = explicitActorState(entity);
-        if (explicitState === 'attack' && track.explicitState !== 'attack') {
+        if (!Number.isFinite(explicitAttackSerial) && explicitState === 'attack' && track.explicitState !== 'attack') {
           track.attackSerial += 1;
           // Boss execute windows are combat-authoritative and can be shorter
           // than the six-pose visual release. Latch presentation only; hit
@@ -1019,6 +1111,7 @@
           // The core raises this only when a projectile is actually emitted.
           // Cooldown values alone previously made Mogu attack empty space.
           if (Math.max(0, Number(entity?.attackAnimTimer) || Number(entity?.attackVisualTimer) || 0) > 0 || this.stateTime < (track?.semanticAttackUntil || 0)) return 'attack';
+          if ((Number(entity?.munchTimer) || 0) > 0) return 'consume';
         }
         if (role === 'enemy' && track && this.stateTime < (track.semanticAttackUntil || 0)) return 'attack';
         if (role !== 'mogu' && Math.max(0, Number(entity?.attackAnimTimer) || Number(entity?.attackVisualTimer) || 0) > 0) return 'attack';
@@ -1167,7 +1260,11 @@
         sprite.setDepth?.(40 + (Number(p.y) || 0) * 0.001);
         sprite.setAlpha?.((Number(p.invuln) || 0) > 0 && !reducedMotion ? 0.78 : 1);
         const cueRemaining = Number(state.levelUpCue?.remaining) || 0;
-        const stateName = cueRemaining > 0 ? 'skill' : this.inferredState('mogu', p, track);
+        const cueDuration = Math.max(0.1, Number(state.levelUpCue?.duration) || 0.75);
+        const cueElapsed = Math.max(0, cueDuration - cueRemaining);
+        const stateName = cueRemaining > 0
+          ? (cueElapsed < 0.14 ? 'consume' : 'celebrate')
+          : this.inferredState('mogu', p, track);
         if (stateName === 'attack' && sprite.moguriaAttackSerial !== track.attackSerial) {
           sprite.moguriaAttackSerial = track.attackSerial;
           sprite.moguriaState = '';
@@ -1176,6 +1273,13 @@
           this.setActorAnimation(sprite, 'mogu', stateName, this.actorVariant('mogu', p));
           this.applyProceduralActorMotion(sprite, 'mogu', p, stateName, 'player');
         }
+        this.displayOrigins.set('player', {
+          x: Number(sprite.x) || Number(p.x) || 0,
+          y: Number(sprite.y) || Number(p.y) || 0,
+          attackX: (Number(sprite.x) || Number(p.x) || 0) + track.facing * 25,
+          attackY: (Number(sprite.y) || Number(p.y) || 0) - 13,
+          facing: track.facing
+        });
       }
 
       syncEnemies(state, player) {
@@ -1195,28 +1299,79 @@
             this.enemySprites.set(id, record);
           }
           record.retiring = false;
+          record.defeatPresented = false;
           const sprite = record.sprite;
           const track = this.sampleMotion(`enemy:${id}`, entity);
           const stateName = this.inferredState(role, entity, track);
-          if (!boss) this.stabilizeEnemyFacing(track, entity, player, stateName);
+          if (!boss) track.facing = 1;
           sprite.setPosition(Number(entity.x) || 0, Number(entity.y) || 0);
           sprite.setDisplaySize?.(size, size);
-          sprite.setFlipX?.(!boss && track.facing < 0);
+          sprite.setFlipX?.(false);
           sprite.setDepth?.(30 + (Number(entity.y) || 0) * 0.001);
           sprite.setAlpha?.((Number(entity.hitFlash) || 0) > 0 ? 0.76 : 1);
           if (boss && (entity.phase2 || Number(entity.phase) >= 2)) sprite.setTint?.(0xf0c4ff);
           else if (entity.kind === 'rare') sprite.setTint?.(0xffd978);
           else if (entity.kind === 'midBoss') sprite.setTint?.(0xd9c4ff);
           else sprite.clearTint?.();
-          this.setActorAnimation(sprite, role, stateName, this.actorVariant(role, entity));
-          this.applyProceduralActorMotion(sprite, role, entity, stateName, id);
+          const variant = this.actorVariant(role, entity);
+          if (boss || !this.applyActorRig(`enemy:${id}`, sprite, role, stateName, track, state, entity, {
+            x: Number(entity.x) || 0,
+            y: Number(entity.y) || 0,
+            size,
+            variant
+          })) {
+            this.setActorAnimation(sprite, role, stateName, variant);
+            this.applyProceduralActorMotion(sprite, role, entity, stateName, id);
+          }
+          this.displayOrigins.set(`enemy:${id}`, {
+            x: Number(sprite.x) || Number(entity.x) || 0,
+            y: Number(sprite.y) || Number(entity.y) || 0,
+            attackX: (Number(sprite.x) || Number(entity.x) || 0) - 18,
+            attackY: (Number(sprite.y) || Number(entity.y) || 0) - 5,
+            facing: 1
+          });
+        }
+
+        for (const defeated of state.defeatedEnemies || []) {
+          if (!defeated || defeated.kind === 'boss' || defeated.kind === 'midBoss') continue;
+          const id = String(defeated.id ?? `defeated-${seen.size}`);
+          seen.add(id);
+          const size = this.enemyDisplaySize(defeated);
+          let record = this.enemySprites.get(id);
+          if (!record || record.role !== 'enemy') {
+            record?.sprite?.destroy?.();
+            record = { sprite: this.createActorSprite('enemy', id, size), role: 'enemy', retiring: false };
+            this.enemySprites.set(id, record);
+          }
+          record.retiring = false;
+          record.defeatPresented = true;
+          const sprite = record.sprite;
+          const track = this.sampleMotion(`enemy:${id}`, defeated);
+          track.facing = 1;
+          const variant = this.actorVariant('enemy', defeated);
+          const applied = this.applyActorRig(`enemy:${id}`, sprite, 'enemy', 'defeat', track, state, defeated, {
+            x: Number(defeated.x) || 0,
+            y: Number(defeated.y) || 0,
+            size,
+            variant
+          });
+          if (!applied) {
+            sprite.anims?.stop?.();
+            sprite.setFrame?.(frameNumbers(this.variantLayouts.enemy?.[variant]?.idle, Infinity)[0] ?? 0);
+            this.applyProceduralActorMotion(sprite, 'enemy', defeated, 'defeat', id);
+          }
+          const fade = Math.max(0, Math.min(1, (Number(defeated.remaining) || 0) / Math.max(0.01, Number(defeated.duration) || 0.52)));
+          sprite.setAlpha?.(fade);
+          sprite.setDepth?.(30 + (Number(defeated.y) || 0) * 0.001);
         }
 
         for (const [id, record] of this.enemySprites.entries()) {
           if (seen.has(id) || record.retiring) continue;
           record.retiring = true;
           this.actorTracks.delete(`enemy:${id}`);
-          if (reducedMotion || currentQuality() === 'low' || !this.tweens?.add) {
+          this.disableActorRig(`enemy:${id}`, record.sprite);
+          this.displayOrigins.delete(`enemy:${id}`);
+          if (record.defeatPresented || reducedMotion || currentQuality() === 'low' || !this.tweens?.add) {
             record.sprite.destroy?.();
             this.enemySprites.delete(id);
             continue;
@@ -1236,6 +1391,63 @@
         }
       }
 
+      companionFormationTarget(player, index, track) {
+        const slot = COMPANION_SLOTS[index] || COMPANION_SLOTS[COMPANION_SLOTS.length - 1];
+        const playerTrack = this.actorTracks.get('player');
+        const speed = Math.hypot(playerTrack?.vx || 0, playerTrack?.vy || 0);
+        const facing = playerTrack?.facing < 0 ? -1 : 1;
+        const forwardX = speed > 12 ? (playerTrack.vx / speed) : facing;
+        const forwardY = speed > 12 ? (playerTrack.vy / speed) : 0;
+        const sideX = -forwardY;
+        const sideY = forwardX;
+        const now = Number.isFinite(this.stateTime) ? this.stateTime : 0;
+        const current = {
+          time: now,
+          x: (Number(player?.x) || 0) - forwardX * slot.back + sideX * slot.side,
+          y: (Number(player?.y) || 0) - forwardY * slot.back + sideY * slot.side
+        };
+        track.formationQueue = Array.isArray(track.formationQueue) ? track.formationQueue : [];
+        const last = track.formationQueue[track.formationQueue.length - 1];
+        if (!last || last.time !== current.time) track.formationQueue.push(current);
+        const cutoff = now - 0.3;
+        while (track.formationQueue.length > 2 && track.formationQueue[1].time < cutoff) track.formationQueue.shift();
+        const wantedTime = now - slot.delay;
+        let delayed = track.formationQueue[0] || current;
+        for (const sample of track.formationQueue) {
+          if (sample.time > wantedTime) break;
+          delayed = sample;
+        }
+        return delayed;
+      }
+
+      advanceCompanionSpring(track, target) {
+        if (!Number.isFinite(track.renderX) || !Number.isFinite(track.renderY) || reducedMotion) {
+          track.renderX = target.x;
+          track.renderY = target.y;
+          track.renderVx = 0;
+          track.renderVy = 0;
+          return;
+        }
+        const dt = Math.max(0, Math.min(0.12, Number(this.visualFrameDelta) || 0));
+        if (dt <= 0) return;
+        const omega = COMPANION_SPRING_OMEGA;
+        const decay = Math.exp(-omega * dt);
+        const step = (position, velocity, destination) => {
+          const displacement = position - destination;
+          const impulse = velocity + omega * displacement;
+          return {
+            position: destination + (displacement + impulse * dt) * decay,
+            velocity: (velocity - omega * impulse * dt) * decay
+          };
+        };
+        const x = step(track.renderX, Number(track.renderVx) || 0, target.x);
+        const y = step(track.renderY, Number(track.renderVy) || 0, target.y);
+        track.renderX = x.position;
+        track.renderY = y.position;
+        track.renderVx = x.velocity;
+        track.renderVy = y.velocity;
+      }
+
       syncCompanions(state, p) {
         const explicit = Array.isArray(state.companions) ? state.companions : null;
         const count = explicit
@@ -1247,43 +1459,56 @@
           const entity = explicit?.[index] || null;
           const id = String(entity?.id ?? `derived-${index}`);
           seen.add(id);
-          const phase = reducedMotion
-            ? -0.62 + index * TAU / Math.max(1, count)
-            : this.stateTime * 0.86 + index * TAU / Math.max(1, count);
-          const x = entity && Number.isFinite(Number(entity.x)) ? Number(entity.x) : (Number(p.x) || 0) + Math.cos(phase) * 58;
-          const y = entity && Number.isFinite(Number(entity.y)) ? Number(entity.y) : (Number(p.y) || 0) + Math.sin(phase) * 32;
-          const visualEntity = { ...(entity || { attackCd: p.summonCd, attackRate: p.summonRate }), x, y };
+          const coreX = entity && Number.isFinite(Number(entity.x)) ? Number(entity.x) : Number(p.x) || 0;
+          const coreY = entity && Number.isFinite(Number(entity.y)) ? Number(entity.y) : Number(p.y) || 0;
+          const visualEntity = { ...(entity || { attackCd: p.summonCd, attackRate: p.summonRate }), x: coreX, y: coreY };
           const track = this.sampleMotion(`companion:${id}`, visualEntity);
+          const target = this.companionFormationTarget(p, index, track);
+          this.advanceCompanionSpring(track, target);
+          if (this.stateTime >= (track.semanticAttackUntil || 0)) track.facing = this.actorTracks.get('player')?.facing < 0 ? -1 : 1;
+          const x = track.renderX;
+          const y = track.renderY;
           let sprite = this.companionSprites.get(id);
           if (!sprite) {
-            sprite = this.createActorSprite('companion', id, 60);
+            sprite = this.createActorSprite('companion', id, COMPANION_DISPLAY_SIZE);
             this.companionSprites.set(id, sprite);
           }
-          const depthScale = 0.88 + ((Math.sin(phase) + 1) * 0.06);
           sprite.setPosition(x, y);
-          sprite.setDisplaySize?.(60 * depthScale, 60 * depthScale);
+          sprite.setDisplaySize?.(COMPANION_DISPLAY_SIZE, COMPANION_DISPLAY_SIZE);
           sprite.setFlipX?.(track.facing < 0);
           sprite.setDepth?.((y >= (Number(p.y) || 0) ? 45 : 35) + y * 0.001);
           const stateName = entity
             ? this.inferredState('companion', entity, track)
-            : ((Number(p.summonCd) || 0) > Math.max(0.05, Number(p.summonRate) || 1.1) * 0.58 ? 'attack' : 'move');
-          this.setActorAnimation(sprite, 'companion', stateName, this.actorVariant('companion', visualEntity));
-          this.applyProceduralActorMotion(sprite, 'companion', visualEntity, stateName, id);
-          nextOrigins.push(Object.freeze({
-            id,
-            index,
-            x,
-            y,
+            : 'move';
+          const variant = this.actorVariant('companion', visualEntity);
+          if (!this.applyActorRig(`companion:${id}`, sprite, 'companion', stateName, track, state, visualEntity, {
+            x, y, size: COMPANION_DISPLAY_SIZE, variant
+          })) {
+            this.setActorAnimation(sprite, 'companion', stateName, variant);
+            this.applyProceduralActorMotion(sprite, 'companion', { ...visualEntity, x, y }, stateName, id);
+          }
+          const origin = Object.freeze({
+            id, index,
+            x: Number(sprite.x) || x,
+            y: Number(sprite.y) || y,
             facing: track.facing,
-            attackX: x + track.facing * 14,
-            attackY: y - 4
+            attackX: (Number(sprite.x) || x) + track.facing * 18,
+            attackY: (Number(sprite.y) || y) - 11
+          });
+          this.displayOrigins.set(`companion:${id}`, origin);
+          this.displayOrigins.set(id, origin);
+          nextOrigins.push(Object.freeze({
+            ...origin
           }));
         }
         for (const [id, sprite] of this.companionSprites.entries()) {
           if (seen.has(id)) continue;
+          this.disableActorRig(`companion:${id}`, sprite);
           sprite.destroy?.();
           this.companionSprites.delete(id);
           this.actorTracks.delete(`companion:${id}`);
+          this.displayOrigins.delete(`companion:${id}`);
+          this.displayOrigins.delete(id);
         }
         companionOrigins = nextOrigins;
       }
@@ -1362,6 +1587,33 @@
         sprite.setScale?.(baseScaleX * scaleX, baseScaleY * scaleY);
       }
 
+      projectileDisplayPosition(bullet) {
+        const id = String(bullet?.id || `${bullet?.sourceId || 'shot'}:${bullet?.spawnedAt || 0}`);
+        let visual = this.projectileVisuals.get(id);
+        if (!visual) {
+          const sourceId = String(bullet?.sourceId || '');
+          const source = sourceId === 'player'
+            ? this.displayOrigins.get('player')
+            : this.displayOrigins.get(sourceId) || this.displayOrigins.get(`companion:${sourceId}`) || this.displayOrigins.get(`enemy:${sourceId}`);
+          visual = {
+            offsetX: source ? (Number(source.attackX) || 0) - (Number(bullet?.x) || 0) : 0,
+            offsetY: source ? (Number(source.attackY) || 0) - (Number(bullet?.y) || 0) : 0
+          };
+          this.projectileVisuals.set(id, visual);
+        }
+        const result = {
+          id,
+          x: (Number(bullet?.x) || 0) + visual.offsetX,
+          y: (Number(bullet?.y) || 0) + visual.offsetY
+        };
+        // Presentation converges to the authoritative core path quickly. The
+        // core projectile object, collision and damage are never displaced.
+        const decay = Math.exp(-Math.max(0, Number(this.visualFrameDelta) || 0) / 0.1);
+        visual.offsetX *= decay;
+        visual.offsetY *= decay;
+        return result;
+      }
+
       drawTransientObjects(state, p) {
         const quality = currentQuality();
         const projectileBudget = quality === 'low' ? 52 : quality === 'medium' ? 76 : 110;
@@ -1371,11 +1623,28 @@
         this.effectGraphics.clear();
         this.statusGraphics.clear();
 
+        const glowSprites = [
+          ['mogu', this.playerSprite],
+          ...[...this.enemySprites.values()].map(record => [record.role, record.sprite]),
+          ...[...this.companionSprites.values()].map(sprite => ['companion', sprite])
+        ];
+        for (const [role, sprite] of glowSprites) {
+          const glow = Math.max(0, Math.min(1, Number(sprite?.moguriaRigGlow) || 0));
+          if (glow <= 0.28) continue;
+          const radius = role === 'mogu' ? 38 : role === 'companion' ? 25 : role === 'boss' ? 72 : 31;
+          const color = role === 'enemy' ? 0xb274ff : 0xffda77;
+          this.effectGraphics.lineStyle(2 + glow * 3, color, 0.12 + glow * 0.34);
+          this.effectGraphics.strokeCircle(Number(sprite.x) || 0, Number(sprite.y) || 0, radius + glow * 5);
+        }
+
         let drawn = 0;
+        const visibleProjectiles = new Set();
         for (const bullet of state.bullets || []) {
           if (drawn++ >= projectileBudget) break;
-          const x = Number(bullet.x) || 0;
-          const y = Number(bullet.y) || 0;
+          const display = this.projectileDisplayPosition(bullet);
+          visibleProjectiles.add(display.id);
+          const x = display.x;
+          const y = display.y;
           const radius = Math.max(3, Number(bullet.r) || 5);
           const color = bullet.summon ? 0xffc77e : bullet.split ? 0xd8c2ff : 0xffed9a;
           this.projectileGraphics.lineStyle(2, color, 0.34);
@@ -1385,17 +1654,31 @@
         }
         for (const bullet of state.enemyBullets || []) {
           if (drawn++ >= projectileBudget) break;
-          const x = Number(bullet.x) || 0;
-          const y = Number(bullet.y) || 0;
+          const display = this.projectileDisplayPosition(bullet);
+          visibleProjectiles.add(display.id);
+          const x = display.x;
+          const y = display.y;
           const radius = Math.max(4, Number(bullet.r) || 5);
           this.projectileGraphics.fillStyle(0xb19ad8, 0.92);
           this.projectileGraphics.fillCircle(x, y, radius + 2);
           this.projectileGraphics.lineStyle(2, 0xf2d8ff, 0.48);
           this.projectileGraphics.strokeCircle(x, y, radius + 5);
         }
+        for (const id of this.projectileVisuals.keys()) {
+          if (!visibleProjectiles.has(id)) this.projectileVisuals.delete(id);
+        }
 
         for (const drop of (state.drops || []).slice(-(quality === 'low' ? 60 : 110))) {
           this.drawDrop(drop);
+          if (drop?.magnetActive && (drop.kind === 'exp' || drop.kind === 'heal')) {
+            const x = Number(drop.x) || 0;
+            const y = Number(drop.y) || 0;
+            const targetX = Number(p.x) || 0;
+            const targetY = (Number(p.y) || 0) - 6;
+            this.dropGraphics.lineStyle(drop.kind === 'heal' ? 2 : 3, drop.kind === 'heal' ? 0xa8ef9e : 0xffe79a, 0.46);
+            this.dropGraphics.lineBetween(x, y, targetX, targetY);
+            this.drawStar(this.dropGraphics, x + (targetX - x) * 0.34, y + (targetY - y) * 0.34, 3.4, 1.4, 0xfff1bd, 0.82);
+          }
         }
 
         for (const mine of state.mines || []) {
@@ -1599,6 +1882,13 @@
           this.statusGraphics.lineStyle(4, 0xffe68b, strength);
           this.statusGraphics.strokeCircle(x, y, 50 + (reducedMotion ? 0 : Math.sin(this.stateTime * 7) * 5));
           this.drawStar(this.statusGraphics, x, y - 72, 8, 3.6, 0xffe68b, strength);
+        }
+        if ((Number(player.munchTimer) || 0) > 0) {
+          const progress = Math.max(0, Math.min(1, 1 - Number(player.munchTimer) / 0.34));
+          const pulse = Math.sin(progress * Math.PI);
+          this.statusGraphics.lineStyle(3, 0xffe69b, 0.38 + pulse * 0.42);
+          this.statusGraphics.strokeCircle(x, y - 4, 22 + pulse * 8);
+          this.drawStar(this.statusGraphics, x + 13, y - 15, 4 + pulse * 2, 1.8, 0xfff2be, 0.9);
         }
       }
 
@@ -1840,10 +2130,17 @@
         const signature = `${shouldPause}:${quality}:${sprites.length}`;
         if (signature === this.animationPauseSignature) return;
         this.animationPauseSignature = signature;
-        try {
-          this.playerRig?.setPaused?.(shouldPause);
-        } catch (error) {
-          this.disablePlayerRig(error);
+        for (const [key, controller] of this.actorRigs.entries()) {
+          try {
+            controller?.setPaused?.(shouldPause);
+          } catch (error) {
+            const sprite = key === 'player'
+              ? this.playerSprite
+              : key.startsWith('enemy:')
+                ? this.enemySprites.get(key.slice(6))?.sprite
+                : this.companionSprites.get(key.slice(10));
+            this.disableActorRig(key, sprite, error);
+          }
         }
         for (const sprite of sprites) {
           if (sprite?.moguriaRigControlled) {
@@ -1920,12 +2217,18 @@
       releaseSceneObjects() {
         companionOrigins = [];
         fallbackAssets = [];
-        try { this.playerRig?.destroy?.(); } catch {}
+        for (const controller of this.actorRigs.values()) {
+          try { controller?.destroy?.(); } catch {}
+        }
+        this.actorRigs.clear();
+        this.actorRigFailures.clear();
         this.playerRig = null;
         if (this.playerSprite) this.playerSprite.moguriaRigControlled = false;
         this.enemySprites.clear();
         this.companionSprites.clear();
         this.actorTracks.clear();
+        this.projectileVisuals.clear();
+        this.displayOrigins.clear();
         this.levelUpText?.destroy?.();
         this.levelUpText = null;
         for (const label of this.floatingTexts.values()) label.destroy?.();

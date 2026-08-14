@@ -2,8 +2,8 @@
   'use strict';
 
   const ENGINE_SRC = 'vendor/phaser/phaser-arcade-physics-4.2.1.min.js';
-  const RIG_SRC = 'js/mogu-rig.js?v=20260813-mogu-rig-1';
-  const SCENE_SRC = 'js/battle-v3-scene.js?v=20260814-battle-visible-resize-2';
+  const RIG_SRC = 'js/mogu-rig.js?v=20260814-motion-rig2-1';
+  const SCENE_SRC = 'js/battle-v3-scene.js?v=20260814-motion-rig2-1';
   const SCRIPT_TIMEOUT_MS = 15000;
   const BOOT_TIMEOUT_MS = 30000;
   let preparation = null;

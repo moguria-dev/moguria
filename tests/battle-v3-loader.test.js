@@ -10,9 +10,10 @@ const ROOT = path.resolve(__dirname, '..');
 const LOADER_SOURCE = fs.readFileSync(path.join(ROOT, 'js/battle-v3-loader.js'), 'utf8');
 const HTML_SOURCE = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 const ENGINE_SRC = 'vendor/phaser/phaser-arcade-physics-4.2.1.min.js';
-const RIG_SRC = 'js/mogu-rig.js?v=20260813-mogu-rig-1';
-const SCENE_SRC = 'js/battle-v3-scene.js?v=20260814-battle-visible-resize-2';
-const LOADER_SRC = 'js/battle-v3-loader.js?v=20260814-battle-visible-resize-2';
+const MOTION_VERSION = '20260814-motion-rig2-1';
+const RIG_SRC = `js/mogu-rig.js?v=${MOTION_VERSION}`;
+const SCENE_SRC = `js/battle-v3-scene.js?v=${MOTION_VERSION}`;
+const LOADER_SRC = `js/battle-v3-loader.js?v=${MOTION_VERSION}`;
 
 function createHarness(overrides = {}) {
   let nextTimerId = 0;
@@ -153,8 +154,9 @@ async function flushMicrotasks() {
   for (let index = 0; index < 8; index += 1) await Promise.resolve();
 }
 
-test('entrypoint and loader share the visible-start resize cache version', () => {
+test('entrypoint, rig, and scene share the Motion Rig 2 cache version', () => {
   assert.ok(HTML_SOURCE.includes(`src="${LOADER_SRC}"`));
+  assert.ok(LOADER_SOURCE.includes(`const RIG_SRC = '${RIG_SRC}'`));
   assert.ok(LOADER_SOURCE.includes(`const SCENE_SRC = '${SCENE_SRC}'`));
 });
 
