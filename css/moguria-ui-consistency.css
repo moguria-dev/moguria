@@ -314,6 +314,17 @@ body.kv-visual-refresh #pauseModal .pause-power-tabs button,
   font-size: 9px !important;
 }
 
+/* Keep the long canonical category name and every count visible at once. */
+#overlay.meta-overlay .meta-tabs {
+  grid-template-columns: 1.5fr 1fr .9fr .8fr;
+}
+
+#overlay.meta-overlay .meta-tabs button {
+  min-width: 0;
+  padding-inline: 3px;
+  font-size: 10px !important;
+}
+
 #home.home-v2 .home-v2__eyebrow,
 #home.home-v2 .home-v2__caption,
 #home.home-v2 .home-v2__side-rail small,

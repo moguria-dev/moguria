@@ -368,6 +368,7 @@ const SCREEN_CONTRACTS = Object.freeze({
   dex: {
     surface: '#overlay[data-view="dex"]:not(.hidden) .meta-shell',
     touch: ['#closeOverlay', '[data-dex-tab]'],
+    fit: ['[data-dex-tab]'],
     setup: async (page) => {
       await page.click('#dexBtn');
       await page.locator('#overlay[data-view="dex"]:not(.hidden)').waitFor({ state: 'visible' });
@@ -546,7 +547,7 @@ async function settleVisuals(page, surfaceSelector, scrollRootSelectors = []) {
 }
 
 async function auditDom(page, contract, viewport, screenId) {
-  return page.evaluate(({ surfaceSelector, touchSelectors, width, height, viewportSurfaceExpected }) => {
+  return page.evaluate(({ surfaceSelector, touchSelectors, contentFitSelectors, width, height, viewportSurfaceExpected }) => {
     const visible = (element) => {
       if (!element) return false;
       const rect = element.getBoundingClientRect();
@@ -611,6 +612,29 @@ async function auditDom(page, contract, viewport, screenId) {
         }
       }
     }
+
+    const contentFit = [];
+    for (const selector of contentFitSelectors) {
+      const nodes = [...document.querySelectorAll(selector)].filter(visible);
+      if (!nodes.length) {
+        failures.push(`required content-fit control is missing: ${selector}`);
+        continue;
+      }
+      for (const node of nodes) {
+        const record = {
+          selector,
+          id: node.id || node.getAttribute('data-dex-tab') || '',
+          clientWidth: node.clientWidth,
+          scrollWidth: node.scrollWidth,
+          clientHeight: node.clientHeight,
+          scrollHeight: node.scrollHeight
+        };
+        contentFit.push(record);
+        if (record.scrollWidth > record.clientWidth + 1 || record.scrollHeight > record.clientHeight + 1) {
+          failures.push(`required content overflows its control: ${selector} ${record.id || '(unidentified)'}`);
+        }
+      }
+    }
     const textLength = (surface?.innerText || '').replace(/\s+/g, '').length;
     const canvasCount = surface ? [...surface.querySelectorAll('canvas')].filter(visible).length : 0;
     const imageCount = surface ? [...surface.querySelectorAll('img')].filter(visible).length : 0;
@@ -637,6 +661,7 @@ async function auditDom(page, contract, viewport, screenId) {
       rootOverflow,
       brokenImages,
       touchTargets,
+      contentFit,
       surface: surfaceRect ? {
         x: Number(surfaceRect.x.toFixed(1)), y: Number(surfaceRect.y.toFixed(1)),
         width: Number(surfaceRect.width.toFixed(1)), height: Number(surfaceRect.height.toFixed(1))
@@ -649,6 +674,7 @@ async function auditDom(page, contract, viewport, screenId) {
   }, {
     surfaceSelector: contract.surface,
     touchSelectors: contract.touch,
+    contentFitSelectors: contract.fit || [],
     width: viewport.width,
     height: viewport.height,
     viewportSurfaceExpected: VIEWPORT_SURFACE_SCREENS.includes(screenId)

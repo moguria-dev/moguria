@@ -75,6 +75,8 @@ test('choice and persistence recovery surfaces state their consequences and acti
   assert.match(ui, /trapSystemDialogFocus\(event, metaOverlay\)/);
   assert.doesNotMatch(game, /homeLine[^\n]*textContent\s*=\s*message/);
   assert.match(consistencyCss, /#result \.result-detail > summary[\s\S]*?min-height:\s*44px !important/);
+  assert.match(consistencyCss, /\.meta-tabs\s*\{[^}]*grid-template-columns:\s*1\.5fr 1fr \.9fr \.8fr/s);
+  assert.match(consistencyCss, /\.meta-tabs button\s*\{[^}]*font-size:\s*10px\s*!important/s);
 });
 
 test('artifact choice, owned rail and pause journal share dedicated production art', () => {

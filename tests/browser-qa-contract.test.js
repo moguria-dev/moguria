@@ -81,8 +81,10 @@ test('runner contract covers both mobile viewports and every approved screen', a
     'ja-JP', 'Asia/Tokyo', 'hasTouch: true', 'isMobile: true',
     'consoleErrors', 'pageErrors', 'requestFailures', 'responseErrors',
     'naturalWidth', 'rootOverflow', '43.5', 'nearBlank', 'qa-summary.json', 'qa-summary.md',
-    'visual scroll roots did not return to origin', 'full-viewport surface is displaced'
+    'visual scroll roots did not return to origin', 'full-viewport surface is displaced',
+    'required content overflows its control'
   ]) assert.ok(source.includes(contract), `runner must preserve ${contract}`);
+  assert.match(source, /fit: \['\[data-dex-tab\]'\]/);
 });
 
 test('browser QA evidence and fixtures cannot enter the production Pages artifact', () => {
