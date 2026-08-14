@@ -54,6 +54,8 @@ function createHarness(options = {}) {
   const imageCalls = [];
   const bodyClasses = new Set();
   const lifecycleCalls = [];
+  const animationFrames = [];
+  const windowListeners = new Map();
   const viewportWidth = options.viewportWidth ?? 1440;
   const viewportHeight = options.viewportHeight ?? 900;
   const appWidth = options.appWidth ?? 430;
@@ -103,8 +105,20 @@ function createHarness(options = {}) {
     devicePixelRatio: 2,
     setTimeout,
     clearTimeout,
-    addEventListener() {},
-    removeEventListener() {},
+    requestAnimationFrame(callback) {
+      animationFrames.push(callback);
+      return animationFrames.length;
+    },
+    addEventListener(type, listener) {
+      if (!windowListeners.has(type)) windowListeners.set(type, new Set());
+      windowListeners.get(type).add(listener);
+    },
+    removeEventListener(type, listener) {
+      windowListeners.get(type)?.delete(listener);
+    },
+    dispatchEvent(event) {
+      for (const listener of windowListeners.get(event?.type) || []) listener(event);
+    },
     MoguriaPerformance: { getQuality: () => options.quality || 'high' },
     matchMedia(query) {
       assert.equal(query, '(prefers-reduced-motion: reduce)');
@@ -131,6 +145,11 @@ function createHarness(options = {}) {
           dataset: {},
           isConnected: true,
           setAttribute() {},
+          getBoundingClientRect() {
+            if (this.style.display === 'none') return { width: 0, height: 0 };
+            return this.parentElement?.getBoundingClientRect?.() || { width: 0, height: 0 };
+          },
+          querySelector() { return null; },
           remove() { this.isConnected = false; }
         };
       }
@@ -158,12 +177,43 @@ function createHarness(options = {}) {
       this.scale = {
         width: config.width,
         height: config.height,
+        parent: config.parent,
+        parentSize: { width: 0, height: 0 },
         resize: (width, height) => {
           lifecycleCalls.push(`scale.resize:${width}x${height}`);
+          // Phaser 4 RESIZE mode immediately refreshes from its cached
+          // parentSize. A hidden preload leaves that cache at 0x0.
+          width = this.scale.parentSize.width;
+          height = this.scale.parentSize.height;
           this.scale.width = width;
           this.scale.height = height;
           this.canvas.width = width;
           this.canvas.height = height;
+        },
+        getParentBounds: () => {
+          const rect = this.scale.parent?.getBoundingClientRect?.() || { width: 0, height: 0 };
+          const width = Math.round(Number(rect.width) || 0);
+          const height = Math.round(Number(rect.height) || 0);
+          lifecycleCalls.push(`scale.getParentBounds:${width}x${height}`);
+          this.scale.parentSize.width = width;
+          this.scale.parentSize.height = height;
+          return true;
+        },
+        refresh: () => {
+          lifecycleCalls.push('scale.refresh');
+          const width = this.scale.parentSize.width;
+          const height = this.scale.parentSize.height;
+          this.scale.width = width;
+          this.scale.height = height;
+          this.canvas.width = width;
+          this.canvas.height = height;
+          return this.scale;
+        },
+        setParentSize: (width, height) => {
+          lifecycleCalls.push(`scale.setParentSize:${width}x${height}`);
+          this.scale.parentSize.width = width;
+          this.scale.parentSize.height = height;
+          return this.scale.refresh();
         }
       };
       this.loop = {
@@ -199,6 +249,23 @@ function createHarness(options = {}) {
       parentHeight = height;
       parent.clientWidth = width;
       parent.clientHeight = height;
+    },
+    flushAnimationFrame({ collapseBackingStore = false } = {}) {
+      const callback = animationFrames.shift();
+      assert.ok(callback, 'expected a pending animation frame');
+      if (collapseBackingStore) {
+        gameInstance.scale.width = 0;
+        gameInstance.scale.height = 0;
+        gameInstance.canvas.width = 0;
+        gameInstance.canvas.height = 0;
+      }
+      callback(1016);
+    },
+    pendingAnimationFrames() {
+      return animationFrames.length;
+    },
+    async flushMicrotasks(count = 8) {
+      for (let index = 0; index < count; index++) await Promise.resolve();
     },
     makeScene() {
       const SceneClass = gameConfig.scene[0];
@@ -247,6 +314,11 @@ function createHarness(options = {}) {
   };
 }
 
+async function flushFrame(harness, options) {
+  harness.flushAnimationFrame(options);
+  await harness.flushMicrotasks();
+}
+
 test('hidden preload falls back to the constrained app size', () => {
   const harness = createHarness();
   const pending = harness.context.MoguriaBattleV3.boot({ parent: harness.parent });
@@ -276,7 +348,7 @@ test('visible battle uses the same PC and mobile dimensions as its DOM HUD', () 
   }
 });
 
-test('visible start synchronously restores a hidden-preloaded canvas before state sync', async () => {
+test('visible start repairs stale RESIZE parent state and verifies the backing store before resolving', async () => {
   const harness = createHarness({
     parentWidth: 0,
     parentHeight: 0,
@@ -297,6 +369,12 @@ test('visible start synchronously restores a hidden-preloaded canvas before stat
   harness.game.canvas.height = 0;
   harness.setParentSize(390, 844);
 
+  // This models Phaser 4.2.1 ScaleManager.resize(): its refresh reads the
+  // stale hidden-preload parentSize and immediately restores 0x0.
+  harness.game.scale.resize(390, 844);
+  assert.equal(harness.game.canvas.width, 0);
+  assert.equal(harness.game.canvas.height, 0);
+
   const originalHandleResize = scene.handleResize.bind(scene);
   scene.handleResize = (width, height) => {
     harness.lifecycleCalls.push(`scene.handleResize:${width}x${height}`);
@@ -310,18 +388,183 @@ test('visible start synchronously restores a hidden-preloaded canvas before stat
 
   const started = harness.context.MoguriaBattleV3.start({ id: 'visible-state', p: {} });
 
-  assert.equal(harness.game.canvas.width, 390, 'start must resize before its promise resolves');
-  assert.equal(harness.game.canvas.height, 844, 'start must resize before its promise resolves');
+  assert.equal(harness.game.canvas.width, 0, 'start waits for one visible layout frame');
+  assert.equal(harness.game.canvas.height, 0, 'start waits for one visible layout frame');
+  assert.deepEqual(harness.lifecycleCalls, []);
+
+  let resolved = false;
+  started.then(() => { resolved = true; });
+  await flushFrame(harness);
+  assert.equal(resolved, false, 'start must verify rendered stability before resolving');
+  assert.equal(harness.game.canvas.width, 390);
+  assert.equal(harness.game.canvas.height, 844);
   assert.deepEqual(harness.lifecycleCalls, [
+    'scale.getParentBounds:390x844',
+    'scale.refresh',
+    'scene.handleResize:390x844',
     'loop.wake',
     'scene.visible:true',
     'scene.resume',
-    'scale.resize:390x844',
-    'scene.handleResize:390x844',
     'scene.sync:visible-state',
     'canvas.configure'
   ]);
+
+  await flushFrame(harness, { collapseBackingStore: true });
+  assert.equal(resolved, false);
+  assert.equal(harness.game.canvas.width, 390, 'a first-frame reset must trigger a bounded retry');
+  assert.equal(harness.game.canvas.height, 844, 'a first-frame reset must trigger a bounded retry');
+  assert.deepEqual(harness.lifecycleCalls.slice(-4), [
+    'scale.getParentBounds:390x844',
+    'scale.refresh',
+    'scene.handleResize:390x844',
+    'canvas.configure'
+  ]);
+
+  await flushFrame(harness);
+  assert.equal(resolved, false, 'one stable frame is not enough to resolve start');
+  await flushFrame(harness);
   assert.equal(await started, harness.context.MoguriaBattleV3);
+  assert.equal(resolved, true);
+
+  harness.context.MoguriaBattleV3.stop({ destroy: true, restoreLegacy: true });
+});
+
+test('visible start rejects after the bounded backing-store stabilization window', async () => {
+  const harness = createHarness({
+    parentWidth: 0,
+    parentHeight: 0,
+    appWidth: 390,
+    appHeight: 844,
+    viewportWidth: 390,
+    viewportHeight: 844
+  });
+  const booted = harness.context.MoguriaBattleV3.boot({ parent: harness.parent });
+  const scene = harness.completeBoot();
+  await booted;
+  scene.syncState = () => true;
+  harness.game.scale.width = 0;
+  harness.game.scale.height = 0;
+  harness.game.canvas.width = 0;
+  harness.game.canvas.height = 0;
+  harness.setParentSize(390, 844);
+
+  const started = harness.context.MoguriaBattleV3.start({ id: 'unstable-state', p: {} });
+  const rejected = assert.rejects(started, /canvas did not stabilize \(host 390x844; canvas 0x0; scale 0x0\)/);
+  await flushFrame(harness);
+  for (let frame = 0; frame < 4; frame++) {
+    await flushFrame(harness, { collapseBackingStore: true });
+  }
+  await rejected;
+
+  harness.context.MoguriaBattleV3.stop({ destroy: true, restoreLegacy: true });
+});
+
+test('stop cancels a start waiting for visible layout before Phaser is resumed', async () => {
+  const harness = createHarness({ parentWidth: 0, parentHeight: 0, appWidth: 390, appHeight: 844 });
+  const booted = harness.context.MoguriaBattleV3.boot({ parent: harness.parent });
+  const scene = harness.completeBoot();
+  await booted;
+  scene.syncState = state => {
+    harness.lifecycleCalls.push(`scene.sync:${state.id}`);
+    return true;
+  };
+  harness.setParentSize(390, 844);
+  harness.lifecycleCalls.length = 0;
+
+  const started = harness.context.MoguriaBattleV3.start({ id: 'cancelled-state', p: {} });
+  const rejected = assert.rejects(started, error => error?.code === 'MOGURIA_BATTLE_START_CANCELLED');
+  harness.context.MoguriaBattleV3.stop({ restoreLegacy: true });
+  await flushFrame(harness);
+  await rejected;
+
+  assert.equal(harness.parent.firstChild.style.display, 'none');
+  assert.equal(harness.bodyClasses.has('battle-v3-active'), false);
+  assert.equal(harness.lifecycleCalls.includes('loop.wake'), false);
+  assert.equal(harness.lifecycleCalls.some(call => call.startsWith('scene.sync:')), false);
+  assert.equal(harness.lifecycleCalls.some(call => call.startsWith('scale.getParentBounds:')), false);
+
+  harness.context.MoguriaBattleV3.stop({ destroy: true, restoreLegacy: true });
+});
+
+test('a cancelled start cannot hide or reset a newer start', async () => {
+  const harness = createHarness({ parentWidth: 0, parentHeight: 0, appWidth: 390, appHeight: 844 });
+  const booted = harness.context.MoguriaBattleV3.boot({ parent: harness.parent });
+  const scene = harness.completeBoot();
+  await booted;
+  scene.syncState = state => {
+    harness.lifecycleCalls.push(`scene.sync:${state.id}`);
+    return true;
+  };
+  harness.setParentSize(390, 844);
+  harness.game.scale.width = 0;
+  harness.game.scale.height = 0;
+  harness.game.canvas.width = 0;
+  harness.game.canvas.height = 0;
+
+  const staleStart = harness.context.MoguriaBattleV3.start({ id: 'stale-state', p: {} });
+  const staleRejected = assert.rejects(staleStart, error => error?.code === 'MOGURIA_BATTLE_START_CANCELLED');
+  harness.context.MoguriaBattleV3.stop({ restoreLegacy: true });
+  harness.lifecycleCalls.length = 0;
+  const currentStart = harness.context.MoguriaBattleV3.start({ id: 'current-state', p: {} });
+
+  await flushFrame(harness);
+  await staleRejected;
+  assert.equal(harness.parent.firstChild.style.display, 'block', 'stale catch must not hide the new start');
+  assert.equal(harness.bodyClasses.has('battle-v3-active'), true, 'stale catch must not restore old layers');
+  assert.deepEqual(harness.lifecycleCalls, []);
+
+  await flushFrame(harness);
+  await flushFrame(harness);
+  await flushFrame(harness);
+  assert.equal(await currentStart, harness.context.MoguriaBattleV3);
+  assert.equal(harness.lifecycleCalls.includes('scene.sync:stale-state'), false);
+  assert.equal(harness.lifecycleCalls.includes('scene.sync:current-state'), true);
+  assert.equal(harness.parent.firstChild.style.display, 'block');
+
+  harness.context.MoguriaBattleV3.stop({ destroy: true, restoreLegacy: true });
+});
+
+test('running battle refreshes its RESIZE parent cache for ordinary and orientation-size changes', async () => {
+  const harness = createHarness({
+    parentWidth: 390,
+    parentHeight: 844,
+    appWidth: 390,
+    appHeight: 844,
+    viewportWidth: 390,
+    viewportHeight: 844
+  });
+  const booted = harness.context.MoguriaBattleV3.boot({ parent: harness.parent });
+  const scene = harness.completeBoot();
+  await booted;
+  scene.syncState = () => true;
+  const originalHandleResize = scene.handleResize.bind(scene);
+  scene.handleResize = (width, height) => {
+    harness.lifecycleCalls.push(`scene.handleResize:${width}x${height}`);
+    return originalHandleResize(width, height);
+  };
+
+  const started = harness.context.MoguriaBattleV3.start({ id: 'resize-state', p: {} });
+  await flushFrame(harness);
+  await flushFrame(harness);
+  await flushFrame(harness);
+  await started;
+
+  for (const [width, height] of [[375, 667], [844, 390]]) {
+    harness.lifecycleCalls.length = 0;
+    harness.setParentSize(width, height);
+    harness.context.dispatchEvent({ type: 'resize' });
+    await new Promise(resolve => setTimeout(resolve, 30));
+    assert.equal(harness.game.canvas.width, width);
+    assert.equal(harness.game.canvas.height, height);
+    assert.equal(harness.game.scale.width, width);
+    assert.equal(harness.game.scale.height, height);
+    assert.deepEqual(harness.lifecycleCalls, [
+      `scale.getParentBounds:${width}x${height}`,
+      'scale.refresh',
+      `scene.handleResize:${width}x${height}`,
+      'canvas.configure'
+    ]);
+  }
 
   harness.context.MoguriaBattleV3.stop({ destroy: true, restoreLegacy: true });
 });
