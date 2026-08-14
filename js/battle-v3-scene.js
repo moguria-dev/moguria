@@ -7,7 +7,7 @@
 (function (global) {
   'use strict';
 
-  const VERSION = '3.1.0-motion-rig2';
+  const VERSION = '3.1.1-skill-vfx';
   const SCENE_KEY = 'MoguriaBattleV3Scene';
   const HOST_ID = 'moguriaBattleV3CanvasHost';
   const TAU = Math.PI * 2;
@@ -113,6 +113,14 @@
     companion: 0xffd28e,
     boss: 0x58396f
   });
+
+  const SKILL_VFX_PALETTES = Object.freeze({
+    poison_seed: Object.freeze({ core:0xfff1ce, body:0xc480ee, edge:0x613078 }),
+    spark_pop: Object.freeze({ core:0xfff5d4, body:0xffcb77, edge:0xe8a8d0 }),
+    thunder_gum: Object.freeze({ core:0xf8ffff, body:0x6ee7ff, edge:0x806cff }),
+    mogu_field: Object.freeze({ core:0xfff2cb, body:0xf5ce7f, edge:0xf0afcb })
+  });
+  const SEMANTIC_EFFECT_TYPES = new Set(['boom','auraPulse','lightning','meteor','bossTelegraph','bossImpact','criticalRing','nearMiss']);
 
   let phaserGame = null;
   let sceneRef = null;
@@ -613,6 +621,7 @@
         this.visualFrameDelta = 0;
         this.projectileGraphics = null;
         this.dropGraphics = null;
+        this.skillUnderlayGraphics = null;
         this.effectGraphics = null;
         this.statusGraphics = null;
         this.boundaryGraphics = null;
@@ -792,11 +801,13 @@
 
       createDrawLayers() {
         this.boundaryGraphics = this.add.graphics().setDepth(16);
+        this.skillUnderlayGraphics = this.add.graphics().setDepth(18);
         this.dropGraphics = this.add.graphics().setDepth(20);
         this.statusGraphics = this.add.graphics().setDepth(31);
         this.projectileGraphics = this.add.graphics().setDepth(50);
         this.effectGraphics = this.add.graphics().setDepth(70);
         this.projectileGraphics.setBlendMode?.(Phaser.BlendModes?.ADD ?? 1);
+        this.skillUnderlayGraphics.setBlendMode?.(Phaser.BlendModes?.ADD ?? 1);
         this.effectGraphics.setBlendMode?.(Phaser.BlendModes?.ADD ?? 1);
         const levelLabel = this.add.text?.(0, 0, '', {
           fontFamily: '-apple-system, BlinkMacSystemFont, "Hiragino Sans", sans-serif',
@@ -1614,12 +1625,285 @@
         return result;
       }
 
+      skillVfxLevel(holder, skillId) {
+        const raw = holder?.skillLevel ?? holder?.skillLevels?.[skillId] ?? 0;
+        const level = Math.floor(Number(raw) || 0);
+        return level > 0 ? Math.max(1, Math.min(5, level)) : 0;
+      }
+
+      skillVfxProfile(skillId, rawLevel) {
+        const level = Math.max(1, Math.min(5, Math.floor(Number(rawLevel) || 1)));
+        if (skillId === 'poison_seed') return { level, spores:[3,4,6,8,10][level - 1], tails:[2,3,4,5,6][level - 1], coreRadius:[7,8,9,10,12][level - 1], rings:level >= 3 ? 2 : 1 };
+        if (skillId === 'spark_pop') return { level, fragments:[5,6,8,10,12][level - 1], corePoints:level >= 5 ? 8 : level >= 3 ? 6 : 5, coreRadius:level >= 5 ? 18 : level >= 3 ? 14 : 10, crown:level >= 5 ? 10 : 0 };
+        if (skillId === 'thunder_gum') return { level, links:level + 2, widths:level >= 5 ? [14,6.8,2.7] : level >= 3 ? [11,5.5,2.3] : [8,4.6,1.9], branches:level >= 5 ? 2 : level >= 3 ? 1 : 0, nodePoints:level >= 5 ? 6 : 5 };
+        if (skillId === 'mogu_field') return { level, lights:[4,6,8,10,12][level - 1], lightRadius:[.62,.64,.66,.68,.70][level - 1], innerRing:level >= 3, constellation:level >= 5 };
+        return { level };
+      }
+
+      stableVfxUnit(value) {
+        const text = String(value ?? 'moguria');
+        let hash = 2166136261;
+        for (let index = 0; index < text.length; index++) {
+          hash ^= text.charCodeAt(index);
+          hash = Math.imul(hash, 16777619);
+        }
+        return (hash >>> 0) / 4294967295;
+      }
+
+      effectPhase(fx) {
+        const maxLife = Math.max(.001, Number(fx?.maxLife) || Number(fx?.life) || .2);
+        const remaining = Math.max(0, Math.min(1, (Number(fx?.life) || 0) / maxLife));
+        return { remaining, progress:1 - remaining, alpha:Math.min(1, remaining * 1.8) };
+      }
+
+      drawLayeredStar(graphics, x, y, outer, points, palette, alpha, rotation = -Math.PI / 2) {
+        this.drawStar(graphics, x, y, outer * 1.38, outer * .56, palette.edge, alpha * .18, points, rotation);
+        this.drawStar(graphics, x, y, outer, outer * .46, palette.body, alpha * .88, points, rotation);
+        this.drawStar(graphics, x, y, outer * .52, outer * .22, palette.core, Math.min(1, alpha), points, rotation);
+      }
+
+      drawPoisonProc(fx) {
+        const graphics = this.effectGraphics;
+        const palette = SKILL_VFX_PALETTES.poison_seed;
+        const profile = this.skillVfxProfile('poison_seed', this.skillVfxLevel(fx, 'poison_seed'));
+        const phase = this.effectPhase(fx);
+        const x = Number(fx.x) || 0;
+        const y = Number(fx.y) || 0;
+        const radius = Math.max(24, Number(fx.r) || 24);
+        const quality = currentQuality();
+        const spores = quality === 'low' ? Math.max(3, Math.ceil(profile.spores * .65)) : quality === 'medium' ? Math.max(3, Math.ceil(profile.spores * .82)) : profile.spores;
+        const tails = Math.min(spores, quality === 'low' ? Math.max(2, profile.tails - 2) : profile.tails);
+        const seed = this.stableVfxUnit(`${fx.id}:${fx.targetId}`) * TAU;
+        const spread = reducedMotion ? .72 : .5 + phase.progress * .28;
+
+        graphics.fillStyle(palette.edge, .12 * phase.alpha);
+        graphics.fillCircle(x, y, radius * .9);
+        graphics.fillStyle(palette.body, .18 * phase.alpha);
+        graphics.fillCircle(x, y, radius * .62);
+        for (let index = 0; index < spores; index++) {
+          const angle = seed + index * TAU / spores;
+          const distance = radius * spread * (.58 + this.stableVfxUnit(`${fx.id}:spore:${index}`) * .35);
+          const sx = x + Math.cos(angle) * distance;
+          const sy = y + Math.sin(angle) * distance * .72;
+          if (index < tails) {
+            graphics.lineStyle(index % 2 ? 5 : 7, palette.edge, .14 * phase.alpha);
+            graphics.lineBetween(x + Math.cos(angle) * profile.coreRadius * .7, y + Math.sin(angle) * profile.coreRadius * .5, sx, sy);
+            graphics.lineStyle(2.4, palette.body, .62 * phase.alpha);
+            graphics.lineBetween(x + Math.cos(angle) * profile.coreRadius * .7, y + Math.sin(angle) * profile.coreRadius * .5, sx, sy);
+          }
+          if (profile.level >= 3 && index % 3 === 0) this.drawStar(graphics, sx, sy, 4.8, 1.9, palette.core, .92 * phase.alpha, 5, angle);
+          else {
+            graphics.fillStyle(palette.body, .78 * phase.alpha);
+            graphics.fillCircle(sx, sy, 3.6);
+            graphics.fillStyle(palette.core, .94 * phase.alpha);
+            graphics.fillCircle(sx - .7, sy - .8, 1.35);
+          }
+        }
+        graphics.fillStyle(palette.edge, .88 * phase.alpha);
+        graphics.fillRoundedRect(x - profile.coreRadius * .24, y, profile.coreRadius * .48, profile.coreRadius * .95, profile.coreRadius * .2);
+        graphics.fillStyle(palette.body, .96 * phase.alpha);
+        graphics.fillCircle(x, y, profile.coreRadius);
+        graphics.fillStyle(palette.core, .9 * phase.alpha);
+        graphics.fillCircle(x - profile.coreRadius * .2, y - profile.coreRadius * .2, profile.coreRadius * .42);
+        graphics.lineStyle(5, palette.edge, .52 * phase.alpha);
+        graphics.strokeCircle(x, y, radius * .88);
+        if (profile.rings > 1) {
+          graphics.lineStyle(2.5, palette.body, .64 * phase.alpha);
+          graphics.strokeCircle(x, y, radius * .58);
+        }
+        if (profile.level >= 5) this.drawLayeredStar(graphics, x, y - profile.coreRadius * .05, profile.coreRadius * .92, 7, palette, phase.alpha, seed);
+      }
+
+      drawSparkPop(fx) {
+        const graphics = this.effectGraphics;
+        const palette = SKILL_VFX_PALETTES.spark_pop;
+        const profile = this.skillVfxProfile('spark_pop', this.skillVfxLevel(fx, 'spark_pop'));
+        const phase = this.effectPhase(fx);
+        const x = Number(fx.x) || 0;
+        const y = Number(fx.y) || 0;
+        const radius = Math.max(8, Number(fx.r) || 24);
+        const quality = currentQuality();
+        const fragments = quality === 'low' ? Math.max(5, Math.ceil(profile.fragments * .68)) : quality === 'medium' ? Math.max(5, Math.ceil(profile.fragments * .84)) : profile.fragments;
+        const seed = this.stableVfxUnit(`${fx.id}:${fx.chainDepth}`) * TAU;
+        const expansion = reducedMotion ? .72 : .32 + phase.progress * .42;
+
+        graphics.fillStyle(palette.edge, .11 * phase.alpha);
+        graphics.fillCircle(x, y, radius * .82);
+        graphics.fillStyle(palette.body, .18 * phase.alpha);
+        graphics.fillCircle(x, y, radius * .55);
+        graphics.lineStyle(8, palette.edge, .28 * phase.alpha);
+        graphics.strokeCircle(x, y, radius);
+        graphics.lineStyle(3, palette.body, .82 * phase.alpha);
+        graphics.strokeCircle(x, y, radius);
+        for (let index = 0; index < fragments; index++) {
+          const angle = seed + index * TAU / fragments;
+          const distance = radius * expansion * (index % 2 ? .84 : 1);
+          const sx = x + Math.cos(angle) * distance;
+          const sy = y + Math.sin(angle) * distance;
+          const size = Math.max(3.4, Math.min(7.2, radius * .11));
+          this.drawStar(graphics, sx, sy, size, size * .38, index % 3 ? palette.body : palette.core, .92 * phase.alpha, 4, angle);
+        }
+        this.drawLayeredStar(graphics, x, y, Math.min(profile.coreRadius, radius * .36), profile.corePoints, palette, phase.alpha, seed);
+        if (profile.crown) {
+          const crownCount = quality === 'low' ? 6 : quality === 'medium' ? 8 : profile.crown;
+          for (let index = 0; index < crownCount; index++) {
+            const angle = seed * .6 - index * TAU / crownCount;
+            this.drawStar(graphics, x + Math.cos(angle) * radius * .48, y + Math.sin(angle) * radius * .48, 3.5, 1.4, palette.core, .8 * phase.alpha, 5, angle);
+          }
+        }
+      }
+
+      boltPoints(fx) {
+        const x = Number(fx.x) || 0;
+        const y = Number(fx.y) || 0;
+        const tx = Number.isFinite(Number(fx.tx)) ? Number(fx.tx) : x;
+        const ty = Number.isFinite(Number(fx.ty)) ? Number(fx.ty) : y;
+        const dx = tx - x;
+        const dy = ty - y;
+        const length = Math.hypot(dx, dy) || 1;
+        const px = -dy / length;
+        const py = dx / length;
+        const points = [{ x, y }];
+        for (let index = 1; index < 5; index++) {
+          const t = index / 5;
+          const unit = this.stableVfxUnit(`${fx.id}:${fx.chainIndex}:bolt:${index}`) - .5;
+          const offset = unit * Math.min(28, length * .16) * (index % 2 ? 1 : -1);
+          points.push({ x:x + dx * t + px * offset, y:y + dy * t + py * offset });
+        }
+        points.push({ x:tx, y:ty });
+        return points;
+      }
+
+      drawBoltPath(points, width, color, alpha) {
+        this.effectGraphics.lineStyle(width, color, alpha);
+        for (let index = 1; index < points.length; index++) this.effectGraphics.lineBetween(points[index - 1].x, points[index - 1].y, points[index].x, points[index].y);
+      }
+
+      drawThunderGum(fx) {
+        const palette = SKILL_VFX_PALETTES.thunder_gum;
+        const profile = this.skillVfxProfile('thunder_gum', this.skillVfxLevel(fx, 'thunder_gum'));
+        const phase = this.effectPhase(fx);
+        const points = this.boltPoints(fx);
+        const [edgeWidth, bodyWidth, coreWidth] = profile.widths;
+        this.drawBoltPath(points, edgeWidth, palette.edge, .34 * phase.alpha);
+        this.drawBoltPath(points, bodyWidth, palette.body, .86 * phase.alpha);
+        this.drawBoltPath(points, coreWidth, palette.core, phase.alpha);
+
+        const target = points[points.length - 1];
+        this.effectGraphics.fillStyle(palette.edge, .2 * phase.alpha);
+        this.effectGraphics.fillCircle(target.x, target.y, profile.level >= 5 ? 18 : 13);
+        this.effectGraphics.fillStyle(palette.body, .48 * phase.alpha);
+        this.effectGraphics.fillCircle(target.x, target.y, profile.level >= 5 ? 10 : 7);
+        if (profile.level >= 3) this.drawLayeredStar(this.effectGraphics, target.x, target.y, profile.level >= 5 ? 9 : 7, profile.nodePoints, palette, phase.alpha);
+        else {
+          this.effectGraphics.fillStyle(palette.core, phase.alpha);
+          this.effectGraphics.fillCircle(target.x, target.y, 3.8);
+        }
+
+        const branchCount = currentQuality() === 'low' ? Math.min(1, profile.branches) : profile.branches;
+        for (let branch = 0; branch < branchCount; branch++) {
+          const anchor = points[2 + branch];
+          const previous = points[1 + branch];
+          const angle = Math.atan2(anchor.y - previous.y, anchor.x - previous.x) + (branch ? -.92 : .92);
+          const branchEnd = { x:anchor.x + Math.cos(angle) * (18 + profile.level * 2), y:anchor.y + Math.sin(angle) * (18 + profile.level * 2) };
+          this.drawBoltPath([anchor, branchEnd], bodyWidth * .72, palette.edge, .3 * phase.alpha);
+          this.drawBoltPath([anchor, branchEnd], coreWidth, palette.core, .82 * phase.alpha);
+          this.drawStar(this.effectGraphics, branchEnd.x, branchEnd.y, 3.8, 1.5, profile.level >= 5 ? 0xffe7a2 : palette.body, .86 * phase.alpha, profile.level >= 5 ? 6 : 5, angle);
+        }
+      }
+
+      drawMoguField(p) {
+        const level = this.skillVfxLevel(p, 'mogu_field');
+        const radius = Math.max(0, Number(p?.auraRadius) || 0);
+        if (!level || !radius) return false;
+        const palette = SKILL_VFX_PALETTES.mogu_field;
+        const profile = this.skillVfxProfile('mogu_field', level);
+        const underlay = this.skillUnderlayGraphics || this.statusGraphics;
+        const x = Number(p.x) || 0;
+        const y = Number(p.y) || 0;
+        const quality = currentQuality();
+        const lights = quality === 'low' ? Math.max(4, Math.ceil(profile.lights * .67)) : quality === 'medium' ? Math.max(4, Math.ceil(profile.lights * .84)) : profile.lights;
+
+        underlay.fillStyle(palette.edge, .055);
+        underlay.fillCircle(x, y, radius);
+        underlay.fillStyle(palette.body, .07);
+        underlay.fillCircle(x, y, radius * .78);
+        underlay.fillStyle(palette.core, .055);
+        underlay.fillCircle(x, y, radius * .48);
+        for (let index = 0; index < lights; index++) {
+          const angle = -Math.PI / 2 + index * TAU / lights;
+          const distance = radius * profile.lightRadius;
+          const lx = x + Math.cos(angle) * distance;
+          const ly = y + Math.sin(angle) * distance * .82;
+          underlay.fillStyle(palette.edge, .13);
+          underlay.fillCircle(lx, ly, level >= 5 ? 8 : 6);
+          this.drawStar(underlay, lx, ly, level >= 5 ? 5.3 : 4.2, level >= 5 ? 2.2 : 1.7, index % 3 ? palette.body : palette.core, .78, level >= 3 ? 6 : 5, angle);
+        }
+        if (profile.innerRing) {
+          this.statusGraphics.lineStyle(3, palette.body, .35);
+          this.statusGraphics.strokeCircle(x, y, radius * .58);
+          for (let petal = 0; petal < 6; petal++) {
+            const angle = petal * TAU / 6;
+            this.drawStar(this.statusGraphics, x + Math.cos(angle) * radius * .34, y + Math.sin(angle) * radius * .27, 4.6, 1.7, palette.core, .7, 5, angle);
+          }
+        }
+        if (profile.constellation) {
+          const nodes = Array.from({ length:7 }, (_, index) => {
+            const angle = -Math.PI / 2 + index * TAU / 7;
+            return { x:x + Math.cos(angle) * radius * .63, y:y + Math.sin(angle) * radius * .51 };
+          });
+          this.statusGraphics.lineStyle(2.5, palette.core, .42);
+          for (let index = 0; index < nodes.length; index++) this.statusGraphics.lineBetween(nodes[index].x, nodes[index].y, nodes[(index + 2) % nodes.length].x, nodes[(index + 2) % nodes.length].y);
+        }
+        this.statusGraphics.lineStyle(8, palette.edge, .18);
+        this.statusGraphics.strokeCircle(x, y, radius);
+        this.statusGraphics.lineStyle(3.5, palette.body, .62);
+        this.statusGraphics.strokeCircle(x, y, radius);
+        this.statusGraphics.lineStyle(1.5, palette.core, .72);
+        this.statusGraphics.strokeCircle(x, y, radius);
+        return true;
+      }
+
+      drawMoguFieldPulse(fx) {
+        const palette = SKILL_VFX_PALETTES.mogu_field;
+        const phase = this.effectPhase(fx);
+        const x = Number(fx.x) || 0;
+        const y = Number(fx.y) || 0;
+        const radius = Math.max(8, Number(fx.r) || 24);
+        this.effectGraphics.fillStyle(palette.body, .065 * phase.alpha);
+        this.effectGraphics.fillCircle(x, y, radius);
+        this.effectGraphics.lineStyle(7, palette.edge, .2 * phase.alpha);
+        this.effectGraphics.strokeCircle(x, y, radius);
+        this.effectGraphics.lineStyle(2.5, palette.core, .72 * phase.alpha);
+        this.effectGraphics.strokeCircle(x, y, radius);
+      }
+
+      drawSkillAwaken(fx) {
+        const palette = SKILL_VFX_PALETTES[fx?.skillId];
+        if (!palette) return;
+        const phase = this.effectPhase(fx);
+        const level = this.skillVfxLevel(fx, fx.skillId);
+        const x = Number(fx.x) || 0;
+        const y = Number(fx.y) || 0;
+        const radius = Math.max(24, Number(fx.r) || 72);
+        this.effectGraphics.fillStyle(palette.edge, .1 * phase.alpha);
+        this.effectGraphics.fillCircle(x, y, radius * .72);
+        this.effectGraphics.lineStyle(6, palette.body, .36 * phase.alpha);
+        this.effectGraphics.strokeCircle(x, y, radius);
+        this.drawLayeredStar(this.effectGraphics, x, y, 11 + level * 2, fx.skillId === 'poison_seed' && level >= 5 ? 7 : 5 + Math.floor(level / 2), palette, phase.alpha);
+      }
+
+      isSemanticEffect(fx) {
+        return Boolean(fx?.essential || fx?.skillId || SEMANTIC_EFFECT_TYPES.has(fx?.type));
+      }
+
       drawTransientObjects(state, p) {
         const quality = currentQuality();
         const projectileBudget = quality === 'low' ? 52 : quality === 'medium' ? 76 : 110;
         const effectBudget = quality === 'low' ? 30 : quality === 'medium' ? 58 : 100;
         this.projectileGraphics.clear();
         this.dropGraphics.clear();
+        this.skillUnderlayGraphics?.clear?.();
         this.effectGraphics.clear();
         this.statusGraphics.clear();
 
@@ -1639,6 +1923,8 @@
 
         let drawn = 0;
         const visibleProjectiles = new Set();
+        const poisonProjectileLevel = this.skillVfxLevel(p, 'poison_seed');
+        const poisonDecorationBudget = quality === 'low' ? 26 : quality === 'medium' ? 52 : projectileBudget;
         for (const bullet of state.bullets || []) {
           if (drawn++ >= projectileBudget) break;
           const display = this.projectileDisplayPosition(bullet);
@@ -1651,6 +1937,14 @@
           this.projectileGraphics.lineBetween(x - (Number(bullet.vx) || 0) * 0.025, y - (Number(bullet.vy) || 0) * 0.025, x, y);
           this.projectileGraphics.fillStyle(color, 0.94);
           this.projectileGraphics.fillCircle(x, y, radius + 2);
+          if (poisonProjectileLevel && !bullet.summon && drawn <= poisonDecorationBudget) {
+            const poison = SKILL_VFX_PALETTES.poison_seed;
+            this.projectileGraphics.fillStyle(poison.edge, .24);
+            this.projectileGraphics.fillCircle(x, y, radius + 5);
+            this.projectileGraphics.fillStyle(poison.body, .7);
+            this.projectileGraphics.fillCircle(x, y, Math.max(2.4, radius * .7));
+            if (poisonProjectileLevel >= 3 && quality !== 'low') this.drawStar(this.projectileGraphics, x, y, Math.max(3.2, radius * .74), Math.max(1.2, radius * .28), poison.core, .82, poisonProjectileLevel >= 5 ? 7 : 5);
+          }
         }
         for (const bullet of state.enemyBullets || []) {
           if (drawn++ >= projectileBudget) break;
@@ -1717,21 +2011,32 @@
         this.drawPlayerStatus(state, p);
         this.drawDirectionIndicators(state, p);
         this.syncFloatingTexts(state);
-        if ((Number(p.auraRadius) || 0) > 0) {
+        const drewMoguField = this.drawMoguField(p);
+        if (!drewMoguField && (Number(p.auraRadius) || 0) > 0) {
           this.statusGraphics.lineStyle(3, 0x9aeeb7, 0.25);
           this.statusGraphics.strokeCircle(Number(p.x) || 0, Number(p.y) || 0, Number(p.auraRadius));
         }
 
+        const sourceEffects = state.fx || [];
+        const bossTelegraphs = sourceEffects.filter(fx => fx?.type === 'bossTelegraph').slice(-Math.min(6, effectBudget));
+        let remainingEffectBudget = Math.max(0, effectBudget - bossTelegraphs.length);
+        const essentialEffects = sourceEffects.filter(fx => fx?.type !== 'bossTelegraph' && (fx?.essential || fx?.skillId)).slice(-remainingEffectBudget);
+        remainingEffectBudget = Math.max(0, remainingEffectBudget - essentialEffects.length);
+        const semanticEffects = sourceEffects.filter(fx => fx?.type !== 'bossTelegraph' && !fx?.essential && !fx?.skillId && this.isSemanticEffect(fx)).slice(-remainingEffectBudget);
+        remainingEffectBudget = Math.max(0, remainingEffectBudget - semanticEffects.length);
+        const decorativeEffects = reducedMotion ? [] : sourceEffects.filter(fx => !this.isSemanticEffect(fx)).slice(-remainingEffectBudget);
+        for (const fx of [...decorativeEffects, ...semanticEffects, ...essentialEffects]) this.drawEffect(fx);
+        for (const fx of bossTelegraphs) this.drawEffect(fx);
         if (!reducedMotion) {
-          let effects = 0;
-          for (const fx of state.fx || []) {
-            if (effects++ >= effectBudget) break;
-            this.drawEffect(fx);
-          }
           for (const particle of (state.particles || []).slice(-effectBudget)) {
             const life = Math.max(0.08, Math.min(1, (Number(particle.life) || 0.2) / 0.55));
-            this.effectGraphics.fillStyle(this.colorNumber(particle.color, 0xffed9a), life);
-            this.effectGraphics.fillCircle(Number(particle.x) || 0, Number(particle.y) || 0, Math.max(1, Number(particle.r) || 2));
+            const color = this.colorNumber(particle.color, 0xffed9a);
+            const radius = Math.max(1, Number(particle.r) || 2);
+            if (particle.kind === 'star' && quality !== 'low') this.drawStar(this.effectGraphics, Number(particle.x) || 0, Number(particle.y) || 0, radius * 1.45, radius * .56, color, life, 5);
+            else {
+              this.effectGraphics.fillStyle(color, life);
+              this.effectGraphics.fillCircle(Number(particle.x) || 0, Number(particle.y) || 0, radius);
+            }
           }
         }
       }
@@ -1991,6 +2296,26 @@
         const radius = Math.max(8, Number(fx?.r) || 24);
         const life = Math.max(0.06, Math.min(1, Number(fx?.life) || 0.2));
         if (fx?.type === 'text') return;
+        if (fx?.type === 'skillAwaken' && SKILL_VFX_PALETTES[fx?.skillId]) {
+          this.drawSkillAwaken(fx);
+          return;
+        }
+        if (fx?.type === 'poisonProc' && fx?.skillId === 'poison_seed') {
+          this.drawPoisonProc(fx);
+          return;
+        }
+        if (fx?.type === 'boom' && fx?.skillId === 'spark_pop') {
+          this.drawSparkPop(fx);
+          return;
+        }
+        if (fx?.type === 'lightning' && fx?.skillId === 'thunder_gum') {
+          this.drawThunderGum(fx);
+          return;
+        }
+        if (fx?.type === 'auraPulse' && fx?.skillId === 'mogu_field') {
+          this.drawMoguFieldPulse(fx);
+          return;
+        }
         if (fx?.type === 'bossTelegraph') {
           const rawTargetX = Number(fx.tx);
           const rawTargetY = Number(fx.ty);
@@ -2041,11 +2366,12 @@
         this.effectGraphics.strokeCircle(x, y, radius * (1.08 - life * 0.18));
       }
 
-      drawStar(graphics, x, y, outer, inner, color, alpha) {
+      drawStar(graphics, x, y, outer, inner, color, alpha, points = 5, rotation = -Math.PI / 2) {
+        const pointCount = Math.max(3, Math.min(12, Math.floor(Number(points) || 5)));
         graphics.fillStyle(color, alpha);
         graphics.beginPath();
-        for (let point = 0; point < 10; point++) {
-          const angle = -Math.PI / 2 + point * Math.PI / 5;
+        for (let point = 0; point < pointCount * 2; point++) {
+          const angle = rotation + point * Math.PI / pointCount;
           const radius = point % 2 ? inner : outer;
           const px = x + Math.cos(angle) * radius;
           const py = y + Math.sin(angle) * radius;

@@ -55,7 +55,8 @@ test('runner contract covers both mobile viewports and every approved screen', a
   );
   assert.deepStrictEqual(runner.SCREEN_IDS, [
     'home', 'dex', 'logs', 'equipment', 'gacha', 'outing',
-    'battle-hud', 'skill-choice', 'artifact-choice', 'pause', 'result'
+    'battle-hud', 'battle-vfx-lv1', 'battle-vfx-lv3', 'battle-vfx-lv5', 'battle-vfx-lv5-reduced', 'battle-vfx-lv5-low',
+    'skill-choice', 'artifact-choice', 'pause', 'result'
   ]);
   assert.deepStrictEqual(runner.VISUAL_SCROLL_ROOTS, {
     home: [],
@@ -65,6 +66,11 @@ test('runner contract covers both mobile viewports and every approved screen', a
     gacha: ['#overlayBody'],
     outing: ['#overlayBody'],
     'battle-hud': [],
+    'battle-vfx-lv1': [],
+    'battle-vfx-lv3': [],
+    'battle-vfx-lv5': [],
+    'battle-vfx-lv5-reduced': [],
+    'battle-vfx-lv5-low': [],
     'skill-choice': ['#levelOwnedSkills', '#skillChoices'],
     'artifact-choice': ['#artifactOwnedSkills', '#artifactChoices'],
     pause: ['#pauseModal .pause-power-panels'],
@@ -72,10 +78,16 @@ test('runner contract covers both mobile viewports and every approved screen', a
   });
   assert.deepStrictEqual(runner.GLOBAL_VISUAL_SCROLL_ROOTS, ['html', 'body', '#app', '#overlay']);
   assert.deepStrictEqual(runner.VIEWPORT_SURFACE_SCREENS, [
-    'home', 'dex', 'logs', 'equipment', 'gacha', 'outing', 'battle-hud', 'result'
+    'home', 'dex', 'logs', 'equipment', 'gacha', 'outing',
+    'battle-hud', 'battle-vfx-lv1', 'battle-vfx-lv3', 'battle-vfx-lv5', 'battle-vfx-lv5-reduced', 'battle-vfx-lv5-low', 'result'
   ]);
   assert.deepStrictEqual(runner.TRANSIENT_ABSENCE, {
-    'battle-hud': ['#game.active > .big-cue', '#game.active > .wave-toast']
+    'battle-hud': ['#game.active > .big-cue', '#game.active > .wave-toast'],
+    'battle-vfx-lv1': ['#game.active > .big-cue', '#game.active > .wave-toast'],
+    'battle-vfx-lv3': ['#game.active > .big-cue', '#game.active > .wave-toast'],
+    'battle-vfx-lv5': ['#game.active > .big-cue', '#game.active > .wave-toast'],
+    'battle-vfx-lv5-reduced': ['#game.active > .big-cue', '#game.active > .wave-toast'],
+    'battle-vfx-lv5-low': ['#game.active > .big-cue', '#game.active > .wave-toast']
   });
   assert.deepStrictEqual(runner.BATTLE_CANVAS_PROBE, {
     xRatio: 0.1,
@@ -102,6 +114,12 @@ test('runner contract covers both mobile viewports and every approved screen', a
     'result.passed = result.backingStoreReady',
     'battle renderer canvas backing store is'
   ]) assert.ok(source.includes(contract), `runner must preserve ${contract}`);
+  for (const fixture of [
+    "['poison_seed', 'spark_pop', 'thunder_gum', 'mogu_field']",
+    "prepareSkillVfx(page, 1)", "prepareSkillVfx(page, 3)", "prepareSkillVfx(page, 5)",
+    "{ reducedMotion:true }", "{ quality:'low' }", "page.emulateMedia",
+    "sampleFrameTimings", "averageDeltaMs", "state.mode = 'pause'"
+  ]) assert.ok(source.includes(fixture), `runner must preserve skill VFX evidence fixture ${fixture}`);
   assert.match(source, /fit: \['\[data-dex-tab\]'\]/);
   const probeSource = source.slice(
     source.indexOf('async function verifyBattleCanvas'),

@@ -640,13 +640,26 @@ window.MoguriaGame = (() => {
   function perfQuality(){ return window.MoguriaPerformance?.getQuality?.() || 'high'; }
   function reduceFx(){ return !!(window.MoguriaPerformance?.shouldReduceEffects?.()); }
   function fxLimit(){ return MoguriaConfig.performance.maxFx || 70; }
+  const SKILL_VFX_IDS=new Set(['poison_seed','spark_pop','thunder_gum','mogu_field']);
+  function skillVfxLevel(id){
+    const level=Number(state?.p?.skillLevels?.[id])||0;
+    return level>0?Math.max(1,Math.min(5,Math.floor(level))):0;
+  }
   function pushFx(f){
     if(!state || !state.fx) return;
-    if(reduceFx() && (f.type==='boom' || f.type==='waveClear' || f.type==='eatGlow') && Math.random()<.28) return;
+    if(reduceFx() && (f.type==='boom' || f.type==='waveClear' || f.type==='eatGlow')){
+      const drop=Math.random()<.28;
+      if(drop && !f.essential) return;
+    }
     if(!f.id) f.id=`fx_${++fxSerial}`;
     if(!f.createdAt) f.createdAt=state.time||0;
+    if(!Number.isFinite(Number(f.maxLife)) && Number.isFinite(Number(f.life))) f.maxLife=Number(f.life);
     state.fx.push(f);
-    if(state.fx.length>fxLimit()) state.fx.splice(0,state.fx.length-fxLimit());
+    while(state.fx.length>fxLimit()){
+      const decoration=state.fx.findIndex(effect=>!effect?.essential && effect?.type!=='bossTelegraph');
+      const nonTelegraph=state.fx.findIndex(effect=>effect?.type!=='bossTelegraph');
+      state.fx.splice(decoration>=0?decoration:nonTelegraph>=0?nonTelegraph:0,1);
+    }
   }
   function chooseMobEvent(wave){
     if(wave===7 || wave===12) return null;
@@ -977,7 +990,11 @@ window.MoguriaGame = (() => {
           let dmg=b.dmg*(crit?2.1:1);
           if(crit){state.stats.crits++; if(p.critChain) p.crit=Math.min(.7,p.crit+.006);}
           hurtEnemy(e,dmg,crit,b.summon?'summon':'shot');
-          if(Math.random()<p.poisonChance){e.poison=3.5;e.poisonTick=.1;}
+          if(Math.random()<p.poisonChance){
+            e.poison=3.5;e.poisonTick=.1;
+            const skillLevel=skillVfxLevel('poison_seed');
+            if(skillLevel) pushFx({x:e.x,y:e.y,r:Math.max(24,e.r*1.75),life:.64,type:'poisonProc',targetId:e.id,skillId:'poison_seed',skillLevel,maxLife:.64,essential:true});
+          }
           if(p.freezeChance && Math.random()<p.freezeChance){ e.slow=1.35; addFx(e.x,e.y,'slow','#bfefff'); }
           if(b.split && b.splitDepth<1){
             const base=Math.atan2(b.vy,b.vx);
@@ -1250,7 +1267,8 @@ window.MoguriaGame = (() => {
             hurtEnemy(e,p.auraDamage,false,'aura');
           }
         }
-        pushFx({x:p.x,y:p.y,r:p.auraRadius,life:.22,type:'auraPulse'});
+        const skillLevel=skillVfxLevel('mogu_field');
+        pushFx({x:p.x,y:p.y,r:p.auraRadius,life:.26,type:'auraPulse',...(skillLevel?{skillId:'mogu_field',skillLevel,maxLife:.26,essential:true}:{})});
       }
     }
     if(p.meteor){
@@ -1282,7 +1300,8 @@ window.MoguriaGame = (() => {
             .sort((a,b)=>Math.hypot(a.x-last.x,a.y-last.y)-Math.hypot(b.x-last.x,b.y-last.y))[0];
           if(!next) break;
           used.add(next);
-          pushFx({x:last.x,y:last.y,tx:next.x,ty:next.y,life:.22,type:'lightning'});
+          const skillLevel=skillVfxLevel('thunder_gum');
+          pushFx({x:last.x,y:last.y,tx:next.x,ty:next.y,life:.26,type:'lightning',...(skillLevel?{skillId:'thunder_gum',skillLevel,maxLife:.26,essential:true,chainIndex:jump,sourceId:last.id||'player',targetId:next.id}:{})});
           hurtEnemy(next,14+p.baseDamage*.45,false,'lightning');
           last=next;
         }
@@ -1436,12 +1455,17 @@ window.MoguriaGame = (() => {
     recordCollectAllDefeat(e);
     if(p.lifesteal) p.hp=Math.min(p.maxHp,p.hp+p.lifesteal);
     if(e.splitOnDeath && e.kind==='normal'){ for(let i=0;i<2;i++){ const child={...e,id:Date.now()+Math.random(),name:'ちびぷに',maxHp:18,hp:18,r:10,dmg:6,exp:3,speed:58,splitOnDeath:false,behavior:'swarm',x:e.x+(i?18:-18),y:e.y+(Math.random()*16-8),kind:'normal',poison:0,poisonTick:0,slow:0,hitFlash:0}; state.enemies.push(child); } }
-    if(Math.random()<p.killExplodeChance || (p.toxicBurst && e.poison>0)){ explosion(e.x,e.y,p.explosionRadius,p.explosionPower,true); }
+    const sparkTriggered=Math.random()<p.killExplodeChance;
+    if(sparkTriggered || (p.toxicBurst && e.poison>0)){
+      const skillLevel=skillVfxLevel('spark_pop');
+      explosion(e.x,e.y,p.explosionRadius,p.explosionPower,true,sparkTriggered&&skillLevel?{skillId:'spark_pop',skillLevel,chainDepth:0}:null);
+    }
     if(p.poisonCloud && e.poison>0){ for(const o of state.enemies){ if(o!==e && Math.hypot(o.x-e.x,o.y-e.y)<90){o.poison=3;o.poisonTick=.1;} } }
   }
-  function explosion(x,y,r,dmg,chain){
-    state.stats.explosions++; MoguriaAudio?.play('boom'); state.shake=Math.max(state.shake,Math.min(10,r/18)); state.hitStop=Math.max(state.hitStop,.025); pushFx({x,y,r,life:.38,type:'boom'}); sparkleBurst(x,y,Math.min(26,Math.floor(r/5)),'#ffcf80');
-    for(const e of state.enemies){ if(e.hp>0 && Math.hypot(e.x-x,e.y-y)<r){ const was=e.hp; hurtEnemy(e,dmg,false,'explosion'); if(was>0 && e.hp<=0 && chain && state.p.chainExplosion) scheduleAction(.035,()=>explosion(e.x,e.y,r*.82,dmg*.62,false)); } }
+  function explosion(x,y,r,dmg,chain,skillFx=null){
+    const skillMeta=skillFx&&SKILL_VFX_IDS.has(skillFx.skillId)?{skillId:skillFx.skillId,skillLevel:Math.max(1,Math.min(5,Math.floor(Number(skillFx.skillLevel)||1))),chainDepth:Math.max(0,Math.floor(Number(skillFx.chainDepth)||0)),essential:true}:null;
+    state.stats.explosions++; MoguriaAudio?.play('boom'); state.shake=Math.max(state.shake,Math.min(10,r/18)); state.hitStop=Math.max(state.hitStop,.025); pushFx({x,y,r,life:.38,type:'boom',maxLife:.38,...(skillMeta||{})}); sparkleBurst(x,y,Math.min(26,Math.floor(r/5)),'#ffcf80');
+    for(const e of state.enemies){ if(e.hp>0 && Math.hypot(e.x-x,e.y-y)<r){ const was=e.hp; hurtEnemy(e,dmg,false,'explosion'); if(was>0 && e.hp<=0 && chain && state.p.chainExplosion) scheduleAction(.035,()=>explosion(e.x,e.y,r*.82,dmg*.62,false,skillMeta?{...skillMeta,chainDepth:skillMeta.chainDepth+1}:null)); } }
   }
   function addFx(x,y,text,color){ pushFx({x,y,text,color,life:.55,type:'text'}); }
   function updateLevelUpCue(dt){
@@ -1543,6 +1567,7 @@ window.MoguriaGame = (() => {
           const fused = MoguriaSkills.checkFusions?.(state.p) || [];
           state.flash=Math.max(state.flash,.18); sparkleBurst(state.p.x,state.p.y,26,s.rarity==='legendary'?'#ffd15c':s.rarity==='rare'?'#d9b3ff':'#fff0a6');
           pushFx({x:state.p.x,y:state.p.y,r:72,life:.48,type:'eatGlow'});
+          if(SKILL_VFX_IDS.has(s.id)) pushFx({x:state.p.x,y:state.p.y,r:72,life:.62,type:'skillAwaken',skillId:s.id,skillLevel:skillVfxLevel(s.id),maxLife:.62,essential:true});
           pushFx({x:state.p.x,y:state.p.y,r:96,life:.56,type:'waveClear'});
           if(fused.length){ state.flash=Math.max(state.flash,.34); state.shake=Math.max(state.shake,7); bigToast('スキル合体！', fused[0].name); sparkleBurst(state.p.x,state.p.y,58,'#ffe27c'); pushFx({x:state.p.x,y:state.p.y,r:150,life:.9,type:'megaChain'}); }
           document.getElementById('levelModal').classList.add('hidden');

@@ -67,7 +67,7 @@ function recordingGraphics() {
   for (const method of [
     'clear', 'fillStyle', 'fillCircle', 'fillRect', 'fillRoundedRect', 'lineStyle',
     'strokeCircle', 'strokeRect', 'strokeRoundedRect', 'beginPath', 'moveTo',
-    'lineTo', 'closePath', 'fillPath'
+    'lineTo', 'lineBetween', 'closePath', 'fillPath'
   ]) {
     graphics[method] = (...args) => { calls.push([method, ...args]); return graphics; };
   }
@@ -1296,6 +1296,103 @@ test('player status bar follows the compact Mogu presentation', () => {
 
   const background = scene.statusGraphics.calls.find(call => call[0] === 'fillRoundedRect');
   assert.deepEqual(background, ['fillRoundedRect', -22, -28, 64, 7, 3]);
+
+  harness.context.MoguriaBattleV3.stop({ destroy: true, restoreLegacy: true });
+});
+
+test('approved skill VFX profiles preserve level counts and real gameplay boundaries', () => {
+  const harness = createHarness();
+  harness.context.MoguriaBattleV3.boot({ parent: harness.parent });
+  const scene = harness.makeScene();
+
+  assert.equal(scene.skillVfxProfile('poison_seed', 1).spores, 3);
+  assert.equal(scene.skillVfxProfile('poison_seed', 3).spores, 6);
+  assert.equal(scene.skillVfxProfile('poison_seed', 5).spores, 10);
+  assert.equal(scene.skillVfxProfile('spark_pop', 1).fragments, 5);
+  assert.equal(scene.skillVfxProfile('spark_pop', 3).fragments, 8);
+  assert.equal(scene.skillVfxProfile('spark_pop', 5).fragments, 12);
+  assert.equal(scene.skillVfxProfile('thunder_gum', 1).links, 3);
+  assert.equal(scene.skillVfxProfile('thunder_gum', 3).links, 5);
+  assert.equal(scene.skillVfxProfile('thunder_gum', 5).links, 7);
+  assert.deepEqual(Array.from(scene.skillVfxProfile('thunder_gum', 1).widths), [8,4.6,1.9]);
+  assert.deepEqual(Array.from(scene.skillVfxProfile('thunder_gum', 3).widths), [11,5.5,2.3]);
+  assert.deepEqual(Array.from(scene.skillVfxProfile('thunder_gum', 5).widths), [14,6.8,2.7]);
+  assert.equal(scene.skillVfxProfile('mogu_field', 1).lights, 4);
+  assert.equal(scene.skillVfxProfile('mogu_field', 3).lights, 8);
+  assert.equal(scene.skillVfxProfile('mogu_field', 5).lights, 12);
+
+  for (const level of [1, 3, 5]) {
+    scene.effectGraphics = recordingGraphics();
+    scene.drawSparkPop({ id:`spark-${level}`, type:'boom', skillId:'spark_pop', skillLevel:level, x:10, y:20, r:54, life:.28, maxLife:.38 });
+    assert.ok(scene.effectGraphics.calls.some(call => call[0] === 'strokeCircle' && call[1] === 10 && call[2] === 20 && call[3] === 54), `Lv.${level} spark boundary must equal the real radius`);
+  }
+
+  scene.effectGraphics = recordingGraphics();
+  scene.drawThunderGum({ id:'thunder-5', type:'lightning', skillId:'thunder_gum', skillLevel:5, chainIndex:3, x:4, y:9, tx:120, ty:35, life:.2, maxLife:.26 });
+  const widths = scene.effectGraphics.calls.filter(call => call[0] === 'lineStyle').map(call => call[1]);
+  assert.ok(widths.includes(14));
+  assert.ok(widths.includes(6.8));
+  assert.ok(widths.includes(2.7));
+  assert.ok(scene.effectGraphics.calls.some(call => call[0] === 'lineBetween' && call[3] === 120 && call[4] === 35), 'the layered bolt must terminate at the real target');
+
+  scene.skillUnderlayGraphics = recordingGraphics();
+  scene.statusGraphics = recordingGraphics();
+  assert.equal(scene.drawMoguField({ x:6, y:8, auraRadius:68, skillLevels:{ mogu_field:5 } }), true);
+  assert.ok(scene.statusGraphics.calls.some(call => call[0] === 'strokeCircle' && call[1] === 6 && call[2] === 8 && call[3] === 68), 'field boundary must equal the real aura radius');
+
+  harness.context.MoguriaBattleV3.stop({ destroy: true, restoreLegacy: true });
+});
+
+test('level growth adds filled skill structure instead of thin line-only art', () => {
+  const harness = createHarness();
+  harness.context.MoguriaBattleV3.boot({ parent: harness.parent });
+  const scene = harness.makeScene();
+  const callCount = (method, fx) => {
+    scene.effectGraphics = recordingGraphics();
+    scene[method](fx);
+    return scene.effectGraphics.calls.filter(call => call[0] === 'fillCircle' || call[0] === 'fillPath' || call[0] === 'fillRoundedRect').length;
+  };
+  const poison = level => callCount('drawPoisonProc', { id:`poison-${level}`, type:'poisonProc', skillId:'poison_seed', skillLevel:level, x:0, y:0, r:28, life:.48, maxLife:.64 });
+  const spark = level => callCount('drawSparkPop', { id:`spark-${level}`, type:'boom', skillId:'spark_pop', skillLevel:level, x:0, y:0, r:54, life:.28, maxLife:.38 });
+  assert.ok(poison(3) > poison(1));
+  assert.ok(poison(5) > poison(3));
+  assert.ok(spark(3) > spark(1));
+  assert.ok(spark(5) > spark(3));
+
+  harness.context.MoguriaBattleV3.stop({ destroy: true, restoreLegacy: true });
+});
+
+test('reduced motion and low quality retain essential skill FX, reserve their budget, and draw boss danger last', () => {
+  const harness = createHarness({ reducedMotion:true, quality:'low' });
+  harness.context.MoguriaBattleV3.boot({ parent: harness.parent });
+  const scene = harness.makeScene();
+  scene.projectileGraphics = recordingGraphics();
+  scene.dropGraphics = recordingGraphics();
+  scene.skillUnderlayGraphics = recordingGraphics();
+  scene.effectGraphics = recordingGraphics();
+  scene.statusGraphics = recordingGraphics();
+  scene.drawPlayerStatus = () => {};
+  scene.drawDirectionIndicators = () => {};
+  scene.syncFloatingTexts = () => {};
+  const drawn = [];
+  scene.drawEffect = fx => drawn.push(fx.id);
+  const generic = Array.from({ length:50 }, (_, index) => ({ id:`generic-${index}`, type:'boom', life:.4, maxLife:.4 }));
+  const decorative = Array.from({ length:20 }, (_, index) => ({ id:`decorative-${index}`, type:'waveClear', life:.4, maxLife:.4 }));
+  const essential = [
+    { id:'poison', type:'poisonProc', skillId:'poison_seed', skillLevel:5, essential:true, life:.4, maxLife:.4 },
+    { id:'spark', type:'boom', skillId:'spark_pop', skillLevel:5, essential:true, life:.3, maxLife:.3 },
+    { id:'thunder', type:'lightning', skillId:'thunder_gum', skillLevel:5, essential:true, life:.2, maxLife:.2 },
+    { id:'field', type:'auraPulse', skillId:'mogu_field', skillLevel:5, essential:true, life:.2, maxLife:.2 },
+    { id:'boss', type:'bossTelegraph', pattern:'slam', essential:true, life:.5, maxLife:1 }
+  ];
+  const player = { x:0, y:0, auraRadius:68, skillLevels:{ mogu_field:5 } };
+  scene.drawTransientObjects({ bullets:[], enemyBullets:[], drops:[], mines:[], enemies:[], fx:[...decorative, ...generic, essential[4], ...essential.slice(0, 4)], particles:[] }, player);
+
+  assert.ok(['boss','field','poison','spark','thunder'].every(id => drawn.includes(id)));
+  assert.equal(drawn.length, 30);
+  assert.equal(drawn.at(-1), 'boss');
+  assert.equal(drawn.some(id => id.startsWith('decorative-')), false);
+  assert.equal(scene.statusGraphics.calls.some(call => call[0] === 'lineStyle' && call[2] === 0x9aeeb7), false, 'owned field must replace the old green single line');
 
   harness.context.MoguriaBattleV3.stop({ destroy: true, restoreLegacy: true });
 });
