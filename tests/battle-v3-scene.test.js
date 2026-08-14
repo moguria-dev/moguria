@@ -50,14 +50,16 @@ function recordingGraphics() {
 
 function createHarness(options = {}) {
   let gameConfig = null;
+  let gameInstance = null;
   const imageCalls = [];
   const bodyClasses = new Set();
+  const lifecycleCalls = [];
   const viewportWidth = options.viewportWidth ?? 1440;
   const viewportHeight = options.viewportHeight ?? 900;
   const appWidth = options.appWidth ?? 430;
   const appHeight = options.appHeight ?? 844;
-  const parentWidth = options.parentWidth ?? 0;
-  const parentHeight = options.parentHeight ?? 0;
+  let parentWidth = options.parentWidth ?? 0;
+  let parentHeight = options.parentHeight ?? 0;
   const mediaQuery = {
     matches: Boolean(options.reducedMotion),
     addEventListener() {},
@@ -142,9 +144,32 @@ function createHarness(options = {}) {
   class Game {
     constructor(config) {
       gameConfig = config;
+      gameInstance = this;
       this.config = config;
-      this.scale = { resize() {} };
-      this.loop = { sleep() {}, wake() {} };
+      this.canvas = {
+        width: config.width,
+        height: config.height,
+        clientWidth: config.width,
+        clientHeight: config.height,
+        dataset: {},
+        style: {},
+        setAttribute() { lifecycleCalls.push('canvas.configure'); }
+      };
+      this.scale = {
+        width: config.width,
+        height: config.height,
+        resize: (width, height) => {
+          lifecycleCalls.push(`scale.resize:${width}x${height}`);
+          this.scale.width = width;
+          this.scale.height = height;
+          this.canvas.width = width;
+          this.canvas.height = height;
+        }
+      };
+      this.loop = {
+        sleep() { lifecycleCalls.push('loop.sleep'); },
+        wake() { lifecycleCalls.push('loop.wake'); }
+      };
       this.destroyed = false;
     }
     destroy() { this.destroyed = true; }
@@ -166,7 +191,15 @@ function createHarness(options = {}) {
     app,
     imageCalls,
     bodyClasses,
+    lifecycleCalls,
     get gameConfig() { return gameConfig; },
+    get game() { return gameInstance; },
+    setParentSize(width, height) {
+      parentWidth = width;
+      parentHeight = height;
+      parent.clientWidth = width;
+      parent.clientHeight = height;
+    },
     makeScene() {
       const SceneClass = gameConfig.scene[0];
       const scene = new SceneClass();
@@ -180,6 +213,35 @@ function createHarness(options = {}) {
           return layer;
         }
       };
+      return scene;
+    },
+    completeBoot() {
+      const scene = this.makeScene();
+      scene.scale = gameInstance.scale;
+      scene.cache = { json: { get: () => ({}) } };
+      scene.cameras = {
+        main: {
+          setBackgroundColor() {},
+          setRoundPixels() {},
+          setBounds() {}
+        }
+      };
+      scene.events = { once() {} };
+      scene.scene = {
+        setVisible(value) { lifecycleCalls.push(`scene.visible:${value}`); },
+        resume() { lifecycleCalls.push('scene.resume'); },
+        pause() { lifecycleCalls.push('scene.pause'); }
+      };
+      scene.createFallbackTextures = () => {};
+      scene.registerAnimations = () => {};
+      scene.createBackgrounds = () => {};
+      scene.createDrawLayers = () => {};
+      scene.createActorSprite = () => ({ setDepth() { return this; } });
+      scene.createPlayerRig = () => {};
+      scene.applyQuality = () => {};
+      scene.applyMotionPreference = () => {};
+      scene.flushCameraFx = () => {};
+      scene.create();
       return scene;
     }
   };
@@ -212,6 +274,56 @@ test('visible battle uses the same PC and mobile dimensions as its DOM HUD', () 
     assert.equal(harness.gameConfig.scale.height, dimensions.parentHeight);
     harness.context.MoguriaBattleV3.stop({ destroy: true, restoreLegacy: true });
   }
+});
+
+test('visible start synchronously restores a hidden-preloaded canvas before state sync', async () => {
+  const harness = createHarness({
+    parentWidth: 0,
+    parentHeight: 0,
+    appWidth: 390,
+    appHeight: 844,
+    viewportWidth: 390,
+    viewportHeight: 844
+  });
+  const booted = harness.context.MoguriaBattleV3.boot({ parent: harness.parent });
+  const scene = harness.completeBoot();
+  await booted;
+
+  // Phaser.Scale.RESIZE can observe the display:none preload surface and
+  // collapse only the Canvas backing store while its CSS box stays full-size.
+  harness.game.scale.width = 0;
+  harness.game.scale.height = 0;
+  harness.game.canvas.width = 0;
+  harness.game.canvas.height = 0;
+  harness.setParentSize(390, 844);
+
+  const originalHandleResize = scene.handleResize.bind(scene);
+  scene.handleResize = (width, height) => {
+    harness.lifecycleCalls.push(`scene.handleResize:${width}x${height}`);
+    return originalHandleResize(width, height);
+  };
+  scene.syncState = state => {
+    harness.lifecycleCalls.push(`scene.sync:${state.id}`);
+    return true;
+  };
+  harness.lifecycleCalls.length = 0;
+
+  const started = harness.context.MoguriaBattleV3.start({ id: 'visible-state', p: {} });
+
+  assert.equal(harness.game.canvas.width, 390, 'start must resize before its promise resolves');
+  assert.equal(harness.game.canvas.height, 844, 'start must resize before its promise resolves');
+  assert.deepEqual(harness.lifecycleCalls, [
+    'loop.wake',
+    'scene.visible:true',
+    'scene.resume',
+    'scale.resize:390x844',
+    'scene.handleResize:390x844',
+    'scene.sync:visible-state',
+    'canvas.configure'
+  ]);
+  assert.equal(await started, harness.context.MoguriaBattleV3);
+
+  harness.context.MoguriaBattleV3.stop({ destroy: true, restoreLegacy: true });
 });
 
 test('backgrounds show ordered parallax during an ordinary 120px move', () => {

@@ -97,7 +97,10 @@ test('runner contract covers both mobile viewports and every approved screen', a
     'two consecutive unassisted captures', 'MoguriaBattleV3?.sync?.(state)',
     "window.dispatchEvent(new Event('resize'))", "scale = 'device'",
     "'css-diagnostic'", 'headless: !options.headed',
-    "Mode: ${summary.headed ? 'headed' : 'headless'}"
+    "Mode: ${summary.headed ? 'headed' : 'headless'}",
+    'preProbeRenderer: await battleRendererDiagnostics(page)',
+    'result.passed = result.backingStoreReady',
+    'battle renderer canvas backing store is'
   ]) assert.ok(source.includes(contract), `runner must preserve ${contract}`);
   assert.match(source, /fit: \['\[data-dex-tab\]'\]/);
   const probeSource = source.slice(

@@ -645,14 +645,18 @@ async function verifyBattleCanvas(page, viewport, output) {
   const result = {
     clip,
     passed: false,
+    preProbeRenderer: await battleRendererDiagnostics(page),
     unassisted: []
   };
+  result.backingStoreReady = Number(result.preProbeRenderer.canvas?.width) > 0
+    && Number(result.preProbeRenderer.canvas?.height) > 0;
   for (let attempt = 1; attempt <= BATTLE_CANVAS_PROBE.requiredPasses; attempt += 1) {
     const item = await captureBattleProbe(page, clip, output, viewport, `${attempt}-device`);
     result.unassisted.push({ attempt, ...item });
     if (attempt < BATTLE_CANVAS_PROBE.requiredPasses) await waitForBattleProbeInterval(page);
   }
-  result.passed = result.unassisted.length === BATTLE_CANVAS_PROBE.requiredPasses
+  result.passed = result.backingStoreReady
+    && result.unassisted.length === BATTLE_CANVAS_PROBE.requiredPasses
     && result.unassisted.every((item) => item.passed);
   if (!result.passed) {
     result.cssScaleDiagnostic = await captureBattleProbe(
@@ -768,8 +772,18 @@ async function auditDom(page, contract, viewport, screenId) {
       const canvasRect = battleCanvas.getBoundingClientRect();
       rendererCanvas = {
         game: { x: gameRect.x, y: gameRect.y, width: gameRect.width, height: gameRect.height },
-        canvas: { x: canvasRect.x, y: canvasRect.y, width: canvasRect.width, height: canvasRect.height }
+        canvas: {
+          x: canvasRect.x,
+          y: canvasRect.y,
+          width: canvasRect.width,
+          height: canvasRect.height,
+          backingWidth: battleCanvas.width,
+          backingHeight: battleCanvas.height
+        }
       };
+      if (battleCanvas.width <= 0 || battleCanvas.height <= 0) {
+        failures.push(`battle renderer canvas backing store is ${battleCanvas.width}x${battleCanvas.height}`);
+      }
       const delta = Math.max(
         Math.abs(gameRect.x - canvasRect.x), Math.abs(gameRect.y - canvasRect.y),
         Math.abs(gameRect.width - canvasRect.width), Math.abs(gameRect.height - canvasRect.height)

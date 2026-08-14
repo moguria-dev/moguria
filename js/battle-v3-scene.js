@@ -1911,6 +1911,13 @@
       phaserGame?.loop?.wake?.();
       sceneRef?.scene?.setVisible?.(true);
       sceneRef?.scene?.resume?.();
+      // Phaser may observe the hidden preload host as 0x0 after boot. Restore
+      // the live backing store synchronously before the first visible sync so
+      // WebKit cannot present one blank frame while its resize observer catches
+      // up with the now-visible battle surface.
+      const { width, height } = layoutSize(hostEl?.parentElement);
+      phaserGame?.scale?.resize?.(width, height);
+      sceneRef?.handleResize?.(width, height);
       if (pendingState) sceneRef?.syncState?.(pendingState);
       configureCanvas();
       return global.MoguriaBattleV3;
