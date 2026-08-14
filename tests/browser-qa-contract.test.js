@@ -32,7 +32,8 @@ test('browser QA workflow is isolated, least-privilege, pinned, bounded and uplo
   assert.match(workflow, /browser:\n          - chromium\n          - webkit/);
   assert.match(workflow, /run: npm ci --ignore-scripts/);
   assert.match(workflow, /npx playwright install --with-deps "\$\{\{ matrix\.browser \}\}"/);
-  assert.match(workflow, /npm run qa:browser -- --browser="\$\{\{ matrix\.browser \}\}"/);
+  assert.match(workflow, /if: matrix\.browser == 'chromium'\n        run: npm run qa:browser -- --browser="chromium"/);
+  assert.match(workflow, /if: matrix\.browser == 'webkit'\n        run: xvfb-run -a npm run qa:browser -- --browser="webkit" --headed/);
   assert.match(workflow, /PLAYWRIGHT_BROWSERS_PATH: \$\{\{ github\.workspace \}\}\/\.playwright-browsers/);
   assert.doesNotMatch(workflow, /jobs:[\s\S]*?env:[\s\S]*?runner\.temp/);
   assert.match(workflow, /actions\/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4\.6\.2/);
@@ -76,15 +77,38 @@ test('runner contract covers both mobile viewports and every approved screen', a
   assert.deepStrictEqual(runner.TRANSIENT_ABSENCE, {
     'battle-hud': ['#game.active > .big-cue', '#game.active > .wave-toast']
   });
+  assert.deepStrictEqual(runner.BATTLE_CANVAS_PROBE, {
+    xRatio: 0.1,
+    yRatio: 0.2,
+    widthRatio: 0.8,
+    heightRatio: 0.55,
+    requiredPasses: 2,
+    intervalMs: 250,
+    minStandardDeviation: 8,
+    minColorBuckets: 80
+  });
   const source = read('scripts/run-browser-qa.mjs');
   for (const contract of [
     'ja-JP', 'Asia/Tokyo', 'hasTouch: true', 'isMobile: true',
     'consoleErrors', 'pageErrors', 'requestFailures', 'responseErrors',
     'naturalWidth', 'rootOverflow', '43.5', 'nearBlank', 'qa-summary.json', 'qa-summary.md',
     'visual scroll roots did not return to origin', 'full-viewport surface is displaced',
-    'required content overflows its control'
+    'required content overflows its control', 'webglcontextlost',
+    'two consecutive unassisted captures', 'MoguriaBattleV3?.sync?.(state)',
+    "window.dispatchEvent(new Event('resize'))", "scale = 'device'",
+    "'css-diagnostic'", 'headless: !options.headed',
+    "Mode: ${summary.headed ? 'headed' : 'headless'}"
   ]) assert.ok(source.includes(contract), `runner must preserve ${contract}`);
   assert.match(source, /fit: \['\[data-dex-tab\]'\]/);
+  const probeSource = source.slice(
+    source.indexOf('async function verifyBattleCanvas'),
+    source.indexOf('async function auditDom')
+  );
+  assert.equal((probeSource.match(/result\.passed\s*=/g) || []).length, 1,
+    'diagnostic recovery must never overwrite the unassisted probe verdict');
+  assert.match(probeSource, /result\.unassisted\.every\(\(item\) => item\.passed\)/);
+  assert.ok(probeSource.indexOf("'css-diagnostic'") < probeSource.indexOf('recoverBattleCanvas(page)'),
+    'CSS-scale diagnosis must run before any renderer intervention');
 });
 
 test('browser QA evidence and fixtures cannot enter the production Pages artifact', () => {

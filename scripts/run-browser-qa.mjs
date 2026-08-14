@@ -35,6 +35,16 @@ export const VIEWPORT_SURFACE_SCREENS = Object.freeze([
 export const TRANSIENT_ABSENCE = Object.freeze({
   'battle-hud': Object.freeze(['#game.active > .big-cue', '#game.active > .wave-toast'])
 });
+export const BATTLE_CANVAS_PROBE = Object.freeze({
+  xRatio: 0.1,
+  yRatio: 0.2,
+  widthRatio: 0.8,
+  heightRatio: 0.55,
+  requiredPasses: 2,
+  intervalMs: 250,
+  minStandardDeviation: 8,
+  minColorBuckets: 80
+});
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DEFAULT_OUTPUT = path.join(ROOT, 'browser-qa-output');
@@ -57,10 +67,11 @@ const MIME = Object.freeze({
 });
 
 function parseArgs(argv = process.argv.slice(2)) {
-  const parsed = { browser: 'chromium', output: DEFAULT_OUTPUT };
+  const parsed = { browser: 'chromium', output: DEFAULT_OUTPUT, headed: false };
   for (const argument of argv) {
     if (argument.startsWith('--browser=')) parsed.browser = argument.slice('--browser='.length);
     else if (argument.startsWith('--output=')) parsed.output = path.resolve(ROOT, argument.slice('--output='.length));
+    else if (argument === '--headed') parsed.headed = true;
     else if (argument === '--list') parsed.list = true;
     else throw new Error(`Unknown argument: ${argument}`);
   }
@@ -546,6 +557,115 @@ async function settleVisuals(page, surfaceSelector, scrollRootSelectors = []) {
   return scrollState;
 }
 
+async function battleRendererDiagnostics(page) {
+  return page.evaluate(() => {
+    const canvas = document.querySelector('#moguriaBattleV3CanvasHost canvas[data-moguria-battle-v3="true"]');
+    const phaserGame = [...(window.Phaser?.GAMES || [])].find((game) => game?.canvas === canvas) || null;
+    const gl = phaserGame?.renderer?.gl || null;
+    const renderer = window.MoguriaBattleV3;
+    const stringify = (value) => String(value?.message || value || 'unknown');
+    const rect = canvas?.getBoundingClientRect?.();
+    return {
+      canvas: canvas ? {
+        width: canvas.width,
+        height: canvas.height,
+        clientWidth: canvas.clientWidth,
+        clientHeight: canvas.clientHeight,
+        rect: rect ? { x: rect.x, y: rect.y, width: rect.width, height: rect.height } : null
+      } : null,
+      phaser: {
+        games: window.Phaser?.GAMES?.length || 0,
+        rendererType: phaserGame?.renderer?.type ?? null,
+        drawingBufferWidth: gl?.drawingBufferWidth ?? null,
+        drawingBufferHeight: gl?.drawingBufferHeight ?? null,
+        contextLost: typeof gl?.isContextLost === 'function' ? gl.isContextLost() : null
+      },
+      renderer: {
+        ready: renderer?.isReady?.() === true,
+        loadErrors: (renderer?.getLoadErrors?.() || []).map(stringify),
+        fallbackAssets: (renderer?.getFallbackAssets?.() || []).map(stringify),
+        coreStepError: renderer?.getLastCoreStepError?.()
+          ? stringify(renderer.getLastCoreStepError())
+          : null
+      },
+      contextEvents: [...(window.__moguriaQaCanvasEvents || [])]
+    };
+  });
+}
+
+async function recoverBattleCanvas(page) {
+  const recovery = await page.evaluate(async () => {
+    const state = window.MoguriaGame?.getState?.();
+    let synced = false;
+    let error = null;
+    try {
+      synced = window.MoguriaBattleV3?.sync?.(state) === true;
+      window.dispatchEvent(new Event('resize'));
+    } catch (caught) {
+      error = String(caught?.message || caught);
+    }
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    return { synced, error };
+  });
+  await page.waitForTimeout(BATTLE_CANVAS_PROBE.intervalMs);
+  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  return recovery;
+}
+
+async function waitForBattleProbeInterval(page) {
+  await page.waitForTimeout(BATTLE_CANVAS_PROBE.intervalMs);
+  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+}
+
+async function captureBattleProbe(page, clip, output, viewport, label, scale = 'device') {
+  const fileName = `${viewport.id}--battle-hud--canvas-probe-${label}.png`;
+  const filePath = path.join(output, 'screenshots', fileName);
+  const screenshot = await page.screenshot({ path: filePath, clip, scale, animations: 'disabled' });
+  const visual = pngVisualStats(screenshot);
+  return {
+    screenshot: path.posix.join('screenshots', fileName),
+    scale,
+    passed: !visual.nearBlank
+      && visual.standardDeviation >= BATTLE_CANVAS_PROBE.minStandardDeviation
+      && visual.colorBuckets >= BATTLE_CANVAS_PROBE.minColorBuckets,
+    visual,
+    renderer: await battleRendererDiagnostics(page)
+  };
+}
+
+async function verifyBattleCanvas(page, viewport, output) {
+  const x = Math.floor(viewport.width * BATTLE_CANVAS_PROBE.xRatio);
+  const y = Math.floor(viewport.height * BATTLE_CANVAS_PROBE.yRatio);
+  const clip = {
+    x,
+    y,
+    width: Math.max(1, Math.floor(viewport.width * BATTLE_CANVAS_PROBE.widthRatio)),
+    height: Math.max(1, Math.floor(viewport.height * BATTLE_CANVAS_PROBE.heightRatio))
+  };
+  const result = {
+    clip,
+    passed: false,
+    unassisted: []
+  };
+  for (let attempt = 1; attempt <= BATTLE_CANVAS_PROBE.requiredPasses; attempt += 1) {
+    const item = await captureBattleProbe(page, clip, output, viewport, `${attempt}-device`);
+    result.unassisted.push({ attempt, ...item });
+    if (attempt < BATTLE_CANVAS_PROBE.requiredPasses) await waitForBattleProbeInterval(page);
+  }
+  result.passed = result.unassisted.length === BATTLE_CANVAS_PROBE.requiredPasses
+    && result.unassisted.every((item) => item.passed);
+  if (!result.passed) {
+    result.cssScaleDiagnostic = await captureBattleProbe(
+      page, clip, output, viewport, 'css-diagnostic', 'css'
+    );
+    result.recovery = await recoverBattleCanvas(page);
+    result.recoveryProbe = await captureBattleProbe(
+      page, clip, output, viewport, '3-recovery-device'
+    );
+  }
+  return result;
+}
+
 async function auditDom(page, contract, viewport, screenId) {
   return page.evaluate(({ surfaceSelector, touchSelectors, contentFitSelectors, width, height, viewportSurfaceExpected }) => {
     const visible = (element) => {
@@ -707,6 +827,20 @@ async function runScreen(browser, baseUrl, browserName, viewport, screenId, outp
     } : {})
   });
   await context.addInitScript((seed) => {
+    window.__moguriaQaCanvasEvents = [];
+    const recordCanvasEvent = (event) => {
+      const canvas = event.target;
+      window.__moguriaQaCanvasEvents.push({
+        type: event.type,
+        at: Number(performance.now().toFixed(1)),
+        width: Number(canvas?.width || 0),
+        height: Number(canvas?.height || 0),
+        statusMessage: String(event.statusMessage || '')
+      });
+    };
+    document.addEventListener('webglcontextlost', recordCanvasEvent, true);
+    document.addEventListener('webglcontextrestored', recordCanvasEvent, true);
+    document.addEventListener('webglcontextcreationerror', recordCanvasEvent, true);
     let value = seed >>> 0;
     Math.random = () => {
       value += 0x6D2B79F5;
@@ -738,6 +872,13 @@ async function runScreen(browser, baseUrl, browserName, viewport, screenId, outp
     await waitForTransientAbsence(page, TRANSIENT_ABSENCE[screenId]);
     record.scrollRoots = await settleVisuals(page, contract.surface, VISUAL_SCROLL_ROOTS[screenId]);
     record.dom = await auditDom(page, contract, viewport, screenId);
+    if (screenId === 'battle-hud') {
+      record.canvasProbe = await verifyBattleCanvas(page, viewport, output);
+      if (!record.canvasProbe.passed) {
+        throw new Error('battle canvas probe did not pass two consecutive unassisted captures: '
+          + JSON.stringify(record.canvasProbe));
+      }
+    }
     const screenshot = await page.screenshot({ path: screenshotPath, fullPage: false, animations: 'disabled' });
     record.visual = pngVisualStats(screenshot);
     if (['logs', 'equipment', 'gacha', 'outing'].includes(screenId)) {
@@ -773,6 +914,7 @@ function summaryMarkdown(summary) {
     '# Moguria browser visual QA',
     '',
     `- Browser: ${summary.browser}`,
+    `- Mode: ${summary.headed ? 'headed' : 'headless'}`,
     `- Playwright: ${summary.playwrightVersion}`,
     `- Seed: ${summary.seed}`,
     `- Result: ${summary.passed ? 'PASS' : 'FAIL'}`,
@@ -800,7 +942,13 @@ function summaryMarkdown(summary) {
 async function main() {
   const options = parseArgs();
   if (options.list) {
-    console.log(JSON.stringify({ playwright: PLAYWRIGHT_VERSION, browsers: ['chromium', 'webkit'], viewports: VIEWPORTS, screens: SCREEN_IDS }, null, 2));
+    console.log(JSON.stringify({
+      playwright: PLAYWRIGHT_VERSION,
+      browsers: ['chromium', 'webkit'],
+      headed: options.headed,
+      viewports: VIEWPORTS,
+      screens: SCREEN_IDS
+    }, null, 2));
     return;
   }
   fs.rmSync(options.output, { recursive: true, force: true });
@@ -816,7 +964,7 @@ async function main() {
   const startedAt = new Date().toISOString();
   try {
     ({ server, baseUrl: options.baseUrl } = await startStaticServer());
-    browser = await browserType.launch({ headless: true });
+    browser = await browserType.launch({ headless: !options.headed });
     const records = [];
     for (const viewport of VIEWPORTS) {
       for (const screenId of SCREEN_IDS) {
@@ -831,6 +979,8 @@ async function main() {
       generatedAt: new Date().toISOString(),
       startedAt,
       browser: options.browser,
+      headed: options.headed,
+      headless: !options.headed,
       playwrightVersion: PLAYWRIGHT_VERSION,
       seed: FIXED_SEED,
       locale: 'ja-JP',
