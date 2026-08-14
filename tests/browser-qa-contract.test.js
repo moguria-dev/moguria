@@ -54,17 +54,19 @@ test('runner contract covers both mobile viewports and every approved screen', a
     [[390, 844, 3], [375, 667, 2]]
   );
   assert.deepStrictEqual(runner.SCREEN_IDS, [
-    'home', 'dex', 'logs', 'equipment', 'gacha', 'outing',
+    'startup-loading', 'home', 'dex', 'logs', 'equipment', 'gacha', 'outing', 'adventure-loading',
     'battle-hud', 'battle-vfx-lv1', 'battle-vfx-lv3', 'battle-vfx-lv5', 'battle-vfx-lv5-reduced', 'battle-vfx-lv5-low',
     'skill-choice', 'artifact-choice', 'pause', 'result'
   ]);
   assert.deepStrictEqual(runner.VISUAL_SCROLL_ROOTS, {
+    'startup-loading': [],
     home: [],
     dex: ['#overlayBody'],
     logs: ['#overlayBody'],
     equipment: ['#overlayBody'],
     gacha: ['#overlayBody'],
     outing: ['#overlayBody'],
+    'adventure-loading': [],
     'battle-hud': [],
     'battle-vfx-lv1': [],
     'battle-vfx-lv3': [],
@@ -78,7 +80,7 @@ test('runner contract covers both mobile viewports and every approved screen', a
   });
   assert.deepStrictEqual(runner.GLOBAL_VISUAL_SCROLL_ROOTS, ['html', 'body', '#app', '#overlay']);
   assert.deepStrictEqual(runner.VIEWPORT_SURFACE_SCREENS, [
-    'home', 'dex', 'logs', 'equipment', 'gacha', 'outing',
+    'startup-loading', 'home', 'dex', 'logs', 'equipment', 'gacha', 'outing', 'adventure-loading',
     'battle-hud', 'battle-vfx-lv1', 'battle-vfx-lv3', 'battle-vfx-lv5', 'battle-vfx-lv5-reduced', 'battle-vfx-lv5-low', 'result'
   ]);
   assert.deepStrictEqual(runner.TRANSIENT_ABSENCE, {
@@ -112,7 +114,32 @@ test('runner contract covers both mobile viewports and every approved screen', a
     "Mode: ${summary.headed ? 'headed' : 'headless'}",
     'preProbeRenderer: await battleRendererDiagnostics(page)',
     'result.passed = result.backingStoreReady',
-    'battle renderer canvas backing store is'
+    'battle renderer canvas backing store is',
+    "prepareLoadingFixture(page, 'startup', 50)",
+    "prepareLoadingFixture(page, 'adventure', 47)",
+    '/assets/images/home-v2/expedition_mogu.png',
+    'loading Mogu is not decoded',
+    'loading Mogu is not visible',
+    'loading Mogu decorative semantics differ',
+    'loading bubble copy is missing',
+    'loading phase status is empty',
+    'loading progress semantics differ',
+    'loading live-region semantics differ',
+    'loading normal-motion contract differs',
+    'loading motion keyframes do not change transform',
+    'loading reduced-motion contract differs',
+    "await page.emulateMedia({ reducedMotion:'no-preference' })",
+    "await page.emulateMedia({ reducedMotion:'reduce' })",
+    "item.animationName === 'loadingMoguWait'",
+    "image.style.setProperty('animation-duration', '2.2s', 'important')",
+    'animation.currentTime = 0',
+    'animation.currentTime = 1100',
+    "animationIterationCount !== 'infinite'",
+    'Math.abs(origin[0] - 50) > 1',
+    'Math.abs(origin[1] - 82) > 1',
+    "matchMedia('(prefers-reduced-motion: reduce)').matches",
+    'insideBusyProgress: statusParentProgress',
+    'insideBusyRegion: statusBusyAncestor'
   ]) assert.ok(source.includes(contract), `runner must preserve ${contract}`);
   for (const fixture of [
     "['poison_seed', 'spark_pop', 'thunder_gum', 'mogu_field']",
@@ -121,6 +148,7 @@ test('runner contract covers both mobile viewports and every approved screen', a
     "sampleFrameTimings", "averageDeltaMs", "state.mode = 'pause'"
   ]) assert.ok(source.includes(fixture), `runner must preserve skill VFX evidence fixture ${fixture}`);
   assert.match(source, /fit: \['\[data-dex-tab\]'\]/);
+  assert.match(source, /'cache-control': 'no-store'/);
   const probeSource = source.slice(
     source.indexOf('async function verifyBattleCanvas'),
     source.indexOf('async function auditDom')

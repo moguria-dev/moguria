@@ -4,12 +4,15 @@
     images: new Map(),
     imageLoads: new Map(),
     audio: new Map(),
+    warmPacks: new Map(),
+    warmedPacks: new Set(),
     bytes: 0,
     ready: false,
     errors: []
   };
 
   const DEFAULT_ASSET_TIMEOUT_MS = 20000;
+  const DEFAULT_WARM_CONCURRENCY = 2;
 
   function safeUrl(path){
     if(!path || typeof path !== 'string') return '';
@@ -34,9 +37,16 @@
     if(state.errors.length > 50) state.errors.splice(0, state.errors.length - 50);
   }
 
-  async function fetchJsonWithTimeout(src, timeoutMs, label){
+  async function fetchJsonWithTimeout(src, timeoutMs, label, externalSignal){
+    if(externalSignal?.aborted) throw new Error(`${label} aborted`);
     const controller = typeof AbortController === 'function' ? new AbortController() : null;
     let timeoutId = null;
+    let rejectAbort = null;
+    const abortFromCaller = () => {
+      controller?.abort?.();
+      rejectAbort?.(new Error(`${label} aborted`));
+    };
+    externalSignal?.addEventListener?.('abort', abortFromCaller, { once:true });
     const request = (async () => {
       const res = await fetch(src, {
         cache:'no-cache',
@@ -53,10 +63,12 @@
         reject(new Error(`${label} timed out after ${timeoutMs}ms`));
       }, timeoutMs);
     });
+    const callerAbort = new Promise((_, reject) => { rejectAbort = reject; });
     try{
-      return await Promise.race([request, timeout]);
+      return await Promise.race([request, timeout, callerAbort]);
     }finally{
       if(timeoutId != null) clearTimeout(timeoutId);
+      externalSignal?.removeEventListener?.('abort', abortFromCaller);
     }
   }
 
@@ -64,12 +76,12 @@
     if(state.manifest && !options.force) return state.manifest;
     const timeoutMs = Math.max(1, Number(options.timeoutMs) || DEFAULT_ASSET_TIMEOUT_MS);
     try{
-      const manifest = await fetchJsonWithTimeout('assets/manifest.json', timeoutMs, 'manifest');
+      const manifest = await fetchJsonWithTimeout('assets/manifest.json', timeoutMs, 'manifest', options.signal);
       if(!manifest || !Array.isArray(manifest.critical)) throw new Error('invalid manifest');
       state.manifest = manifest;
     }catch(err){
       state.manifest = null;
-      recordError('asset manifest failed: ' + err.message);
+      if(!options.signal?.aborted) recordError('asset manifest failed: ' + err.message);
       throw err;
     }
     return state.manifest;
@@ -233,6 +245,168 @@
       : { ok:true, stats: stats() };
   }
 
+  async function consumeResponseBody(response){
+    const reader = response?.body?.getReader?.();
+    if(reader){
+      try{
+        while(true){
+          const part = await reader.read();
+          if(part?.done) return;
+        }
+      }finally{
+        reader.releaseLock?.();
+      }
+    }
+    // Older Safari does not expose a readable response stream. arrayBuffer()
+    // still forces the complete body into the HTTP cache; the returned bytes
+    // are deliberately discarded and never enter the decoded image registry.
+    if(typeof response?.arrayBuffer === 'function') await response.arrayBuffer();
+  }
+
+  function abortedResult(packId, reason = 'aborted'){
+    return {
+      ok:false,
+      reason,
+      packId,
+      total:0,
+      completed:0,
+      warmed:0,
+      failed:[],
+      aborted:true,
+      stats:stats()
+    };
+  }
+
+  async function runWarmPack(packId, options = {}){
+    if(options.signal?.aborted) return abortedResult(packId);
+
+    let manifest;
+    try{ manifest = state.manifest || await loadManifest(options); }
+    catch(error){
+      return {
+        ...abortedResult(packId, options.signal?.aborted ? 'aborted' : 'manifest-load-failed'),
+        aborted:Boolean(options.signal?.aborted),
+        error
+      };
+    }
+
+    const pack = (manifest.packs || []).find(item => item.id === packId);
+    if(!pack) return { ok:false, reason:'pack not found', packId, stats:stats() };
+
+    const urls = [...new Set((pack.assets || []).map(asset => safeUrl(asset?.src)).filter(Boolean))];
+    const invalid = (pack.assets || []).filter(asset => !safeUrl(asset?.src)).map(asset => String(asset?.id || asset?.src || 'unknown'));
+    const total = urls.length + invalid.length;
+    const failed = invalid.slice();
+    let cursor = 0;
+    let completed = invalid.length;
+    let warmed = 0;
+    let aborted = false;
+    const timeoutMs = Math.max(1, Number(options.timeoutMs) || DEFAULT_ASSET_TIMEOUT_MS);
+    const concurrency = Math.max(1, Math.min(8, Math.floor(Number(options.concurrency) || DEFAULT_WARM_CONCURRENCY)));
+
+    async function warmUrl(src){
+      if(options.signal?.aborted){
+        aborted = true;
+        return;
+      }
+
+      const controller = typeof AbortController === 'function' ? new AbortController() : null;
+      let timeoutId = null;
+      let timedOut = false;
+      let rejectAbort = null;
+      const abortFromCaller = () => {
+        controller?.abort?.();
+        rejectAbort?.(new Error('warm aborted'));
+      };
+      if(controller && options.signal){
+        if(options.signal.aborted) controller.abort();
+        else options.signal.addEventListener?.('abort', abortFromCaller, { once:true });
+      }else if(options.signal){
+        options.signal.addEventListener?.('abort', abortFromCaller, { once:true });
+      }
+
+      try{
+        const request = (async () => {
+          const response = await fetch(src, {
+            cache:'force-cache',
+            mode:'same-origin',
+            priority:'low',
+            ...(controller ? { signal:controller.signal } : {})
+          });
+          if(!response?.ok) throw new Error(`HTTP ${response?.status || 'error'}`);
+          await consumeResponseBody(response);
+        })();
+        const timeout = new Promise((_, reject) => {
+          timeoutId = setTimeout(() => {
+            timedOut = true;
+            controller?.abort?.();
+            reject(new Error('warm timed out'));
+          }, timeoutMs);
+        });
+        const callerAbort = new Promise((_, reject) => { rejectAbort = reject; });
+        await Promise.race([request, timeout, callerAbort]);
+        warmed += 1;
+      }catch(error){
+        if(options.signal?.aborted) aborted = true;
+        else {
+          failed.push(src);
+          recordError(`warm pack ${packId} ${timedOut ? `timed out after ${timeoutMs}ms` : 'failed'}: ${src}`);
+        }
+      }finally{
+        completed += 1;
+        if(timeoutId != null) clearTimeout(timeoutId);
+        options.signal?.removeEventListener?.('abort', abortFromCaller);
+      }
+    }
+
+    async function worker(){
+      while(cursor < urls.length && !aborted){
+        const index = cursor;
+        cursor += 1;
+        await warmUrl(urls[index]);
+      }
+    }
+
+    await Promise.all(Array.from({ length:Math.min(concurrency, Math.max(1, urls.length)) }, () => worker()));
+    if(options.signal?.aborted) aborted = true;
+    const ok = !aborted && failed.length === 0 && completed === total;
+    return {
+      ok,
+      reason:ok ? null : aborted ? 'aborted' : 'warm-failed',
+      packId,
+      total,
+      completed,
+      warmed,
+      failed,
+      aborted,
+      stats:stats()
+    };
+  }
+
+  function warmPack(packId, options = {}){
+    const id = String(packId || '');
+    if(!id) return Promise.resolve({ ok:false, reason:'pack not found', packId:id, stats:stats() });
+    if(!options.force && state.warmedPacks.has(id)){
+      return Promise.resolve({ ok:true, reused:true, packId:id, stats:stats() });
+    }
+    if(state.warmPacks.has(id)) return state.warmPacks.get(id);
+
+    let tracked;
+    const pending = runWarmPack(id, options).then(result => {
+      if(result?.ok) state.warmedPacks.add(id);
+      return result;
+    }, error => {
+      // Speculative warming is never allowed to reject into the foreground.
+      recordError(`warm pack ${id} failed: ${error?.message || error}`);
+      return { ok:false, reason:'warm-failed', packId:id, error, stats:stats() };
+    });
+    tracked = pending.finally(() => {
+      if(state.warmPacks.get(id) === tracked) state.warmPacks.delete(id);
+    });
+    state.warmPacks.set(id, tracked);
+    return tracked;
+  }
+
   function stats(){
     return {
       ready: state.ready,
@@ -243,5 +417,5 @@
     };
   }
 
-  window.MoguriaAssets = { loadManifest, preloadCritical, loadPack, getImage, getAudio, stats };
+  window.MoguriaAssets = { loadManifest, preloadCritical, loadPack, warmPack, getImage, getAudio, stats };
 })();

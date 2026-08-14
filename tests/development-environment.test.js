@@ -76,6 +76,53 @@ test('active production assets have unique lifecycle and provenance catalog reco
   }
 });
 
+test('loading feedback reuses the existing active production expedition Mogu with aligned manifests and UI motion', () => {
+  const state = json('config/project-state.json');
+  const source = json('config/asset-manifest.json');
+  const runtime = json('assets/manifest.json');
+  const animation = json('config/animation-manifest.json');
+  assert.equal(state.versions.assetManifest, '3.3.1-loading');
+  assert.equal(source.runtimeManifest.version, state.versions.assetManifest);
+  assert.equal(runtime.version, state.versions.assetManifest);
+  assert.equal(source.runtimeManifest.critical.length, 16);
+  assert.equal(runtime.critical.length, 16);
+  assert.deepStrictEqual(
+    source.runtimeManifest.critical.find((record) => record.id === 'home_v2_expedition_mogu'),
+    {
+      id: 'home_v2_expedition_mogu',
+      type: 'image',
+      src: 'assets/images/home-v2/expedition_mogu.png'
+    }
+  );
+  assert.deepStrictEqual(runtime.critical, source.runtimeManifest.critical);
+  const canonicalAtlas = source.runtimeManifest.packs.find((pack) => pack.id === 'battle-v3')
+    .assets.find((asset) => asset.id === 'battle_v3_atlas_manifest');
+  const runtimeAtlas = runtime.packs.find((pack) => pack.id === 'battle-v3')
+    .assets.find((asset) => asset.id === 'battle_v3_atlas_manifest');
+  assert.equal(canonicalAtlas.src, 'assets/images/battle-v3/atlas.json?v=20260814-motion-rig2-1');
+  assert.deepStrictEqual(runtimeAtlas, canonicalAtlas, 'warm and foreground atlas requests must share the exact cache URL');
+  const catalog = source.catalog.find((record) => record.logicalId === 'home_v2_expedition_mogu');
+  assert.deepStrictEqual(catalog.usage.screens, ['home', 'startup-loading', 'adventure-loading']);
+  assert.deepStrictEqual(catalog.usage.states, ['expedition', 'waiting']);
+  assert.equal(catalog.lifecycle.status, 'active');
+  assert.equal(catalog.semanticRole, 'home.expedition+loading.waiting');
+  assert.deepStrictEqual(animation.uiAnimations.loadingMoguWait, {
+    assetId: 'home_v2_expedition_mogu',
+    implementation: 'css-keyframes',
+    surfaces: ['startup-loading', 'adventure-loading'],
+    duration: '2.2s',
+    easing: 'cubic-bezier(.45,0,.34,1)',
+    iterationCount: 'infinite',
+    transformOrigin: '50% 82%',
+    reducedMotion: {
+      animation: 'none',
+      preserveProgressFeedback: true
+    }
+  });
+  assert.equal(animation.runtimeVersion, 2, 'loading UI motion must not change the battle projection version');
+  assert.equal(state.versions.animationManifest, 2);
+});
+
 test('root report artifacts ignore rule does not hide nested production artifact art', () => {
   const ignore = fs.readFileSync(path.join(ROOT, '.gitignore'), 'utf8');
   assert.match(ignore, /^\/artifacts\/$/m);

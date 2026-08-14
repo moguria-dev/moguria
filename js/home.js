@@ -38,11 +38,12 @@ window.MoguriaHome = (() => {
   function resetAdventureError(){
     const loading = $('adventureLoading');
     const actions = $('adventureLoadingActions');
-    const hint = loading?.querySelector?.('.system-loading__hint');
+    const progress = $('adventureLoadingProgress');
+    const hint = $('adventureLoadingHint');
     if (loading) {
       delete loading.dataset.state;
-      loading.setAttribute('aria-busy', 'true');
     }
+    progress?.setAttribute?.('aria-busy', 'true');
     if (actions) actions.hidden = true;
     if (hint) hint.textContent = 'そのまま少し待ってね';
   }
@@ -50,13 +51,15 @@ window.MoguriaHome = (() => {
   function showAdventureError(message){
     const loading = $('adventureLoading');
     const actions = $('adventureLoadingActions');
-    const hint = loading?.querySelector?.('.system-loading__hint');
+    const progress = $('adventureLoadingProgress');
+    const hint = $('adventureLoadingHint');
     if (!loading) return;
     loading.dataset.state = 'error';
-    loading.setAttribute('aria-busy', 'false');
+    progress?.setAttribute?.('aria-busy', 'false');
     setText('adventureLoadingTitle', '冒険を始められませんでした');
     setText('adventureLoadingCost', 'おなかは追加で消費されません');
     setText('adventureLoadingStatus', message || '通信と空き容量を確認して、もう一度ためしてね。');
+    window.MoguriaUI?.updateAdventureLoading?.({ stopWaiting:true, busy:false });
     if (hint) hint.textContent = 'この案内は操作するまで消えません';
     if (actions) actions.hidden = false;
     window.requestAnimationFrame?.(() => $('adventureRetryBtn')?.focus?.());
@@ -101,6 +104,28 @@ window.MoguriaHome = (() => {
         : (active === last ? first : last);
       next?.focus?.();
     }, true);
+  }
+
+  function battleLoadingMessage(progress = {}, existingRun = false){
+    switch (progress.phase) {
+      case 'scripts': return '冒険の道具をそろえています…';
+      case 'assets': return 'ダンジョンの景色を読み込んでいます…';
+      case 'renderer': return '星灯りをともしています…';
+      case 'ready': return existingRun ? '続きの冒険を開いています…' : '冒険の入口を整えています…';
+      default: return existingRun
+        ? '続きの戦闘データを読み込んでいます…'
+        : '戦闘データを読み込んでいます…';
+    }
+  }
+
+  function battleLoadingPercent(progress = {}){
+    const percent = Math.max(0, Math.min(100, Number(progress.percent) || 0));
+    return 2 + percent * .84;
+  }
+
+  function nextVisibleFrame(){
+    if (typeof window.requestAnimationFrame !== 'function') return Promise.resolve();
+    return new Promise(resolve => window.requestAnimationFrame(() => resolve()));
   }
 
   function init(){
@@ -171,27 +196,44 @@ window.MoguriaHome = (() => {
     let gameOpened = false;
     let adventureStarted = false;
     let failureMessage = '';
-    window.MoguriaUI?.showAdventureLoading?.({ resume: Boolean(existingRun) });
+    window.MoguriaUI?.showAdventureLoading?.({ resume: Boolean(existingRun), percent:2 });
     resetAdventureError();
 
     try {
-      window.MoguriaUI?.updateAdventureLoading?.(existingRun
-        ? '続きの戦闘データを読み込んでいます…'
-        : '戦闘データを読み込んでいます…');
+      window.MoguriaUI?.updateAdventureLoading?.({
+        message:existingRun
+          ? '続きの戦闘データを読み込んでいます…'
+          : '戦闘データを読み込んでいます…',
+        percent:2
+      });
       const loader = window.MoguriaBattleV3Loader;
       if (loader?.prepare) {
-        const prepared = await loader.prepare();
+        const prepared = await loader.prepare({
+          onProgress(progress = {}) {
+            window.MoguriaUI?.updateAdventureLoading?.({
+              message:battleLoadingMessage(progress, Boolean(existingRun)),
+              percent:battleLoadingPercent(progress)
+            });
+          }
+        });
         if (prepared?.ok === false) {
           failureMessage = '冒険の準備に失敗しました。通信を確認して、もう一度ためしてね。';
           return;
         }
       }
+      window.MoguriaUI?.updateAdventureLoading?.({
+        message:existingRun ? '続きの冒険を確認しています…' : '冒険の道具がそろいました',
+        percent:86
+      });
 
       // startRun consumes belly and creates activeRun in the same save. Passing
       // the stored id resumes an interrupted run without consuming it again.
-      window.MoguriaUI?.updateAdventureLoading?.(existingRun
-        ? '冒険の記録を確認しています…'
-        : '新しい冒険を記録しています…');
+      window.MoguriaUI?.updateAdventureLoading?.({
+        message:existingRun
+          ? '冒険の記録を確認しています…'
+          : '新しい冒険を記録しています…',
+        percent:86
+      });
       const session = window.MoguriaSave.startRun(existingRun
         ? { runId: existingRun.runId }
         : { engine: 'battle-v3' });
@@ -207,11 +249,19 @@ window.MoguriaHome = (() => {
         return;
       }
 
+      window.MoguriaUI?.updateAdventureLoading?.({
+        message:existingRun ? '冒険の記録を確認しました' : '新しい冒険を記録しました',
+        percent:90
+      });
+
       const activeRun = session.activeRun || session.data?.activeRun || existingRun;
       const resume = Boolean(session.reused || existingRun);
       window.MoguriaUI.show('game');
       gameOpened = true;
-      window.MoguriaUI?.updateAdventureLoading?.('ダンジョンの入口を開いています…');
+      window.MoguriaUI?.updateAdventureLoading?.({
+        message:'ダンジョンの入口を開いています…',
+        percent:95
+      });
       const started = await Promise.resolve(window.MoguriaGame.start({ runId: session.runId, activeRun, resume }));
       if (started === false) {
         window.MoguriaUI.show('home');
@@ -219,6 +269,13 @@ window.MoguriaHome = (() => {
         return;
       }
       adventureStarted = true;
+      window.MoguriaUI?.updateAdventureLoading?.({
+        message:'冒険へ出発！',
+        percent:100,
+        busy:false,
+        stopWaiting:true
+      });
+      await nextVisibleFrame();
     } catch (error) {
       console.warn('[MoguriaHome] battle preparation failed', error);
       if (gameOpened) window.MoguriaUI?.show?.('home');

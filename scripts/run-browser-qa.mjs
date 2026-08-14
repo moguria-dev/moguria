@@ -12,17 +12,19 @@ export const VIEWPORTS = Object.freeze([
   Object.freeze({ id: 'iphone-se-375x667', width: 375, height: 667, deviceScaleFactor: 2 })
 ]);
 export const SCREEN_IDS = Object.freeze([
-  'home', 'dex', 'logs', 'equipment', 'gacha', 'outing',
+  'startup-loading', 'home', 'dex', 'logs', 'equipment', 'gacha', 'outing', 'adventure-loading',
   'battle-hud', 'battle-vfx-lv1', 'battle-vfx-lv3', 'battle-vfx-lv5', 'battle-vfx-lv5-reduced', 'battle-vfx-lv5-low',
   'skill-choice', 'artifact-choice', 'pause', 'result'
 ]);
 export const VISUAL_SCROLL_ROOTS = Object.freeze({
+  'startup-loading': Object.freeze([]),
   home: Object.freeze([]),
   dex: Object.freeze(['#overlayBody']),
   logs: Object.freeze(['#overlayBody']),
   equipment: Object.freeze(['#overlayBody']),
   gacha: Object.freeze(['#overlayBody']),
   outing: Object.freeze(['#overlayBody']),
+  'adventure-loading': Object.freeze([]),
   'battle-hud': Object.freeze([]),
   'battle-vfx-lv1': Object.freeze([]),
   'battle-vfx-lv3': Object.freeze([]),
@@ -36,7 +38,7 @@ export const VISUAL_SCROLL_ROOTS = Object.freeze({
 });
 export const GLOBAL_VISUAL_SCROLL_ROOTS = Object.freeze(['html', 'body', '#app', '#overlay']);
 export const VIEWPORT_SURFACE_SCREENS = Object.freeze([
-  'home', 'dex', 'logs', 'equipment', 'gacha', 'outing',
+  'startup-loading', 'home', 'dex', 'logs', 'equipment', 'gacha', 'outing', 'adventure-loading',
   'battle-hud', 'battle-vfx-lv1', 'battle-vfx-lv3', 'battle-vfx-lv5', 'battle-vfx-lv5-reduced', 'battle-vfx-lv5-low', 'result'
 ]);
 export const TRANSIENT_ABSENCE = Object.freeze({
@@ -302,6 +304,255 @@ async function waitForStablePage(page) {
   ` });
 }
 
+async function prepareLoadingFixture(page, kind, percent) {
+  await page.emulateMedia({ reducedMotion:'no-preference' });
+  let fixture;
+  try {
+    fixture = await page.evaluate(async ({ loadingKind, targetPercent }) => {
+    const startup = loadingKind === 'startup';
+    const ids = startup ? {
+      surface: 'startupLoader',
+      image: 'startupLoadingMogu',
+      bubble: 'startupLoadingBubble',
+      progress: 'startupProgressBar',
+      fill: 'startupProgressFill',
+      percent: 'startupProgressPercent',
+      status: 'startupProgressText',
+      hint: null
+    } : {
+      surface: 'adventureLoading',
+      image: 'adventureLoadingMogu',
+      bubble: 'adventureLoadingBubble',
+      progress: 'adventureLoadingProgress',
+      fill: 'adventureLoadingProgressFill',
+      percent: 'adventureLoadingProgressPercent',
+      status: 'adventureLoadingStatus',
+      hint: 'adventureLoadingHint'
+    };
+    if (startup) {
+      const surface = document.getElementById(ids.surface);
+      surface.hidden = false;
+      surface.dataset.state = 'loading';
+      document.body.classList.add('moguria-booting');
+      const progress = document.getElementById(ids.progress);
+      const fill = document.getElementById(ids.fill);
+      const percentText = document.getElementById(ids.percent);
+      const status = document.getElementById(ids.status);
+      progress.setAttribute('aria-busy', 'true');
+      progress.setAttribute('aria-valuemin', '0');
+      progress.setAttribute('aria-valuemax', '100');
+      progress.setAttribute('aria-valuenow', String(targetPercent));
+      progress.setAttribute('aria-valuetext', `${targetPercent}% 完了`);
+      fill.style.width = `${targetPercent}%`;
+      percentText.textContent = `${targetPercent}%`;
+      status.textContent = 'ホームの灯りをともしています';
+    } else {
+      window.MoguriaUI.showAdventureLoading({
+        title: '冒険の準備中',
+        message: '星影洞窟への道を探しています'
+      });
+      window.MoguriaUI.updateAdventureLoading({
+        message: '星影洞窟をひらいています',
+        percent: targetPercent,
+        hint: '少し時間がかかっています。もうちょっと待っててね',
+        busy: true
+      });
+    }
+
+    const surface = document.getElementById(ids.surface);
+    const image = document.getElementById(ids.image);
+    const bubble = document.getElementById(ids.bubble);
+    const progress = document.getElementById(ids.progress);
+    const fill = document.getElementById(ids.fill);
+    const percentText = document.getElementById(ids.percent);
+    const status = document.getElementById(ids.status);
+    const hint = ids.hint ? document.getElementById(ids.hint) : null;
+    if (image && !image.complete) await new Promise((resolve) => {
+      image.addEventListener('load', resolve, { once: true });
+      image.addEventListener('error', resolve, { once: true });
+      setTimeout(resolve, 5000);
+    });
+    if (image?.complete && image.naturalWidth > 0 && typeof image.decode === 'function') {
+      await image.decode().catch(() => {});
+    }
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    const sourcePath = image ? new URL(image.currentSrc || image.src, location.href).pathname : '';
+    const statusParentProgress = Boolean(progress && status && progress.contains(status));
+    const statusBusyAncestor = Boolean(status?.closest?.('[aria-busy="true"]'));
+    const imageStyle = image ? getComputedStyle(image) : null;
+    const fillStyle = fill ? getComputedStyle(fill) : null;
+    const surfaceRect = surface?.getBoundingClientRect();
+    const visible = (element) => {
+      if (!element) return false;
+      const rect = element.getBoundingClientRect();
+      const style = getComputedStyle(element);
+      return rect.width > 0 && rect.height > 0 && style.display !== 'none'
+        && style.visibility !== 'hidden' && Number(style.opacity) !== 0;
+    };
+    let normalMotion = {
+      matches: matchMedia('(prefers-reduced-motion: reduce)').matches,
+      imageAnimationName: imageStyle?.animationName || '',
+      animationDuration: imageStyle?.animationDuration || '',
+      animationIterationCount: imageStyle?.animationIterationCount || '',
+      transformOrigin: imageStyle?.transformOrigin || '',
+      transformOriginPercent: null,
+      animationFound: false,
+      transformAt0: '',
+      transformAt1100: '',
+      error: ''
+    };
+    if (image) {
+      const inlineDuration = image.style.getPropertyValue('animation-duration');
+      const inlineDurationPriority = image.style.getPropertyPriority('animation-duration');
+      try {
+        // waitForStablePage deliberately freezes all animation for screenshots.
+        // Restore only this actor long enough to inspect its production motion
+        // deterministically, then put the page back into reduced motion.
+        image.style.setProperty('animation-duration', '2.2s', 'important');
+        await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        const motionStyle = getComputedStyle(image);
+        const origin = motionStyle.transformOrigin.split(/\s+/).map(Number.parseFloat);
+        normalMotion = {
+          ...normalMotion,
+          matches: matchMedia('(prefers-reduced-motion: reduce)').matches,
+          imageAnimationName: motionStyle.animationName || '',
+          animationDuration: motionStyle.animationDuration || '',
+          animationIterationCount: motionStyle.animationIterationCount || '',
+          transformOrigin: motionStyle.transformOrigin || '',
+          transformOriginPercent: origin.length >= 2 && image.offsetWidth > 0 && image.offsetHeight > 0
+            ? [
+                Number((origin[0] / image.offsetWidth * 100).toFixed(2)),
+                Number((origin[1] / image.offsetHeight * 100).toFixed(2))
+              ]
+            : null
+        };
+        const animation = image.getAnimations?.().find((item) => item.animationName === 'loadingMoguWait')
+          || image.getAnimations?.()[0];
+        if (animation) {
+          await animation.ready.catch(() => {});
+          animation.pause();
+          animation.currentTime = 0;
+          const transformAt0 = getComputedStyle(image).transform;
+          animation.currentTime = 1100;
+          const transformAt1100 = getComputedStyle(image).transform;
+          normalMotion.animationFound = true;
+          normalMotion.transformAt0 = transformAt0;
+          normalMotion.transformAt1100 = transformAt1100;
+          animation.play();
+        }
+      } catch (error) {
+        normalMotion.error = error?.message || String(error);
+      } finally {
+        if (inlineDuration) image.style.setProperty('animation-duration', inlineDuration, inlineDurationPriority);
+        else image.style.removeProperty('animation-duration');
+      }
+    }
+    return {
+      kind: loadingKind,
+      targetPercent,
+      sourcePath,
+      imageDecoded: Boolean(image?.complete && image.naturalWidth > 0 && image.naturalHeight > 0),
+      imageVisible: visible(image),
+      naturalSize: image ? [image.naturalWidth, image.naturalHeight] : null,
+      imageAlt: image?.getAttribute('alt'),
+      imageAriaHidden: image?.getAttribute('aria-hidden'),
+      bubble: bubble?.textContent?.trim() || '',
+      bubbleVisible: visible(bubble),
+      status: status?.textContent?.trim() || '',
+      statusVisible: visible(status),
+      hint: hint?.textContent?.trim() || '',
+      progress: progress ? {
+        visible: visible(progress),
+        role: progress.getAttribute('role'),
+        busy: progress.getAttribute('aria-busy'),
+        min: progress.getAttribute('aria-valuemin'),
+        max: progress.getAttribute('aria-valuemax'),
+        now: progress.getAttribute('aria-valuenow'),
+        valueText: progress.getAttribute('aria-valuetext'),
+        percentText: percentText?.textContent?.trim() || '',
+        fillWidth: fillStyle?.width || '',
+        inlineFillWidth: fill?.style?.width || ''
+      } : null,
+      liveStatus: status ? {
+        role: status.getAttribute('role'),
+        live: status.getAttribute('aria-live'),
+        insideBusyProgress: statusParentProgress,
+        insideBusyRegion: statusBusyAncestor
+      } : null,
+      normalMotion,
+      surface: surfaceRect ? {
+        x: Number(surfaceRect.x.toFixed(1)),
+        y: Number(surfaceRect.y.toFixed(1)),
+        width: Number(surfaceRect.width.toFixed(1)),
+        height: Number(surfaceRect.height.toFixed(1))
+      } : null
+    };
+    }, { loadingKind: kind, targetPercent: percent });
+  } finally {
+    // All visual captures remain still and reproducible after the normal-motion
+    // contract has been sampled.
+    await page.emulateMedia({ reducedMotion:'reduce' });
+  }
+  fixture.reducedMotion = await page.evaluate(async (imageId) => {
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    const image = document.getElementById(imageId);
+    const style = image ? getComputedStyle(image) : null;
+    return {
+      matches: matchMedia('(prefers-reduced-motion: reduce)').matches,
+      imageAnimationName: style?.animationName || ''
+    };
+  }, kind === 'startup' ? 'startupLoadingMogu' : 'adventureLoadingMogu');
+  const failures = [];
+  if (!fixture.sourcePath.endsWith('/assets/images/home-v2/expedition_mogu.png')) {
+    failures.push(`loading Mogu is not the existing active production expedition asset: ${fixture.sourcePath || '(missing)'}`);
+  }
+  if (!fixture.imageDecoded) failures.push(`loading Mogu is not decoded: ${JSON.stringify(fixture.naturalSize)}`);
+  if (!fixture.imageVisible) failures.push('loading Mogu is not visible');
+  if (fixture.imageAlt !== '' || fixture.imageAriaHidden !== 'true') {
+    failures.push(`loading Mogu decorative semantics differ: alt=${fixture.imageAlt} aria-hidden=${fixture.imageAriaHidden}`);
+  }
+  if (!fixture.bubbleVisible || !fixture.bubble.includes('ちょっと待っててね')) failures.push(`loading bubble copy is missing: ${fixture.bubble || '(empty)'}`);
+  if (!fixture.statusVisible || !fixture.status) failures.push('loading phase status is empty');
+  if (!fixture.progress?.visible
+    || fixture.progress.role !== 'progressbar'
+    || fixture.progress.busy !== 'true'
+    || fixture.progress.min !== '0'
+    || fixture.progress.max !== '100'
+    || fixture.progress.now !== String(percent)
+    || !fixture.progress.valueText?.includes(`${percent}%`)
+    || fixture.progress.percentText !== `${percent}%`
+    || fixture.progress.inlineFillWidth !== `${percent}%`) {
+    failures.push(`loading progress semantics differ: ${JSON.stringify(fixture.progress)}`);
+  }
+  if (fixture.liveStatus?.role !== 'status'
+    || fixture.liveStatus.live !== 'polite'
+    || fixture.liveStatus.insideBusyProgress
+    || fixture.liveStatus.insideBusyRegion) {
+    failures.push(`loading live-region semantics differ: ${JSON.stringify(fixture.liveStatus)}`);
+  }
+  const origin = fixture.normalMotion?.transformOriginPercent;
+  if (fixture.normalMotion?.matches !== false
+    || fixture.normalMotion?.imageAnimationName !== 'loadingMoguWait'
+    || fixture.normalMotion?.animationDuration !== '2.2s'
+    || fixture.normalMotion?.animationIterationCount !== 'infinite'
+    || !Array.isArray(origin)
+    || Math.abs(origin[0] - 50) > 1
+    || Math.abs(origin[1] - 82) > 1) {
+    failures.push(`loading normal-motion contract differs: ${JSON.stringify(fixture.normalMotion)}`);
+  }
+  if (!fixture.normalMotion?.animationFound
+    || !fixture.normalMotion?.transformAt0
+    || !fixture.normalMotion?.transformAt1100
+    || fixture.normalMotion.transformAt0 === fixture.normalMotion.transformAt1100) {
+    failures.push(`loading motion keyframes do not change transform: ${JSON.stringify(fixture.normalMotion)}`);
+  }
+  if (!fixture.reducedMotion.matches || fixture.reducedMotion.imageAnimationName !== 'none') {
+    failures.push(`loading reduced-motion contract differs: ${JSON.stringify(fixture.reducedMotion)}`);
+  }
+  if (failures.length) throw new Error(failures.join(' | '));
+  return fixture;
+}
+
 async function prepareBattle(page, kind) {
   const health = await page.evaluate(async (mode) => {
     const now = Date.now();
@@ -508,6 +759,11 @@ async function prepareSkillVfx(page, level, { reducedMotion = false, quality = '
 }
 
 const SCREEN_CONTRACTS = Object.freeze({
+  'startup-loading': {
+    surface: '#startupLoader:not([hidden])',
+    touch: [],
+    setup: async (page) => prepareLoadingFixture(page, 'startup', 50)
+  },
   home: {
     surface: '#home.active',
     touch: ['#startBtn', '#snackBtn', '#dexBtn', '#logsBtn', '#equipBtn', '#gachaBtn', '#outingBtn'],
@@ -558,6 +814,11 @@ const SCREEN_CONTRACTS = Object.freeze({
       await page.click('#outingBtn');
       await page.locator('#overlay[data-view="outing"]:not(.hidden)').waitFor({ state: 'visible' });
     }
+  },
+  'adventure-loading': {
+    surface: '#adventureLoading:not(.hidden)',
+    touch: [],
+    setup: async (page) => prepareLoadingFixture(page, 'adventure', 47)
   },
   'battle-hud': {
     surface: '#game.active',

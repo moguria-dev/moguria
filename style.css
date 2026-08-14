@@ -1,7 +1,7 @@
 :root{--bg:#f6e7c8;--ink:#46372b;--muted:#7f6b58;--card:rgba(255,250,235,.78);--accent:#e7836c;--accent2:#91b99a;--dark:#26293a;--line:rgba(70,55,43,.14)}
 
-/* The startup surface is deliberately image-free so it can render while the
-   real Home artwork is still downloading and decoding. */
+/* The loading Mogu is a critical Home asset, so it can appear immediately on
+   both startup and adventure transitions without introducing another fetch. */
 [hidden]{display:none!important}
 body.moguria-booting #app{visibility:hidden!important;pointer-events:none!important}
 .startup-loader{
@@ -42,23 +42,83 @@ body.moguria-booting #app{visibility:hidden!important;pointer-events:none!import
   background:linear-gradient(180deg,rgba(32,29,67,.94),rgba(14,14,39,.94));
   box-shadow:inset 0 0 0 1px rgba(255,255,255,.05),0 24px 70px rgba(2,2,14,.48),0 0 34px rgba(132,95,224,.13);
 }
-.startup-loader__star{
-  display:grid;
-  place-items:center;
-  width:62px;
-  height:62px;
-  margin:0 auto 13px;
-  border:1px solid rgba(255,231,164,.45);
+.loading-mogu{
+  position:relative;
+  width:148px;
+  height:136px;
+  margin:0 auto 8px;
+}
+.loading-mogu__image{
+  position:absolute;
+  z-index:2;
+  top:2px;
+  left:50%;
+  display:block;
+  width:118px;
+  height:118px;
+  object-fit:contain;
+  transform:translateX(-50%);
+  transform-origin:50% 82%;
+  filter:drop-shadow(0 8px 12px rgba(4,3,20,.34));
+  animation:loadingMoguWait 2.2s cubic-bezier(.45,0,.34,1) infinite;
+}
+.loading-mogu__shadow{
+  position:absolute;
+  z-index:1;
+  left:50%;
+  bottom:8px;
+  width:82px;
+  height:15px;
   border-radius:50%;
+  background:rgba(3,3,19,.48);
+  filter:blur(5px);
+  transform:translateX(-50%);
+  animation:loadingMoguShadow 2.2s cubic-bezier(.45,0,.34,1) infinite;
+}
+.loading-mogu__sparkles::before,
+.loading-mogu__sparkles::after{
+  content:"✦";
+  position:absolute;
+  z-index:3;
   color:#fff0ad;
-  font-size:33px;
   line-height:1;
-  background:radial-gradient(circle,rgba(255,224,136,.24),rgba(167,123,255,.13) 48%,rgba(14,14,39,0) 72%);
-  text-shadow:0 0 15px rgba(255,228,145,.76);
-  animation:startupStarPulse 2.2s ease-in-out infinite;
+  text-shadow:0 0 12px rgba(255,225,139,.88);
+  animation:loadingMoguSparkle 1.8s ease-in-out infinite;
+}
+.loading-mogu__sparkles::before{left:7px;top:36px;font-size:18px}
+.loading-mogu__sparkles::after{right:6px;bottom:24px;font-size:12px;animation-delay:-.9s}
+.loading-mogu__bubble{
+  position:absolute;
+  z-index:4;
+  top:0;
+  right:-28px;
+  max-width:140px;
+  padding:8px 11px;
+  border:1px solid rgba(255,230,168,.55);
+  border-radius:15px 15px 15px 5px;
+  color:#4a3455;
+  background:linear-gradient(180deg,#fff9e5,#f3dfb7);
+  box-shadow:0 5px 15px rgba(3,3,19,.3),inset 0 1px rgba(255,255,255,.8);
+  font-size:12px;
+  font-weight:900;
+  line-height:1.4;
+  letter-spacing:.02em;
+  white-space:nowrap;
+}
+.loading-mogu__bubble::after{
+  content:"";
+  position:absolute;
+  left:9px;
+  bottom:-6px;
+  width:10px;
+  height:10px;
+  border-right:1px solid rgba(255,230,168,.55);
+  border-bottom:1px solid rgba(255,230,168,.55);
+  background:#f3dfb7;
+  transform:skewY(32deg) rotate(35deg);
 }
 .startup-loader__eyebrow{margin:0;color:#d8c4ff;font-size:10px;font-weight:900;letter-spacing:.22em}
-.startup-loader h1{margin:6px 0 22px;color:#fff3d5;font-family:Georgia,"Times New Roman",serif;font-size:25px;line-height:1.2;letter-spacing:.04em;text-shadow:0 2px 8px rgba(0,0,0,.5)}
+.startup-loader h1{margin:6px 0 17px;color:#fff3d5;font-family:Georgia,"Times New Roman",serif;font-size:25px;line-height:1.2;letter-spacing:.04em;text-shadow:0 2px 8px rgba(0,0,0,.5)}
 .startup-loader__progress{
   position:relative;
   width:100%;
@@ -78,9 +138,11 @@ body.moguria-booting #app{visibility:hidden!important;pointer-events:none!import
   box-shadow:0 0 12px rgba(204,191,255,.62);
   transition:width .18s ease-out;
 }
-.startup-loader__status{min-height:20px;margin:11px 0 0;color:#e8dccc;font-size:12px;font-weight:750;line-height:1.55}
+.startup-loader__percent{display:block;margin:8px 0 0;color:#ffe5a6;font-size:15px;line-height:1;font-variant-numeric:tabular-nums}
+.startup-loader__status{min-height:20px;margin:7px 0 0;color:#e8dccc;font-size:12px;font-weight:750;line-height:1.55}
 .startup-loader__retry{
   min-width:154px;
+  min-height:48px;
   margin:15px auto 0;
   padding:11px 18px;
   border:1px solid rgba(255,235,184,.72);
@@ -88,15 +150,32 @@ body.moguria-booting #app{visibility:hidden!important;pointer-events:none!import
   color:#382747;
   background:linear-gradient(180deg,#fff1bb,#ddb064);
   box-shadow:0 5px 0 rgba(70,43,53,.45),0 0 18px rgba(255,216,126,.2);
-  font-size:13px;
+  font-size:14px;
   font-weight:900;
 }
 .startup-loader__retry:focus-visible{outline:2px solid #fff4bd;outline-offset:3px}
-.startup-loader[data-state="error"] .startup-loader__star{color:#ffd2bb;text-shadow:0 0 14px rgba(255,153,125,.52);animation:none}
+.startup-loader[data-state="error"] .loading-mogu__image{filter:saturate(.72) drop-shadow(0 8px 12px rgba(4,3,20,.34));animation:none}
+.startup-loader[data-state="error"] .loading-mogu__shadow,
+.startup-loader[data-state="error"] .loading-mogu__sparkles::before,
+.startup-loader[data-state="error"] .loading-mogu__sparkles::after{animation:none}
 .startup-loader[data-state="error"] .startup-loader__status{color:#ffd9c7}
-@keyframes startupStarPulse{0%,100%{transform:translateY(0) scale(.96);opacity:.78}50%{transform:translateY(-3px) scale(1.05);opacity:1}}
+@keyframes loadingMoguWait{
+  0%,100%{transform:translateX(-50%) translateY(1px) rotate(-1deg) scale(1)}
+  50%{transform:translateX(-50%) translateY(-6px) rotate(1.4deg) scale(1.018)}
+}
+@keyframes loadingMoguShadow{
+  0%,100%{opacity:.62;transform:translateX(-50%) scaleX(1)}
+  50%{opacity:.38;transform:translateX(-50%) scaleX(.82)}
+}
+@keyframes loadingMoguSparkle{
+  0%,100%{opacity:.34;transform:translateY(2px) scale(.72) rotate(-8deg)}
+  50%{opacity:1;transform:translateY(-2px) scale(1.08) rotate(5deg)}
+}
 @media (prefers-reduced-motion:reduce){
-  .startup-loader__star{animation:none}
+  .loading-mogu__image,
+  .loading-mogu__shadow,
+  .loading-mogu__sparkles::before,
+  .loading-mogu__sparkles::after{animation:none}
   .startup-loader__progress i{transition:none}
 }
 

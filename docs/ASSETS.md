@@ -22,7 +22,9 @@ Do not store the full inventory in `project-state`; it should point to manifests
 - `lazy`: optional files that can load after first interaction.
 - `packs`: coherent groups loaded before a screen, stage, battle renderer, event, or audio set is used.
 
-At the audited baseline, Home uses 15 critical image assets and battle is the `battle-v3` pack. Assets used only after opening a secondary screen stay out of `critical`, even when they remain in the shared image registry. Battle assets do not belong in `critical` merely because they are visually important.
+At the loading-feedback baseline, Home uses 16 critical image assets and battle is the `battle-v3` pack. The sixteenth critical item is the existing active production asset `home_v2_expedition_mogu`, reused on startup and adventure loading surfaces so normal critical loading tracks and decodes the same wait character used by both presentations. No new artwork is introduced, and reuse does not elevate the catalog's existing `audit-backfill-unknown` approval status. Assets used only after opening a secondary screen stay out of `critical`, even when they remain in the shared image registry. Battle assets do not belong in `critical` merely because they are visually important.
+
+After Home becomes interactive, eligible browsers may fetch the battle scripts and `battle-v3` URLs at low concurrency during idle or conservative quiet time. This is a fetch-only HTTP-cache warmup, not a second loading class: it does not decode pack images, boot Phaser, create a renderer, or move battle assets into `critical`. Data Saver, offline/very-slow connections, hidden documents, and foreground adventure preparation suppress or cancel speculative work. Exact manifest URLs, including cache tokens, must be used so a warm response can be reused by the real loader.
 
 All runtime asset URLs must remain first-party relative paths below the approved asset tree. Remote URLs and path traversal are rejected by policy and tests.
 

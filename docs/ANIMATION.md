@@ -89,6 +89,12 @@ Companions keep core-owned simulation coordinates. The renderer places up to six
 
 The battle scene owns elapsed presentation time. Core simulation delta must not be reused as a second animation clock.
 
+## Loading Mogu wait motion
+
+Startup and adventure loading reuse the existing active production asset `home_v2_expedition_mogu`. They do not introduce a screenshot crop, line-art substitute, or a second character asset. The canonical UI-motion entry is `uiAnimations.loadingMoguWait` in `config/animation-manifest.json`; it binds the shared asset to the `startup-loading` and `adventure-loading` surfaces.
+
+The CSS wait loop is 2.2 seconds with `cubic-bezier(.45,0,.34,1)` easing and a `50% 82%` transform origin. Its small lift and tilt read as a patient, living wait without competing with the progress value. The bubble, status copy, progress bar, and delayed wait hint remain DOM content and are not baked into the image. Under `prefers-reduced-motion: reduce`, the character loop and decorative sparkle motion stop while determinate progress and status changes remain available.
+
 ## Reduced motion and adaptive quality
 
 - `prefers-reduced-motion: reduce` scales continuous ambient displacement to 0.48 and semantic combat displacement to 0.65; it also trims shake and zoom.

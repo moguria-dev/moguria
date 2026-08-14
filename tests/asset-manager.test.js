@@ -16,6 +16,7 @@ async function flushMicrotasks(rounds = 20) {
 function createHarness(manifest, behaviorDefinitions = {}, options = {}) {
   const attempts = new Map();
   const images = [];
+  const fetchRequests = [];
   let manifestRequests = 0;
 
   function behaviorFor(src) {
@@ -75,13 +76,21 @@ function createHarness(manifest, behaviorDefinitions = {}, options = {}) {
     Promise,
     Image: FakeImage,
     Audio: FakeAudio,
+    AbortController,
     setTimeout,
     clearTimeout,
-    async fetch(url) {
+    async fetch(url, init = {}) {
+      fetchRequests.push({ url, init });
       if(url !== 'assets/manifest.json'){
+        if(typeof options.fetchAsset === 'function') return options.fetchAsset(url, init);
         const jsonBehavior = options.json?.[url] || {};
         if(jsonBehavior.pendingBody) return { ok:true, json:() => new Promise(() => {}) };
-        return { ok:jsonBehavior.ok !== false, status:jsonBehavior.status || 200, json:async () => jsonBehavior.value || {} };
+        return {
+          ok:jsonBehavior.ok !== false,
+          status:jsonBehavior.status || 200,
+          json:async () => jsonBehavior.value || {},
+          arrayBuffer:async () => new ArrayBuffer(0)
+        };
       }
       manifestRequests += 1;
       if (options.manifestPending) return new Promise(() => {});
@@ -96,6 +105,7 @@ function createHarness(manifest, behaviorDefinitions = {}, options = {}) {
   return {
     assets: context.MoguriaAssets,
     images,
+    fetchRequests,
     get manifestRequests() { return manifestRequests; }
   };
 }
@@ -212,6 +222,124 @@ test('a pack JSON body stall times out instead of blocking preparation forever',
   assert.match(harness.assets.stats().errors.join('\n'), /json atlas timed out after 8ms/);
 });
 
+test('warmPack fills only the HTTP cache with exact URLs, drains bodies, dedupes, and limits concurrency to two', async () => {
+  const manifest = {
+    critical:[],
+    lazy:[],
+    packs:[{
+      id:'battle-v3',
+      assets:Array.from({ length:4 }, (_, index) => ({
+        id:`asset-${index}`,
+        type:'image',
+        src:`assets/battle-${index}.png?v=exact-${index}`
+      }))
+    }]
+  };
+  const releases = [];
+  let activeBodies = 0;
+  let maxActiveBodies = 0;
+  let drainedBodies = 0;
+  const harness = createHarness(manifest, {}, {
+    fetchAsset:async () => ({
+      ok:true,
+      body:{
+        getReader(){
+          let delivered = false;
+          return {
+            read(){
+              if(delivered){
+                activeBodies -= 1;
+                drainedBodies += 1;
+                return Promise.resolve({ done:true });
+              }
+              delivered = true;
+              activeBodies += 1;
+              maxActiveBodies = Math.max(maxActiveBodies, activeBodies);
+              return new Promise(resolve => releases.push(() => resolve({ done:false, value:new Uint8Array([1]) })));
+            }
+          };
+        }
+      }
+    })
+  });
+  await harness.assets.loadManifest();
+
+  const first = harness.assets.warmPack('battle-v3');
+  const duplicate = harness.assets.warmPack('battle-v3');
+  assert.equal(duplicate, first, 'concurrent warm calls must share one job');
+  await flushMicrotasks();
+  assert.equal(releases.length, 2, 'only two response bodies may be active');
+
+  for(let index = 0; index < 4; index += 1){
+    const release = releases.shift();
+    assert.ok(release, `expected body ${index + 1} to be pending`);
+    release();
+    await flushMicrotasks();
+  }
+  const result = await first;
+  assert.equal(result.ok, true);
+  assert.equal(result.warmed, 4);
+  assert.equal(drainedBodies, 4);
+  assert.equal(maxActiveBodies, 2);
+  assert.equal(harness.images.length, 0, 'warmPack must never allocate Image objects');
+  assert.equal(harness.assets.stats().images, 0);
+  assert.equal(harness.assets.stats().approxMB, 0);
+
+  const assetRequests = harness.fetchRequests.filter(request => request.url !== 'assets/manifest.json');
+  assert.deepEqual(assetRequests.map(request => request.url), manifest.packs[0].assets.map(asset => asset.src));
+  assert.ok(assetRequests.every(request => request.init.cache === 'force-cache'));
+  assert.ok(assetRequests.every(request => request.init.mode === 'same-origin'));
+  assert.ok(assetRequests.every(request => request.init.priority === 'low'));
+
+  const reused = await harness.assets.warmPack('battle-v3');
+  assert.equal(reused.ok, true);
+  assert.equal(reused.reused, true);
+  assert.equal(harness.fetchRequests.filter(request => request.url !== 'assets/manifest.json').length, 4);
+});
+
+test('warmPack aborts promptly and reports speculative failures without rejecting', async () => {
+  const manifest = {
+    critical:[],
+    lazy:[],
+    packs:[{
+      id:'battle-v3',
+      assets:Array.from({ length:3 }, (_, index) => ({ id:`asset-${index}`, type:'image', src:`assets/pending-${index}.png` }))
+    }]
+  };
+  const harness = createHarness(manifest, {}, {
+    fetchAsset:(_url, init) => new Promise((resolve, reject) => {
+      init.signal?.addEventListener?.('abort', () => reject(new Error('aborted by test')), { once:true });
+    })
+  });
+  await harness.assets.loadManifest();
+  const controller = new AbortController();
+  const pending = harness.assets.warmPack('battle-v3', { signal:controller.signal, timeoutMs:1000 });
+  await flushMicrotasks();
+  assert.equal(harness.fetchRequests.filter(request => request.url !== 'assets/manifest.json').length, 2);
+  controller.abort();
+
+  const result = await pending;
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, 'aborted');
+  assert.equal(result.aborted, true);
+  assert.equal(harness.images.length, 0);
+});
+
+test('warmPack AbortSignal also cancels a manifest body that has not completed', async () => {
+  const harness = createHarness(null, {}, { manifestPending:true });
+  const controller = new AbortController();
+  const pending = harness.assets.warmPack('battle-v3', { signal:controller.signal, timeoutMs:1000 });
+  await flushMicrotasks();
+  controller.abort();
+
+  const result = await pending;
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, 'aborted');
+  assert.equal(result.aborted, true);
+  assert.equal(harness.assets.stats().ready, false);
+  assert.deepEqual(Array.from(harness.assets.stats().errors), []);
+});
+
 test('asset URLs cannot escape the first-party relative asset tree', async () => {
   const manifest = {
     critical:[
@@ -239,17 +367,17 @@ test('asset URLs cannot escape the first-party relative asset tree', async () =>
   assert.match(harness.assets.stats().errors.join('\n'), /no safe URL/);
 });
 
-test('the startup manifest contains exactly the 15 visible Home assets and no battle pack asset', () => {
+test('the startup manifest contains exactly the 16 visible Home/loading assets and no battle pack asset', () => {
   const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'assets/manifest.json'), 'utf8'));
   const expected = new Set([
-    'home_v2_background', 'home_v2_mogu', 'home_v2_star_companion', 'home_v2_logo',
+    'home_v2_background', 'home_v2_mogu', 'home_v2_expedition_mogu', 'home_v2_star_companion', 'home_v2_logo',
     'home_v2_frame', 'home_v2_button', 'home_v2_button_gold', 'home_v2_icon_snack',
     'home_v2_icon_dex', 'home_v2_icon_logs', 'home_v2_icon_gacha', 'home_v2_icon_equip',
     'home_v2_icon_dungeon', 'home_v2_icon_outing', 'home_v2_currency_coin'
   ]);
   const actual = new Set(manifest.critical.map(asset => asset.id));
 
-  assert.equal(manifest.critical.length, 15);
+  assert.equal(manifest.critical.length, 16);
   assert.deepEqual(actual, expected);
   assert.ok(manifest.critical.every(asset => asset.type === 'image'));
   assert.ok(manifest.critical.every(asset => !asset.src.includes('battle-v3')));
@@ -258,7 +386,8 @@ test('the startup manifest contains exactly the 15 visible Home assets and no ba
   assert.ok(startupBytes <= manifest.policy.criticalBudgetMB * 1024 * 1024);
 
   const battlePack = manifest.packs.find(pack => pack.id === 'battle-v3');
-  assert.ok(battlePack.assets.every(asset => asset.src.endsWith('?v=20260812-battle-motion-2')));
+  assert.ok(battlePack.assets.filter(asset => asset.id !== 'battle_v3_atlas_manifest').every(asset => asset.src.endsWith('?v=20260812-battle-motion-2')));
+  assert.match(battlePack.assets.find(asset => asset.id === 'battle_v3_atlas_manifest').src, /atlas\.json\?v=20260814-motion-rig2-1$/);
   assert.match(battlePack.assets.find(asset => asset.id === 'battle_v3_mogu').src, /mogu-atlas-hd-v2\.png\?v=20260812-battle-motion-2$/);
   assert.match(battlePack.assets.find(asset => asset.id === 'battle_v3_enemies').src, /enemy-atlas-v2\.png\?v=20260812-battle-motion-2$/);
   assert.match(battlePack.assets.find(asset => asset.id === 'battle_v3_bosses').src, /boss-atlas-v2\.png\?v=20260812-battle-motion-2$/);

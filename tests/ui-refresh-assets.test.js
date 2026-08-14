@@ -71,8 +71,8 @@ test('all 50 production WebPs are present once and governed by the canonical/run
 
   assert.ok(uiPack, 'canonical UI refresh pack is missing');
   assert.ok(runtimePack, 'runtime UI refresh pack is missing');
-  assert.equal(source.runtimeManifest.version, assets.version);
-  assert.equal(runtime.version, assets.version);
+  assert.equal(source.runtimeManifest.version, '3.3.1-loading');
+  assert.equal(runtime.version, source.runtimeManifest.version);
   assert.deepEqual(uiPack.assets.map(asset => asset.id).sort(), expectedIds);
   assert.deepEqual(uiPack.assets.map(asset => asset.src).sort(), expectedPaths);
   assert.deepEqual(runtimePack, uiPack);

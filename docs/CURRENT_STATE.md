@@ -10,6 +10,7 @@ Workflow/approval guidance was checked against `moguria-development-rules` versi
 - Baseline design viewport: `390×844`.
 - Compact vertical regression viewport: `375×667` when bottom fit is affected.
 - Home and meta screens use DOM/CSS plus production image assets.
+- Startup and adventure transitions show determinate progress, current preparation status, a delayed wait hint, and the existing active production expedition Mogu wait motion; reduced-motion users retain the semantic feedback without the decorative loop.
 - Battle uses a single Phaser 4.2.1 scene loaded on demand, with a DOM HUD aligned to the rendered Canvas.
 - Battle progression currently targets 12 waves.
 - Battle presentation includes four non-repeating parallax layers, player/enemy/companion/boss atlases, semantic state animation, continuous body motion, status cues, off-screen guidance, drops, projectiles, and effects.
@@ -28,13 +29,14 @@ Workflow/approval guidance was checked against `moguria-development-rules` versi
 - First Actions deployment: run `31750308477`, successful from 2026-08-14 07:31:34 to 07:32:56 JST for full SHA `120c33b118940174bb0046dc42eedfcefe6c97d3`; the resulting `github-pages` deployment `5897163613` records the same SHA and `main` ref. Post-deployment public QA passed at the Pages URL.
 - Service Worker registration is off in `MoguriaConfig.assets.registerServiceWorker`.
 - The vendored Phaser browser build is under `vendor/phaser/` and is loaded only for battle.
+- Once Home is interactive, eligible clients can run a low-concurrency, fetch-only battle prewarm. It populates the HTTP cache without decoding the pack or starting Phaser and yields to foreground loading, hidden-page, offline, Data Saver, and very-slow-connection conditions.
 
 Values above must match `config/project-state.json`; the JSON wins for automation once validated against current GitHub settings.
 
 ## Current manifest state
 
 - The runtime reads `assets/manifest.json`.
-- At the audited commit, it declares 18 Home critical assets, an empty `lazy` group, and a `battle-v3` pack.
+- The loading-feedback manifest declares 16 Home critical assets, an empty `lazy` group, and a `battle-v3` pack. The existing expedition Mogu is the added critical asset and is shared by Home, startup loading, and adventure loading.
 - The audited critical Home files total approximately 3.35 MiB on disk. The old runtime manifest declares a 4 MiB critical budget; the prior prose performance document stated 2 MB. The replacement single budget source is `config/project-state.json.performanceBudgets`.
 - Battle atlas metadata currently lives in `assets/images/battle-v3/atlas.json`.
 - Canonical inventory/state files are introduced under `config/`; see `docs/SOURCE_OF_TRUTH.md` before editing either side of a manifest pair.
@@ -49,10 +51,11 @@ Values above must match `config/project-state.json`; the JSON wins for automatio
 - Multiple prior-generation asset and CSS layers remain in the repository. Their presence does not prove they are unused; removal requires a reference and visual regression audit.
 - `service-worker.js` is disabled and stale. At the audited commit, 51 `CORE_ASSETS` entries referenced absent `assets/images/moguria-final/**` files. Enabling it without repair would risk installation failure.
 - Historical `DESIGN_NOTES.md`, release notes, and upload instructions contain superseded statements and are not current specifications.
+- The Chromium/WebKit browser-QA runner covers deterministic startup (50%) and adventure (47%) loading fixtures at 390×844 and 375×667. A real iPhone Safari pass is still **required-pending**; emulation evidence must not be reported as that device check.
 
 ## Near-term maintenance goals
 
 1. Decide whether review-thread resolution should become mandatory. Keep the approval count at zero unless an independent reviewer is available, to avoid blocking the single-maintainer release path.
 2. Classify active, fallback, source-only, and legacy assets before deleting anything; require reference and visual-regression evidence for removal.
-3. Establish repeatable browser smoke QA and a real-device performance/interaction baseline, including compact iPhone Safari coverage or an equivalent device farm, and link the resulting gates from project-state validation.
+3. Complete the required-pending real-device performance/interaction baseline on compact iPhone Safari or an equivalent device farm; keep the repeatable browser smoke suite linked from project-state validation.
 4. Keep `docs/CURRENT_STATE.md` concise; put history in the changelog/releases and durable decisions in ADRs.

@@ -11,13 +11,15 @@ index.html
   -> assets/manifest.json load
   -> critical Home assets load + decode
   -> Home becomes interactive
+  -> idle/quiet-time fetch-only battle prewarm (when policy allows)
   -> player starts/resumes a run
-  -> battle-v3 pack preparation
+  -> visible adventure preparation reports real step progress
+  -> battle-v3 pack preparation reuses any HTTP-cache hits
   -> Phaser + Mogu rig + battle scene load
   -> MoguriaGame core steps, Phaser presents state
 ```
 
-`js/main.js` keeps the initial loading surface visible until critical assets are ready. Failures remain retryable and must not initialize Home twice.
+`js/main.js` keeps the initial loading surface visible until critical assets are ready and reports determinate progress instead of presenting an unchanging wait state. Failures remain retryable and must not initialize Home twice. Both startup and adventure loading surfaces reuse the existing active production expedition Mogu, a live status, progress-bar semantics, and a delayed wait hint; reduced motion removes decorative movement without hiding progress.
 
 ## Ownership map
 
@@ -64,7 +66,7 @@ It must not create a second reward ledger, wave counter, save format, collision 
 - `lazy`: optional later-use assets;
 - `packs`: coherent screen/stage/audio groups loaded before use.
 
-The battle loader prepares the `battle-v3` pack, then loads the vendored engine and renderer scripts. Canonical/runtime manifest relationships are documented in `docs/ASSETS.md`.
+The battle loader prepares the `battle-v3` pack, then loads the vendored engine and renderer scripts. After Home is interactive, it may prewarm the battle scripts and pack during a quiet window. Pack warming is fetch-only: it can populate the browser HTTP cache but does not decode images, instantiate Phaser, create a Canvas, or start a second renderer. It is skipped or cancelled when the document is hidden, the browser reports offline/Data Saver/very slow connectivity, or foreground adventure work begins. Foreground preparation remains authoritative and reports progress across script, pack, renderer, save, and visible-layout readiness. Canonical/runtime manifest relationships are documented in `docs/ASSETS.md`.
 
 ## Persistence flow
 
@@ -90,4 +92,3 @@ The current application depends on script order in `index.html` and APIs attache
 - Use canonical manifests for inventories and contracts.
 - Keep runtime-only tuning in runtime config unless and until generation is implemented.
 - Avoid repeating mutable values across prose. Link to their owning machine-readable field instead.
-

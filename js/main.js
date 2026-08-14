@@ -21,8 +21,10 @@ async function moguriaCleanupOldServiceWorker(){
   let applicationInitialized = false;
   let applicationRevealed = false;
   let startupPromise = null;
+  let startupProgress = 0;
   let retryBound = false;
   let serviceWorkerRegistrationStarted = false;
+  let battleWarmupScheduled = false;
 
   const byId = id => document.getElementById(id);
 
@@ -49,47 +51,64 @@ async function moguriaCleanupOldServiceWorker(){
     }
   }
 
-  function setLoaderProgress(progress = {}){
+  function startupPhaseMessage(progress, percent){
+    const phase = String(progress.phase || '');
+    if(phase === 'manifest') return 'データを確認しています';
+    if(phase === 'ready' || percent >= 100) return 'ホームの準備ができました';
+    return 'ホームの景色を読み込んでいます';
+  }
+
+  function setLoaderProgress(progress = {}, options = {}){
     const total = Math.max(0, Math.floor(Number(progress.total) || 0));
     const completed = Math.max(0, Math.min(total, Math.floor(Number(progress.completed) || 0)));
-    const percent = total > 0 ? completed / total * 100 : 0;
+    const reportedPercent = Number(progress.percent);
+    const candidate = Number.isFinite(reportedPercent)
+      ? Math.max(0, Math.min(100, reportedPercent))
+      : total > 0 ? completed / total * 100 : 0;
+    startupProgress = options.reset ? candidate : Math.max(startupProgress, candidate);
+    const rounded = Math.round(startupProgress);
     const bar = byId('startupProgressBar');
     const fill = byId('startupProgressFill');
+    const percent = byId('startupProgressPercent');
     const status = byId('startupProgressText');
 
-    if(fill) fill.style.width = `${percent}%`;
+    if(fill) fill.style.width = `${startupProgress}%`;
+    if(percent) percent.textContent = `${rounded}%`;
     if(bar){
-      if(total > 0) bar.setAttribute('aria-valuemax', String(total));
-      bar.setAttribute('aria-valuenow', String(completed));
-      bar.setAttribute('aria-valuetext', total > 0 ? `${completed} / ${total} 完了` : 'データを確認中');
+      bar.setAttribute('aria-valuenow', String(rounded));
+      bar.setAttribute('aria-valuetext', `${rounded}% 準備完了`);
     }
-    if(status) status.textContent = total > 0 ? `ホームを準備しています ${completed} / ${total}` : 'データを確認しています';
+    const phaseMessage = startupPhaseMessage(progress, startupProgress);
+    if(status && status.textContent !== phaseMessage) status.textContent = phaseMessage;
   }
 
   function beginLoaderAttempt(){
     const loader = byId('startupLoader');
+    const bar = byId('startupProgressBar');
     const retry = byId('startupRetryBtn');
     if(loader){
       loader.dataset.state = 'loading';
-      loader.setAttribute('aria-busy', 'true');
     }
+    if(bar) bar.setAttribute('aria-busy', 'true');
     if(retry){
       retry.hidden = true;
       retry.disabled = true;
     }
-    setLoaderProgress({ total:18, completed:0 });
+    setLoaderProgress({ total:0, completed:0, phase:'manifest' }, { reset:true });
   }
 
   function showLoaderFailure(result = {}){
     const loader = byId('startupLoader');
+    const bar = byId('startupProgressBar');
     const retry = byId('startupRetryBtn');
     const status = byId('startupProgressText');
     const total = Math.max(0, Math.floor(Number(result.total) || 0));
     const loaded = Math.max(0, Math.floor(Number(result.loaded) || 0));
+    setLoaderProgress({ total, completed:loaded }, { reset:true });
     if(loader){
       loader.dataset.state = 'error';
-      loader.setAttribute('aria-busy', 'false');
     }
+    if(bar) bar.setAttribute('aria-busy', 'false');
     if(status){
       status.textContent = total > 0
         ? `準備できなかったデータがあります（${loaded} / ${total}）`
@@ -98,6 +117,7 @@ async function moguriaCleanupOldServiceWorker(){
     if(retry){
       retry.hidden = false;
       retry.disabled = false;
+      window.requestAnimationFrame?.(() => retry.focus?.());
     }
   }
 
@@ -122,6 +142,7 @@ async function moguriaCleanupOldServiceWorker(){
 
     const app = byId('app');
     const loader = byId('startupLoader');
+    const bar = byId('startupProgressBar');
     if(app){
       app.inert = false;
       app.removeAttribute('inert');
@@ -129,10 +150,26 @@ async function moguriaCleanupOldServiceWorker(){
     }
     document.body?.classList.remove('moguria-booting');
     if(loader){
-      loader.setAttribute('aria-busy', 'false');
       loader.hidden = true;
     }
+    if(bar) bar.setAttribute('aria-busy', 'false');
     applicationRevealed = true;
+    scheduleBattleWarmup();
+  }
+
+  function scheduleBattleWarmup(){
+    if(battleWarmupScheduled) return;
+    const schedule = window.MoguriaBattleV3Loader?.scheduleWarmup;
+    if(typeof schedule !== 'function') return;
+    battleWarmupScheduled = true;
+    try{
+      const warmup = schedule.call(window.MoguriaBattleV3Loader);
+      void Promise.resolve(warmup?.promise).catch(error => {
+        window.MoguriaDebug?.warn?.('battle warmup failed', error?.message || String(error));
+      });
+    }catch(error){
+      window.MoguriaDebug?.warn?.('battle warmup failed', error?.message || String(error));
+    }
   }
 
   function registerServiceWorker(){
@@ -158,6 +195,7 @@ async function moguriaCleanupOldServiceWorker(){
           showLoaderFailure(result);
           return result || { ok:false, reason:'asset-preload-failed' };
         }
+        setLoaderProgress({ percent:100, phase:'ready' });
 
         const validation = window.MoguriaValidator?.validate?.();
         if(validation && !validation.ok) window.MoguriaDebug?.warn?.('validation failed', validation.errors);

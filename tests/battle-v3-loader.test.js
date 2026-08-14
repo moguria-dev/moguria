@@ -12,15 +12,17 @@ const HTML_SOURCE = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 const ENGINE_SRC = 'vendor/phaser/phaser-arcade-physics-4.2.1.min.js';
 const MOTION_VERSION = '20260814-motion-rig2-1';
 const VFX_VERSION = '20260814-skill-vfx-1';
+const LOADING_VERSION = '20260814-loading-experience-1';
 const RIG_SRC = `js/mogu-rig.js?v=${MOTION_VERSION}`;
-const SCENE_SRC = `js/battle-v3-scene.js?v=${VFX_VERSION}`;
-const LOADER_SRC = `js/battle-v3-loader.js?v=${VFX_VERSION}`;
+const SCENE_SRC = `js/battle-v3-scene.js?v=${LOADING_VERSION}`;
+const LOADER_SRC = `js/battle-v3-loader.js?v=${LOADING_VERSION}`;
 
 function createHarness(overrides = {}) {
   let nextTimerId = 0;
   const timers = new Map();
   const warnings = [];
   const scripts = [];
+  const documentListeners = new Map();
 
   const head = {
     appendChild(script) {
@@ -63,6 +65,7 @@ function createHarness(overrides = {}) {
     console: { log() {}, warn() {}, error() {} },
     Promise,
     Error,
+    AbortController,
     setTimeout(handler, delay) {
       const id = ++nextTimerId;
       timers.set(id, { handler, delay });
@@ -72,6 +75,8 @@ function createHarness(overrides = {}) {
       timers.delete(id);
     },
     document: {
+      visibilityState: 'visible',
+      hidden: false,
       head,
       createElement(tag) {
         assert.equal(tag, 'script');
@@ -80,8 +85,16 @@ function createHarness(overrides = {}) {
       querySelector(selector) {
         const match = selector.match(/^script\[data-moguria-src="(.+)"\]$/);
         return match ? scripts.find(script => script.dataset.moguriaSrc === match[1]) || null : null;
+      },
+      addEventListener(type, listener) {
+        if (!documentListeners.has(type)) documentListeners.set(type, new Set());
+        documentListeners.get(type).add(listener);
+      },
+      removeEventListener(type, listener) {
+        documentListeners.get(type)?.delete(listener);
       }
     },
+    navigator: { onLine:true, connection:{ saveData:false, effectiveType:'4g' } },
     MoguriaDebug: {
       warn(...args) { warnings.push(args); }
     },
@@ -115,6 +128,11 @@ function createHarness(overrides = {}) {
     },
     pendingTimerDelays() {
       return [...timers.values()].map(timer => timer.delay).sort((a, b) => a - b);
+    },
+    setVisibility(value) {
+      context.document.visibilityState = value;
+      context.document.hidden = value === 'hidden';
+      for (const listener of documentListeners.get('visibilitychange') || []) listener();
     }
   };
 }
@@ -132,9 +150,9 @@ function createRenderer(options = {}) {
 
   return {
     isReady: () => ready,
-    boot() {
+    boot(options) {
       bootCalls += 1;
-      return bootImpl();
+      return bootImpl(options);
     },
     stop() {
       stopCalls += 1;
@@ -155,37 +173,33 @@ async function flushMicrotasks() {
   for (let index = 0; index < 8; index += 1) await Promise.resolve();
 }
 
-test('entrypoint keeps the Motion Rig 2 atlas token while VFX scripts share their cache version', () => {
+test('entrypoint keeps the Motion Rig 2 atlas token and uses the loading bridge cache version', () => {
   assert.ok(HTML_SOURCE.includes(`src="${LOADER_SRC}"`));
   assert.ok(HTML_SOURCE.includes(`src="js/game.js?v=${VFX_VERSION}"`));
   assert.ok(LOADER_SOURCE.includes(`const RIG_SRC = '${RIG_SRC}'`));
   assert.ok(LOADER_SOURCE.includes(`const SCENE_SRC = '${SCENE_SRC}'`));
 });
 
-test('prepare loads Phaser, the Mogu rig, and the scene in order, boots once, and clears all timeout timers', async () => {
+test('prepare shares one attempt while all scripts load in parallel, then boots once', async () => {
   const harness = createHarness();
   const renderer = createRenderer();
   const pending = harness.loader.prepare();
   const duplicatePending = harness.loader.prepare();
+  assert.equal(duplicatePending, pending);
 
   const engineScript = harness.script(ENGINE_SRC);
-  assert.ok(engineScript);
-  assert.equal(harness.scripts.length, 1);
-  harness.context.Phaser = {};
-  engineScript.dispatch('load');
-  await flushMicrotasks();
-
   const rigScript = harness.script(RIG_SRC);
-  assert.ok(rigScript);
-  assert.equal(harness.script(SCENE_SRC), null);
-  harness.context.MoguriaMoguRig = {};
-  rigScript.dispatch('load');
-  await flushMicrotasks();
-
   const sceneScript = harness.script(SCENE_SRC);
+  assert.ok(engineScript);
+  assert.ok(rigScript);
   assert.ok(sceneScript);
+  assert.equal(harness.scripts.length, 3);
+  harness.context.Phaser = {};
+  harness.context.MoguriaMoguRig = {};
   harness.context.MoguriaBattleV3 = renderer;
   sceneScript.dispatch('load');
+  engineScript.dispatch('load');
+  rigScript.dispatch('load');
 
   const [result, duplicateResult] = await Promise.all([pending, duplicatePending]);
   assert.equal(result.ok, true);
@@ -273,6 +287,221 @@ test('completed stale script elements are replaced and a failed load can be retr
   harness.script(SCENE_SRC).dispatch('load');
   assert.equal((await secondAttempt).ok, true);
   assert.equal(renderer.bootCalls, 1);
+});
+
+test('prewarm starts all scripts in parallel and foreground prepare reuses each per-src promise', async () => {
+  let warmPackCalls = 0;
+  const harness = createHarness({
+    MoguriaAssets:{
+      warmPack(packId, options) {
+        warmPackCalls += 1;
+        assert.equal(packId, 'battle-v3');
+        assert.equal(options.concurrency, 2);
+        return Promise.resolve({ ok:true });
+      }
+    }
+  });
+  const renderer = createRenderer();
+  const warming = harness.loader.prewarm();
+  const initialScripts = [
+    harness.script(ENGINE_SRC),
+    harness.script(RIG_SRC),
+    harness.script(SCENE_SRC)
+  ];
+  assert.ok(initialScripts.every(Boolean));
+  assert.ok(initialScripts.every(script => script.fetchPriority === 'low'));
+
+  const foreground = harness.loader.prepare();
+  assert.deepEqual([
+    harness.script(ENGINE_SRC),
+    harness.script(RIG_SRC),
+    harness.script(SCENE_SRC)
+  ], initialScripts, 'foreground must share the exact speculative script jobs');
+  assert.equal(harness.scripts.length, 3);
+
+  harness.context.Phaser = {};
+  harness.context.MoguriaMoguRig = {};
+  harness.context.MoguriaBattleV3 = renderer;
+  initialScripts[0].dispatch('load');
+  initialScripts[1].dispatch('load');
+  initialScripts[2].dispatch('load');
+
+  const [warmResult, foregroundResult] = await Promise.all([warming, foreground]);
+  assert.equal(warmResult.ok, true);
+  assert.equal(foregroundResult.ok, true);
+  assert.equal(warmPackCalls, 1);
+  assert.equal(renderer.bootCalls, 1);
+});
+
+test('prepare reports monotonic real script and renderer progress to every joined listener', async () => {
+  const renderer = createRenderer({
+    boot:options => {
+      options.onProgress({ phase:'assets', progress:.2, assetKey:'first' });
+      options.onProgress({ phase:'assets', progress:.8, assetKey:'second' });
+      options.onProgress({ phase:'assets', progress:.4, assetKey:'late-regression' });
+      options.onProgress({ phase:'renderer', status:'ready' });
+      return Promise.resolve(true);
+    }
+  });
+  const harness = createHarness({ Phaser:{}, MoguriaMoguRig:{}, MoguriaBattleV3:renderer });
+  const firstProgress = [];
+  const secondProgress = [];
+  const first = harness.loader.prepare({ onProgress:value => firstProgress.push({ ...value }) });
+  const second = harness.loader.prepare({ onProgress:value => secondProgress.push({ ...value }) });
+  assert.equal(second, first);
+
+  const result = await first;
+  assert.equal(result.ok, true);
+  for(const values of [firstProgress, secondProgress]){
+    assert.ok(values.length >= 6);
+    assert.equal(values[0].percent, 0);
+    assert.equal(values.at(-1).percent, 100);
+    assert.equal(values.at(-1).phase, 'ready');
+    assert.ok(values.every((value, index) => index === 0 || value.percent >= values[index - 1].percent));
+    assert.ok(values.some(value => value.assetKey === 'first'));
+    assert.ok(values.some(value => value.assetKey === 'second'));
+  }
+});
+
+test('a retry resets its progress attempt instead of replaying a stale high percentage', async () => {
+  const renderer = createRenderer({
+    boot:options => {
+      options.onProgress({ progress:.9 });
+      return Promise.reject(new Error('first boot failed'));
+    }
+  });
+  const harness = createHarness({ Phaser:{}, MoguriaMoguRig:{}, MoguriaBattleV3:renderer });
+  const firstProgress = [];
+  assert.equal((await harness.loader.prepare({ onProgress:value => firstProgress.push(value.percent) })).ok, false);
+  assert.ok(Math.max(...firstProgress) >= 80);
+
+  renderer.setBoot(options => {
+    options.onProgress({ progress:.1 });
+    return Promise.resolve(true);
+  });
+  const retryProgress = [];
+  assert.equal((await harness.loader.prepare({ onProgress:value => retryProgress.push(value.percent) })).ok, true);
+  assert.equal(retryProgress[0], 0);
+  assert.ok(retryProgress.every((value, index) => index === 0 || value >= retryProgress[index - 1]));
+  assert.equal(retryProgress.at(-1), 100);
+});
+
+test('the optional rig never blocks a foreground renderer boot', async () => {
+  const renderer = createRenderer();
+  const harness = createHarness({ Phaser:{}, MoguriaBattleV3:renderer });
+  const result = await harness.loader.prepare();
+
+  assert.equal(result.ok, true);
+  assert.equal(renderer.bootCalls, 1);
+  assert.ok(harness.script(RIG_SRC), 'the optional request may still be in flight');
+  assert.deepEqual(harness.pendingTimerDelays(), [15000]);
+  harness.script(RIG_SRC).dispatch('error');
+  await flushMicrotasks();
+  assert.deepEqual(harness.pendingTimerDelays(), []);
+});
+
+test('Safari fallback waits six seconds and foreground prepare cancels it before pack fetch starts', async () => {
+  let warmPackCalls = 0;
+  const renderer = createRenderer();
+  const harness = createHarness({
+    MoguriaAssets:{ warmPack(){ warmPackCalls += 1; return Promise.resolve({ ok:true }); } }
+  });
+  const scheduled = harness.loader.scheduleWarmup();
+  assert.deepEqual(harness.pendingTimerDelays(), [6000]);
+
+  const foreground = harness.loader.prepare();
+  assert.equal((await scheduled.promise).reason, 'foreground');
+  assert.equal(warmPackCalls, 0);
+  assert.equal(harness.pendingTimerDelays().includes(6000), false);
+
+  harness.context.Phaser = {};
+  harness.context.MoguriaMoguRig = {};
+  harness.context.MoguriaBattleV3 = renderer;
+  harness.script(ENGINE_SRC).dispatch('load');
+  harness.script(RIG_SRC).dispatch('load');
+  harness.script(SCENE_SRC).dispatch('load');
+  assert.equal((await foreground).ok, true);
+});
+
+test('foreground prepare aborts an in-flight speculative pack but preserves shared script downloads', async () => {
+  let packSignal = null;
+  const renderer = createRenderer();
+  const harness = createHarness({
+    MoguriaAssets:{
+      warmPack(_packId, options) {
+        packSignal = options.signal;
+        return new Promise(resolve => {
+          options.signal.addEventListener('abort', () => resolve({ ok:false, reason:'aborted' }), { once:true });
+        });
+      }
+    }
+  });
+  const scheduled = harness.loader.scheduleWarmup();
+  harness.runTimer(6000);
+  await flushMicrotasks();
+  const speculativeScripts = harness.scripts.slice();
+  assert.equal(speculativeScripts.length, 3);
+  assert.equal(packSignal.aborted, false);
+
+  const foreground = harness.loader.prepare();
+  assert.equal(packSignal.aborted, true);
+  assert.equal((await scheduled.promise).reason, 'foreground');
+  assert.deepEqual(harness.scripts, speculativeScripts, 'foreground keeps and reuses script downloads');
+
+  harness.context.Phaser = {};
+  harness.context.MoguriaMoguRig = {};
+  harness.context.MoguriaBattleV3 = renderer;
+  harness.script(ENGINE_SRC).dispatch('load');
+  harness.script(RIG_SRC).dispatch('load');
+  harness.script(SCENE_SRC).dispatch('load');
+  assert.equal((await foreground).ok, true);
+});
+
+test('becoming hidden aborts both the speculative pack and script jobs', async () => {
+  let packSignal = null;
+  const harness = createHarness({
+    MoguriaAssets:{
+      warmPack(_packId, options) {
+        packSignal = options.signal;
+        return new Promise(resolve => {
+          options.signal.addEventListener('abort', () => resolve({ ok:false, reason:'aborted' }), { once:true });
+        });
+      }
+    }
+  });
+  const scheduled = harness.loader.scheduleWarmup();
+  harness.runTimer(6000);
+  await flushMicrotasks();
+  assert.equal(harness.scripts.length, 3);
+
+  harness.setVisibility('hidden');
+  const result = await scheduled.promise;
+  assert.equal(result.reason, 'hidden');
+  assert.equal(packSignal.aborted, true);
+  assert.equal(harness.scripts.length, 0);
+  assert.deepEqual(harness.pendingTimerDelays(), []);
+});
+
+test('warmup is gated while offline, saving data, on 2G, or already hidden', async () => {
+  const cases = [
+    { navigator:{ onLine:false, connection:{ saveData:false, effectiveType:'4g' } }, gate:'offline' },
+    { navigator:{ onLine:true, connection:{ saveData:true, effectiveType:'4g' } }, gate:'save-data' },
+    { navigator:{ onLine:true, connection:{ saveData:false, effectiveType:'slow-2g' } }, gate:'slow-connection' }
+  ];
+  for(const item of cases){
+    const harness = createHarness({ navigator:item.navigator });
+    const result = await harness.loader.scheduleWarmup().promise;
+    assert.equal(result.reason, 'gated');
+    assert.equal(result.gate, item.gate);
+    assert.deepEqual(harness.pendingTimerDelays(), []);
+    assert.equal(harness.scripts.length, 0);
+  }
+
+  const hiddenHarness = createHarness();
+  hiddenHarness.setVisibility('hidden');
+  const hidden = await hiddenHarness.loader.scheduleWarmup().promise;
+  assert.equal(hidden.gate, 'hidden');
+  assert.deepEqual(hiddenHarness.pendingTimerDelays(), []);
 });
 
 test('Phaser boot timeout resets the renderer and permits a later retry', async () => {

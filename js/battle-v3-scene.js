@@ -182,6 +182,13 @@
     return out;
   }
 
+  function forwardBootProgress(payload) {
+    const listener = runtimeOptions?.onProgress;
+    if (typeof listener !== 'function') return;
+    try { listener(payload); }
+    catch (error) { global.MoguriaDebug?.warn?.('battle-v3 progress listener failed', error.message); }
+  }
+
   function copyLayout(layout) {
     return Object.fromEntries(Object.entries(layout || {}).map(([name, definition]) => [
       name,
@@ -639,12 +646,44 @@
         this.resizeSignature = '';
         this.animationPauseSignature = '';
         this._loadErrors = [];
+        this._loadProgress = 0;
+        this._loadCompleted = 0;
       }
 
       preload() {
+        const total = Number(Boolean(this.assets.manifest?.key && this.assets.manifest?.src))
+          + this.assets.backgrounds.filter(background => background?.key && background?.src).length
+          + Object.values(this.assets.sheets).filter(sheet => sheet?.key && sheet?.src).length;
+        const report = (progress, status, detail = {}) => {
+          const numeric = Number(progress);
+          if (Number.isFinite(numeric)) {
+            this._loadProgress = Math.max(this._loadProgress, Math.max(0, Math.min(1, numeric)));
+          }
+          forwardBootProgress({
+            ...detail,
+            phase: 'assets',
+            progress: this._loadProgress,
+            completed: this._loadCompleted,
+            total,
+            status
+          });
+        };
+        this.load.on?.('progress', value => report(value, 'loading'));
+        this.load.on?.('filecomplete', (key, type) => {
+          this._loadCompleted = Math.min(total, this._loadCompleted + 1);
+          report(total ? this._loadCompleted / total : 1, 'loaded', {
+            assetKey: String(key || ''),
+            assetType: String(type || '')
+          });
+        });
+        this.load.on?.('complete', () => {
+          this._loadCompleted = total;
+          report(1, 'complete');
+        });
         this.load.on?.('loaderror', file => {
           const label = file?.src || file?.url || file?.key || 'unknown asset';
           this._loadErrors.push(String(label));
+          report(this._loadProgress, 'failed', { assetKey: String(file?.key || label) });
         });
         if (this.assets.manifest?.key && this.assets.manifest?.src) {
           this.load.json(this.assets.manifest.key, this.assets.manifest.src);
@@ -696,8 +735,14 @@
         configureCanvas();
         suppressLegacyLayers();
         if (hostEl) hostEl.style.display = running ? 'block' : 'none';
+        if (!running) {
+          this.scene?.setVisible?.(false);
+          this.scene?.pause?.();
+          (this.game || phaserGame)?.loop?.sleep?.();
+        }
         if (pendingState) this.syncState(pendingState);
         this.flushCameraFx();
+        forwardBootProgress({ phase: 'renderer', status: 'ready' });
         resolveBoot?.(global.MoguriaBattleV3);
         resolveBoot = null;
         rejectBoot = null;
@@ -2579,7 +2624,8 @@
     runtimeOptions = {
       assets: mergeAssets(options.assets),
       layouts: mergeLayouts(options.layouts),
-      layoutOverrides: clonePlain(options.layouts)
+      layoutOverrides: clonePlain(options.layouts),
+      onProgress: typeof options.onProgress === 'function' ? options.onProgress : null
     };
     if (typeof options.step === 'function') coreStep = options.step;
     maxDeltaSeconds = Math.max(1 / 240, Math.min(0.1, Number(options.maxDeltaSeconds) || 1 / 30));

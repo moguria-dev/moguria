@@ -22,6 +22,7 @@ function createClassList(...initial) {
 function createUiHarness() {
   const listeners = {};
   const elements = {};
+  const timers = [];
   const document = {
     body: null,
     activeElement: null,
@@ -36,6 +37,7 @@ function createUiHarness() {
       id,
       textContent: '',
       dataset: {},
+      style: {},
       inert: false,
       isConnected: true,
       classList: createClassList(...(hidden ? ['hidden'] : [])),
@@ -68,6 +70,10 @@ function createUiHarness() {
   element('adventureLoadingTitle');
   element('adventureLoadingCost');
   element('adventureLoadingStatus');
+  element('adventureLoadingHint');
+  element('adventureLoadingProgress');
+  element('adventureLoadingProgressFill');
+  element('adventureLoadingProgressPercent');
   element('overlayTitle');
   element('overlayEyebrow');
   element('overlaySubtitle');
@@ -85,8 +91,8 @@ function createUiHarness() {
     console: { log() {}, warn() {}, error() {} },
     document,
     requestAnimationFrame(callback) { callback(); return 1; },
-    setTimeout() { return 1; },
-    clearTimeout() {},
+    setTimeout(callback, delay) { const timer = { callback, delay, cleared:false }; timers.push(timer); return timer; },
+    clearTimeout(timer) { if (timer) timer.cleared = true; },
     Intl,
     Date,
     Promise
@@ -96,7 +102,7 @@ function createUiHarness() {
   vm.runInContext(read('js/ui.js'), context, { filename: 'js/ui.js' });
   context.MoguriaUI.init();
 
-  return { context, document, elements, listeners, app, source, pauseButton, cancel, accept, loading, loadingCard, upgradeTrigger };
+  return { context, document, elements, listeners, timers, app, source, pauseButton, cancel, accept, loading, loadingCard, upgradeTrigger };
 }
 
 test('shared confirmation is modal, cancel-focused, keyboard-contained, and restores focus', async () => {
@@ -149,7 +155,10 @@ test('adventure loading blocks the app, announces status, ignores Escape, and cl
   harness.context.MoguriaUI.showAdventureLoading({ resume: true });
 
   assert.equal(harness.loading.classList.contains('hidden'), false);
-  assert.equal(harness.loading.getAttribute('aria-busy'), 'true');
+  assert.equal(harness.loading.getAttribute('aria-busy'), null);
+  assert.equal(harness.elements.adventureLoadingProgress.getAttribute('aria-busy'), 'true');
+  assert.equal(harness.elements.adventureLoadingProgress.getAttribute('aria-valuenow'), '2');
+  assert.equal(harness.elements.adventureLoadingProgress.getAttribute('aria-valuetext'), '2% 準備完了');
   assert.match(harness.elements.adventureLoadingTitle.textContent, /再開/);
   assert.match(harness.elements.adventureLoadingCost.textContent, /消費なし/);
   assert.match(harness.elements.adventureLoadingStatus.textContent, /読み込/);
@@ -161,11 +170,28 @@ test('adventure loading blocks the app, announces status, ignores Escape, and cl
   assert.equal(prevented, true);
   assert.equal(harness.loading.classList.contains('hidden'), false);
 
-  harness.context.MoguriaUI.updateAdventureLoading('ダンジョンの入口を開いています…');
+  harness.context.MoguriaUI.updateAdventureLoading({
+    message:'ダンジョンの入口を開いています…',
+    percent:47,
+    hint:'星の道をひらいているよ',
+    busy:true
+  });
   assert.match(harness.elements.adventureLoadingStatus.textContent, /入口/);
+  assert.equal(harness.elements.adventureLoadingProgress.getAttribute('aria-valuenow'), '47');
+  assert.equal(harness.elements.adventureLoadingProgress.getAttribute('aria-valuetext'), '47% 準備完了');
+  assert.equal(harness.elements.adventureLoadingProgressFill.style.width, '47%');
+  assert.equal(harness.elements.adventureLoadingProgressPercent.textContent, '47%');
+  assert.equal(harness.elements.adventureLoadingHint.textContent, '星の道をひらいているよ');
+  harness.context.MoguriaUI.updateAdventureLoading('前の段階へ戻らない', 21);
+  assert.equal(harness.elements.adventureLoadingProgress.getAttribute('aria-valuenow'), '47', 'progress stays monotonic');
+
+  harness.timers.find(timer => timer.delay === 8000)?.callback();
+  assert.match(harness.elements.adventureLoadingStatus.textContent, /少し時間がかかっているよ/);
+  harness.timers.find(timer => timer.delay === 12000)?.callback();
+  assert.match(harness.elements.adventureLoadingHint.textContent, /もう少しだけ待ってね/);
   harness.context.MoguriaUI.hideAdventureLoading({ restoreFocus: true });
   assert.equal(harness.loading.classList.contains('hidden'), true);
-  assert.equal(harness.loading.getAttribute('aria-busy'), 'false');
+  assert.equal(harness.elements.adventureLoadingProgress.getAttribute('aria-busy'), 'false');
   assert.equal(harness.app.inert, false);
   assert.equal(harness.document.activeElement, harness.source);
 
@@ -178,9 +204,17 @@ test('adventure loading blocks the app, announces status, ignores Escape, and cl
 test('system overlay markup and styling expose accessible central blocking surfaces', () => {
   const html = read('index.html');
   const css = read('css/moguria-system-overlays.css');
+  const loading = html.match(/<section id="adventureLoading"[\s\S]*?<\/section>/)?.[0] || '';
+  const loadingOpening = loading.match(/<section id="adventureLoading"[^>]*>/)?.[0] || '';
+  const progressOpening = loading.match(/<div id="adventureLoadingProgress"[^>]*>/)?.[0] || '';
   assert.match(html, /id="confirmDialog"[^>]*role="alertdialog"[^>]*aria-modal="true"[^>]*aria-labelledby="confirmDialogTitle"[^>]*aria-describedby="confirmDialogMessage"/);
-  assert.match(html, /id="adventureLoading"[^>]*role="dialog"[^>]*aria-modal="true"[^>]*aria-labelledby="adventureLoadingTitle"[^>]*aria-describedby="adventureLoadingStatus"[^>]*aria-busy="true"/);
+  assert.match(loadingOpening, /role="dialog"[^>]*aria-modal="true"[^>]*aria-labelledby="adventureLoadingTitle"[^>]*aria-describedby="adventureLoadingStatus adventureLoadingHint"/);
+  assert.doesNotMatch(loadingOpening, /aria-busy=/);
+  assert.match(progressOpening, /role="progressbar"[^>]*aria-valuemin="0"[^>]*aria-valuemax="100"[^>]*aria-valuenow="0"[^>]*aria-valuetext="0% 準備完了"[^>]*aria-busy="true"/);
   assert.match(html, /id="adventureLoadingStatus"[^>]*role="status"[^>]*aria-live="polite"/);
+  assert.ok(loading.indexOf('id="adventureLoadingStatus"') > loading.indexOf('id="adventureLoadingProgress"'));
+  assert.match(loading, /id="adventureLoadingMogu"[^>]*src="assets\/images\/home-v2\/expedition_mogu\.png"[^>]*alt=""[^>]*aria-hidden="true"/);
+  assert.match(loading, /id="adventureLoadingBubble"[^>]*>ちょっと待っててね</);
   assert.match(css, /\.system-overlay\s*\{[^}]*position:\s*fixed;[^}]*inset:\s*0;[^}]*display:\s*grid;[^}]*place-items:\s*center;/s);
   assert.match(css, /@media\s*\(prefers-reduced-motion:\s*reduce\)/);
 });
