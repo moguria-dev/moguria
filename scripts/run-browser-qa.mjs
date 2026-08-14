@@ -62,6 +62,14 @@ export const BATTLE_CANVAS_PROBE = Object.freeze({
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DEFAULT_OUTPUT = path.join(ROOT, 'browser-qa-output');
+const RUNTIME_ASSET_MANIFEST = JSON.parse(fs.readFileSync(path.join(ROOT, 'assets/manifest.json'), 'utf8'));
+export const SPECULATIVE_BATTLE_PACK_URLS = Object.freeze(
+  (RUNTIME_ASSET_MANIFEST.packs || [])
+    .find((pack) => pack.id === 'battle-v3')
+    ?.assets?.map((asset) => String(asset.src || ''))
+    .filter(Boolean) || []
+);
+const SPECULATIVE_BATTLE_PACK_URL_SET = new Set(SPECULATIVE_BATTLE_PACK_URLS);
 const MIME = Object.freeze({
   '.css': 'text/css; charset=utf-8',
   '.html': 'text/html; charset=utf-8',
@@ -79,6 +87,23 @@ const MIME = Object.freeze({
   '.wav': 'audio/wav',
   '.webp': 'image/webp'
 });
+
+export function isExpectedSpeculativeWarmAbort(failure = {}, baseUrl = '') {
+  if (failure.method !== 'GET'
+    || failure.resourceType !== 'fetch'
+    || failure.isNavigationRequest !== false
+    || failure.headers?.['x-moguria-purpose'] !== 'warm-pack:battle-v3'
+    || failure.errorText !== 'net::ERR_ABORTED') return false;
+  try {
+    const requested = new URL(failure.url);
+    const base = new URL(baseUrl);
+    if (requested.origin !== base.origin) return false;
+    const requestKey = `${requested.pathname.replace(/^\/+/, '')}${requested.search}`;
+    return SPECULATIVE_BATTLE_PACK_URL_SET.has(requestKey);
+  } catch {
+    return false;
+  }
+}
 
 function parseArgs(argv = process.argv.slice(2)) {
   const parsed = { browser: 'chromium', output: DEFAULT_OUTPUT, headed: false };
@@ -1247,6 +1272,7 @@ async function runScreen(browser, baseUrl, browserName, viewport, screenId, outp
     screen: screenId,
     status: 'failed',
     failures: [],
+    ignoredDiagnostics: { speculativeWarmAborts: [] },
     diagnostics: { consoleErrors: [], pageErrors: [], requestFailures: [], responseErrors: [] }
   };
   const context = await browser.newContext({
@@ -1293,7 +1319,22 @@ async function runScreen(browser, baseUrl, browserName, viewport, screenId, outp
     if (message.type() === 'error') record.diagnostics.consoleErrors.push(message.text());
   });
   page.on('pageerror', (error) => record.diagnostics.pageErrors.push(error.message));
-  page.on('requestfailed', (request) => record.diagnostics.requestFailures.push(`${request.method()} ${request.url()} ${request.failure()?.errorText || ''}`));
+  page.on('requestfailed', (request) => {
+    const failure = {
+      method: request.method(),
+      resourceType: request.resourceType(),
+      isNavigationRequest: request.isNavigationRequest(),
+      headers: request.headers(),
+      url: request.url(),
+      errorText: request.failure()?.errorText || ''
+    };
+    const description = `${failure.method} ${failure.url} ${failure.errorText}`;
+    if (isExpectedSpeculativeWarmAbort(failure, baseUrl)) {
+      record.ignoredDiagnostics.speculativeWarmAborts.push(description);
+      return;
+    }
+    record.diagnostics.requestFailures.push(description);
+  });
   page.on('response', (response) => {
     if (response.status() >= 400 && response.url().startsWith(baseUrl)) {
       record.diagnostics.responseErrors.push(`${response.status()} ${response.url()}`);

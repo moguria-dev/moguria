@@ -331,6 +331,7 @@
             cache:'force-cache',
             mode:'same-origin',
             priority:'low',
+            headers:{ 'X-Moguria-Purpose':`warm-pack:${packId}` },
             ...(controller ? { signal:controller.signal } : {})
           });
           if(!response?.ok) throw new Error(`HTTP ${response?.status || 'error'}`);

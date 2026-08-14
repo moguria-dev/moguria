@@ -290,6 +290,7 @@ test('warmPack fills only the HTTP cache with exact URLs, drains bodies, dedupes
   assert.ok(assetRequests.every(request => request.init.cache === 'force-cache'));
   assert.ok(assetRequests.every(request => request.init.mode === 'same-origin'));
   assert.ok(assetRequests.every(request => request.init.priority === 'low'));
+  assert.ok(assetRequests.every(request => request.init.headers?.['X-Moguria-Purpose'] === 'warm-pack:battle-v3'));
 
   const reused = await harness.assets.warmPack('battle-v3');
   assert.equal(reused.ok, true);

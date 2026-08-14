@@ -101,10 +101,49 @@ test('runner contract covers both mobile viewports and every approved screen', a
     minStandardDeviation: 8,
     minColorBuckets: 80
   });
+  const runtime = json('assets/manifest.json');
+  const battlePackUrls = runtime.packs.find((pack) => pack.id === 'battle-v3').assets.map((asset) => asset.src);
+  assert.deepStrictEqual(runner.SPECULATIVE_BATTLE_PACK_URLS, battlePackUrls);
+  const baseUrl = 'http://127.0.0.1:4173/';
+  for (const url of battlePackUrls) {
+    assert.equal(runner.isExpectedSpeculativeWarmAbort({
+      method: 'GET',
+      resourceType: 'fetch',
+      isNavigationRequest: false,
+      headers: { 'x-moguria-purpose': 'warm-pack:battle-v3' },
+      url: new URL(url, baseUrl).href,
+      errorText: 'net::ERR_ABORTED'
+    }, baseUrl), true, `expected warm abort must be ignored for ${url}`);
+  }
+  const exactWarmAbort = {
+    method: 'GET',
+    resourceType: 'fetch',
+    isNavigationRequest: false,
+    headers: { 'x-moguria-purpose': 'warm-pack:battle-v3' },
+    url: new URL(battlePackUrls[0], baseUrl).href,
+    errorText: 'net::ERR_ABORTED'
+  };
+  for (const [label, failure] of [
+    ['real network failure', { ...exactWarmAbort, errorText: 'net::ERR_CONNECTION_RESET' }],
+    ['foreground image request', { ...exactWarmAbort, resourceType: 'image' }],
+    ['unmarked fetch', { ...exactWarmAbort, headers: {} }],
+    ['different warm purpose', { ...exactWarmAbort, headers: { 'x-moguria-purpose': 'warm-pack:other' } }],
+    ['non-GET request', { ...exactWarmAbort, method: 'POST' }],
+    ['navigation', { ...exactWarmAbort, isNavigationRequest: true }],
+    ['wrong cache token', { ...exactWarmAbort, url: exactWarmAbort.url.replace(/v=[^&]+/, 'v=stale') }],
+    ['non-pack URL', { ...exactWarmAbort, url: new URL('assets/images/home-v2/expedition_mogu.png', baseUrl).href }],
+    ['different origin', { ...exactWarmAbort, url: new URL(battlePackUrls[0], 'https://example.invalid/').href }],
+    ['invalid URL', { ...exactWarmAbort, url: 'not a URL' }]
+  ]) {
+    assert.equal(runner.isExpectedSpeculativeWarmAbort(failure, baseUrl), false, `${label} must remain a QA failure`);
+  }
   const source = read('scripts/run-browser-qa.mjs');
   for (const contract of [
     'ja-JP', 'Asia/Tokyo', 'hasTouch: true', 'isMobile: true',
     'consoleErrors', 'pageErrors', 'requestFailures', 'responseErrors',
+    'ignoredDiagnostics', 'speculativeWarmAborts', 'isExpectedSpeculativeWarmAbort(failure, baseUrl)',
+    "failure.resourceType !== 'fetch'", "failure.errorText !== 'net::ERR_ABORTED'",
+    "failure.headers?.['x-moguria-purpose'] !== 'warm-pack:battle-v3'",
     'naturalWidth', 'rootOverflow', '43.5', 'nearBlank', 'qa-summary.json', 'qa-summary.md',
     'visual scroll roots did not return to origin', 'full-viewport surface is displaced',
     'required content overflows its control', 'webglcontextlost',
