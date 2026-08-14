@@ -1,8 +1,17 @@
 window.MoguriaDebug = (() => {
   let enabled = false;
   let panel = null;
+  function hasDebugFlag(){
+    const hash = String(location.hash || '').toLowerCase();
+    return hash === '#debug' || /(^|[#&?])debug($|[=&])/i.test(hash);
+  }
+  function isAllowedHost(){
+    if (window.MoguriaSecurity?.isLocalDevHost) return Boolean(window.MoguriaSecurity.isLocalDevHost());
+    const allowed = window.MoguriaConfig?.security?.allowDevToolsOnHosts || ['localhost', '127.0.0.1', ''];
+    return allowed.includes(String(location.hostname || ''));
+  }
   function init(){
-    enabled = !!(window.MoguriaConfig && window.MoguriaConfig.debug) || location.hash.includes('debug');
+    enabled = isAllowedHost() && (Boolean(window.MoguriaConfig?.debug) || hasDebugFlag());
     if(!enabled) return;
     panel = document.createElement('div');
     panel.id = 'debugPanel';

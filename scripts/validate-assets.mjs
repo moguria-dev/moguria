@@ -219,8 +219,9 @@ export function validateLegacyUncatalogedReferences(referencedPaths, source, roo
   return errors;
 }
 
-function runtimeReferencedAssets(root, source, state) {
+export function runtimeReferencedAssets(root, source, state) {
   const referenced = new Set();
+  const generatedFile = stripUrlSuffix(source.generatedFile || '');
   const scanFiles = [state.runtime.entrypoint, 'style.css'];
   for (const directory of ['css', 'js']) {
     const base = repoPath(root, directory);
@@ -231,10 +232,18 @@ function runtimeReferencedAssets(root, source, state) {
   for (const relative of scanFiles) {
     const text = fs.readFileSync(repoPath(root, relative), 'utf8');
     for (const match of text.matchAll(/assets\/[a-zA-Z0-9_./-]+\.(?:json|png|svg|webp)(?:[?#][^'"\s)]+)?/g)) {
-      referenced.add(stripUrlSuffix(match[0]));
+      const assetPath = stripUrlSuffix(match[0]);
+      // The generated runtime projection is governed by exact source-to-output
+      // parity, not by the immutable legacy-media allowlist. Treating this JSON
+      // output as a media asset makes every legitimate manifest update fail on
+      // its previous SHA-256.
+      if (assetPath !== generatedFile) referenced.add(assetPath);
     }
   }
-  for (const entry of allRuntimeEntries(source.runtimeManifest || {})) referenced.add(stripUrlSuffix(entry.src));
+  for (const entry of allRuntimeEntries(source.runtimeManifest || {})) {
+    const assetPath = stripUrlSuffix(entry.src);
+    if (assetPath !== generatedFile) referenced.add(assetPath);
+  }
   return [...referenced].sort();
 }
 

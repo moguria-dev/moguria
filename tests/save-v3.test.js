@@ -322,13 +322,16 @@ function createElement(id) {
   const element = {
     id,
     textContent: '',
+    hidden: false,
     disabled: false,
+    dataset: {},
     style: {},
     attributes: {},
-    classList: { add() {}, remove() {} },
+    classList: { add() {}, remove() {}, contains() { return false; } },
     label: { textContent: '' },
     sub: { textContent: '' },
     setAttribute(name, value) { this.attributes[name] = value; },
+    focus() {},
     querySelector(selector) { return selector === 'b' ? this.label : selector === 'small' ? this.sub : null; }
   };
   return element;
@@ -336,8 +339,11 @@ function createElement(id) {
 
 function createHomeHarness(options = {}) {
   const elements = Object.fromEntries([
-    'startBtn', 'bellyText', 'bellyBar', 'coinText', 'homeLine', 'homeMogu'
+    'startBtn', 'snackBtn', 'bellyText', 'bellyBar', 'coinText', 'homeLine', 'homeNotice', 'homeMogu',
+    'adventureLoading', 'adventureLoadingTitle', 'adventureLoadingCost', 'adventureLoadingStatus',
+    'adventureLoadingActions', 'adventureRetryBtn', 'adventureHomeBtn'
   ].map(id => [id, createElement(id)]));
+  elements.adventureLoadingActions.hidden = true;
   const events = [];
   const initialRun = options.activeRun ? clone(options.activeRun) : null;
   let durableSave = v2Save({ belly: options.belly ?? 2, activeRun: initialRun });
@@ -358,7 +364,12 @@ function createHomeHarness(options = {}) {
   context.MoguriaSave = {
     load: () => clone(durableSave),
     applyTimeRecovery: data => data,
-    save: () => { directSaveCalls += 1; return { ok: true }; },
+    save(data) {
+      directSaveCalls += 1;
+      if (options.directSaveFailure) return { ok: false, reason: 'save-failed' };
+      durableSave = clone(data);
+      return { ok: true, data: clone(durableSave) };
+    },
     startRun(initial) {
       events.push('startRun');
       if (options.startFailure) return { ok: false, reason: options.startFailure };
@@ -445,16 +456,32 @@ test('home resumes activeRun with the same id even when belly is empty', async (
   assert.equal(harness.context.gameStartArgs.resume, true);
 });
 
+test('home reports snack success only after the recovered belly is persisted', () => {
+  const failed = createHomeHarness({ belly: 2, directSaveFailure: true });
+  failed.elements.snackBtn.onclick();
+  assert.equal(failed.durableSave.belly, 2);
+  assert.match(failed.elements.homeNotice.textContent, /保存できませんでした/);
+  assert.equal(failed.elements.homeLine.textContent, '');
+
+  const saved = createHomeHarness({ belly: 2 });
+  saved.elements.snackBtn.onclick();
+  assert.equal(saved.durableSave.belly, 3);
+  assert.match(saved.elements.homeNotice.textContent, /もぐもぐ/);
+});
+
 test('home does not consume belly or enter game when preparation or save fails', async t => {
   await t.test('battle preparation failure', async () => {
     const harness = createHomeHarness({ belly: 2, prepareFailure: true });
     await harness.clickStart();
     assert.deepEqual(harness.events, ['prepare']);
     assert.equal(harness.durableSave.belly, 2);
-    assert.match(harness.elements.homeLine.textContent, /準備に失敗/);
-    assert.equal(harness.loading.visible, false);
-    assert.equal(harness.loading.restoreFocus, false);
-    assert.equal(harness.loading.focusTarget, 'startBtn');
+    assert.equal(harness.elements.homeLine.textContent, '');
+    assert.equal(harness.loading.visible, true);
+    assert.equal(harness.loading.hideCalls, 0);
+    assert.equal(harness.elements.adventureLoading.dataset.state, 'error');
+    assert.equal(harness.elements.adventureLoading.attributes['aria-busy'], 'false');
+    assert.equal(harness.elements.adventureLoadingActions.hidden, false);
+    assert.match(harness.elements.adventureLoadingStatus.textContent, /準備に失敗/);
     assert.equal(harness.elements.startBtn.disabled, false);
   });
 
@@ -463,22 +490,24 @@ test('home does not consume belly or enter game when preparation or save fails',
     await harness.clickStart();
     assert.deepEqual(harness.events, ['prepare', 'startRun']);
     assert.equal(harness.durableSave.belly, 2);
-    assert.match(harness.elements.homeLine.textContent, /保存できませんでした/);
-    assert.equal(harness.loading.visible, false);
-    assert.equal(harness.loading.restoreFocus, false);
-    assert.equal(harness.loading.focusTarget, 'startBtn');
+    assert.equal(harness.elements.homeLine.textContent, '');
+    assert.equal(harness.loading.visible, true);
+    assert.equal(harness.loading.hideCalls, 0);
+    assert.equal(harness.elements.adventureLoadingActions.hidden, false);
+    assert.match(harness.elements.adventureLoadingStatus.textContent, /保存できませんでした/);
   });
 });
 
-test('home cleans up the loading surface when renderer start throws synchronously', async () => {
+test('home keeps renderer start failure visible until the user chooses recovery', async () => {
   const harness = createHomeHarness({ belly: 2, gameStartThrow: true });
   await harness.clickStart();
 
   assert.deepEqual(harness.events, ['prepare', 'startRun', 'show:game', 'game.start', 'show:home']);
-  assert.equal(harness.loading.visible, false);
-  assert.equal(harness.loading.focusTarget, 'startBtn');
-  assert.match(harness.elements.homeLine.textContent, /準備に失敗/);
-  assert.match(harness.loading.messages.at(-1), /準備に失敗/);
+  assert.equal(harness.loading.visible, true);
+  assert.equal(harness.loading.hideCalls, 0);
+  assert.equal(harness.elements.adventureLoadingActions.hidden, false);
+  assert.equal(harness.elements.homeLine.textContent, '');
+  assert.match(harness.elements.adventureLoadingStatus.textContent, /準備に失敗/);
 });
 
 test('home keeps a blocking loading surface through prepare and renderer start and ignores double taps', async () => {

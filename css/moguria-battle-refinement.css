@@ -252,6 +252,26 @@ body.kv-visual-refresh {
   text-shadow: 0 1px 3px rgba(1, 2, 12, .82);
 }
 
+.owned-power__artifact-art,
+.pause-power__artifact-art {
+  position: absolute;
+  inset: 2px;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.owned-power__artifact-image,
+.pause-power__artifact-image {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  filter: drop-shadow(0 3px 5px rgba(1, 2, 12, .52));
+}
+
 .owned-power__glyph {
   width: 34px;
   height: 34px;
@@ -271,7 +291,7 @@ body.kv-visual-refresh {
   right: -4px;
   bottom: -4px;
   z-index: 2;
-  min-width: 19px;
+  min-width: 29px;
   height: 19px;
   padding: 0 4px;
   display: inline-flex;
@@ -282,7 +302,7 @@ body.kv-visual-refresh {
   border-radius: 999px;
   background: linear-gradient(180deg, #fff0b9, #dbaa62) !important;
   box-shadow: 0 2px 5px rgba(1, 2, 12, .48);
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 950;
   line-height: 1;
 }
@@ -485,34 +505,21 @@ body.kv-visual-refresh #levelModal .skill-card .skill-head b {
   padding-right: 70px;
 }
 
-/* Artifact cards intentionally retain the established family painting. The
-   per-artifact glyph sits in a small medallion, adding identity without
-   obscuring that family cue. */
+/* Every artifact owns one production image. Classification remains in the
+   surrounding card treatment rather than being mistaken for a tiny badge. */
 body.kv-visual-refresh #artifactModal .artifact-choice .skill-icon {
   position: relative;
-  overflow: visible;
+  overflow: hidden;
+  background-image: none !important;
 }
 
-body.kv-visual-refresh #artifactModal .artifact-choice .skill-icon__glyph {
-  position: absolute;
-  right: -3px;
-  bottom: -3px;
-  z-index: 3;
-  width: 23px;
-  height: 23px;
-  margin: 0 !important;
-  padding: 0 !important;
-  display: grid !important;
-  place-items: center;
-  color: #fff1d0 !important;
-  border: 1px solid rgba(255, 225, 153, .84);
-  border-radius: 50%;
-  background: radial-gradient(circle at 38% 28%, #343052, #090b23 72%) !important;
-  box-shadow: 0 2px 6px rgba(1, 2, 12, .72), inset 0 1px rgba(255, 245, 216, .13);
-  font-size: 13px !important;
-  line-height: 1;
-  text-shadow: 0 1px 3px rgba(1, 2, 12, .86);
-  filter: none !important;
+body.kv-visual-refresh #artifactModal .artifact-choice__image {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 7px rgba(1, 2, 12, .52));
+  pointer-events: none;
 }
 
 .skill-card.is-enhancement .skill-card__badge,
@@ -1143,11 +1150,11 @@ body.kv-visual-refresh #pauseModal .pause-journal #pauseGiveupBtn {
   #levelOwnedSkills > button,
   #artifactOwnedSkills > button,
   .owned-power {
-    flex-basis: 38px;
-    width: 38px;
-    height: 38px;
-    min-width: 38px !important;
-    min-height: 38px !important;
+    flex-basis: 44px;
+    width: 44px;
+    height: 44px;
+    min-width: 44px !important;
+    min-height: 44px !important;
   }
 
   #pauseModal .pause-journal .pause-card__hero {
@@ -1169,8 +1176,8 @@ body.kv-visual-refresh #pauseModal .pause-journal #pauseGiveupBtn {
   }
 
   #pauseModal .owned-power-grid {
-    grid-template-columns: repeat(6, minmax(42px, 1fr));
-    gap: 5px;
+    grid-template-columns: repeat(4, minmax(44px, 1fr));
+    gap: 6px;
   }
 }
 

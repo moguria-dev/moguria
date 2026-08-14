@@ -31,7 +31,8 @@ function createElement(tag = 'div', id = '') {
     attributes: {},
     children: [],
     style: { setProperty(name, value) { this[name] = value; } },
-    classList: createClassList(id.endsWith('Modal')),
+    inert: false,
+    classList: createClassList(id.endsWith('Modal') || id === 'settlementError'),
     clientWidth: id === 'stick' ? 132 : 0,
     clientHeight: id === 'stick' ? 132 : 0,
     offsetWidth: id === 'knob' ? 50 : 0,
@@ -40,6 +41,7 @@ function createElement(tag = 'div', id = '') {
     remove() { if (this.parentNode) this.parentNode.children = this.parentNode.children.filter(child => child !== this); },
     addEventListener(type, handler) { listeners.set(type, handler); },
     setAttribute(name, value) { this.attributes[name] = String(value); },
+    removeAttribute(name) { delete this.attributes[name]; },
     getAttribute(name) { return Object.prototype.hasOwnProperty.call(this.attributes, name) ? this.attributes[name] : null; },
     querySelector(selector) {
       if (selector !== '.ban-skill') return null;
@@ -49,6 +51,7 @@ function createElement(tag = 'div', id = '') {
     closest() { return null; },
     getBoundingClientRect() { return { left: 0, top: 0, width: this.clientWidth || 132, height: this.clientHeight || 132 }; },
     setPointerCapture() {},
+    focus() {},
     click() {
       const event = { preventDefault() {}, stopPropagation() {}, target: this };
       const result = typeof this.onclick === 'function' ? this.onclick(event) : undefined;
@@ -69,6 +72,8 @@ function createGameHarness(checkpoint = null, options = {}) {
     'gameCanvas', 'game', 'stick', 'knob', 'giveupBtn', 'pauseBtn', 'resumeBtn', 'pauseGiveupBtn',
     'pauseModal', 'pauseSkills', 'pauseSummary', 'pauseWaveValue', 'pauseLevelValue', 'pauseHpValue',
     'pauseSkillGrid', 'pauseArtifactGrid', 'pausePowerDetail', 'pauseSkillTab', 'pauseArtifactTab',
+    'app', 'startBtn', 'settlementError', 'settlementErrorTitle', 'settlementErrorMessage',
+    'settlementWaveValue', 'settlementLevelValue', 'settlementHpValue', 'settlementRetryBtn', 'settlementHomeBtn',
     'artifactModal', 'artifactChoices', 'artifactTitle', 'artifactOwnedSkills', 'artifactOwnedDetail', 'artifactRerollBtn', 'artifactRerollCount',
     'levelModal', 'skillChoices', 'levelOwnedSkills', 'levelOwnedDetail', 'rerollBtn', 'rerollCount', 'lv', 'hp', 'exp', 'nextExp',
     'timer', 'wave', 'miniStats'
@@ -184,6 +189,22 @@ function beginLevelUp(harness) {
   harness.game.devStep(.016);
   assert.equal(state.mode, 'levelup');
 }
+
+test('normal skill choices expose separate accessible choose and seal buttons', () => {
+  const harness = createGameHarness();
+  openLevelChoice(harness);
+  const entry = harness.elements.skillChoices.children[0];
+  const choose = entry.children[0];
+  const seal = entry.children[1];
+
+  assert.equal(entry.tagName, 'ARTICLE');
+  assert.equal(choose.tagName, 'BUTTON');
+  assert.equal(seal.tagName, 'BUTTON');
+  assert.match(choose.innerHTML, /skill-card__pick[^>]*>選ぶ/);
+  assert.match(choose.attributes['aria-label'], /を選ぶ/);
+  assert.match(seal.attributes['aria-label'], /この冒険中は候補に出なくなります/);
+  assert.equal(seal.attributes['aria-describedby'], 'skillSealHelp');
+});
 
 function prepareDropCombat(harness) {
   const state = harness.state;
@@ -584,21 +605,37 @@ test('defeat animation plays before result settlement', () => {
   assert.equal(stopCalls, 1);
 });
 
-test('settlement failure exposes a visible retry explanation in the refreshed pause journal', () => {
+test('settlement failure stays on a dedicated truthful surface and retries the same pending run', () => {
   const harness = createGameHarness();
   const state = prepareDropCombat(harness);
-  harness.context.MoguriaMeta = { awardFromRun: () => ({ ok: false, reason: 'save-failed' }) };
+  let attempts = 0;
+  harness.context.MoguriaMeta = { awardFromRun: () => (++attempts === 1
+    ? { ok: false, reason: 'save-failed' }
+    : { ok: true, amount: 18 }) };
   harness.context.MoguriaResult = { buildName: () => 'test run', comment: () => 'test', titles: () => [] };
+  state.wave = 6;
+  state.floor = 6;
+  state.p.lv = 4;
+  state.p.maxHp = 120;
   state.p.hp = 0;
 
   harness.game.devStep(.016);
   for (let i = 0; i < 20 && state.mode === 'defeat'; i++) harness.game.devStep(.033);
 
   assert.equal(state.mode, 'settlementError');
-  assert.equal(harness.elements.pauseModal.classList.contains('hidden'), false);
-  assert.equal(harness.elements.pauseSummary.classList.contains('is-error'), true);
-  assert.match(harness.elements.pauseSummary.textContent, /冒険記録を保存できませんでした/);
-  assert.equal(harness.elements.resumeBtn.textContent, '保存を再試行');
+  assert.equal(harness.elements.pauseModal.classList.contains('hidden'), true);
+  assert.equal(harness.elements.settlementError.classList.contains('hidden'), false);
+  assert.match(harness.elements.settlementErrorTitle.textContent, /保存できませんでした/);
+  assert.equal(harness.elements.settlementWaveValue.textContent, '6 / 12');
+  assert.equal(harness.elements.settlementLevelValue.textContent, 'Lv.4');
+  assert.equal(harness.elements.settlementHpValue.textContent, '0 / 120');
+  assert.equal(harness.elements.app.inert, true);
+
+  harness.elements.settlementRetryBtn.click();
+  assert.equal(attempts, 2);
+  assert.equal(state.mode, 'ended');
+  assert.equal(harness.elements.settlementError.classList.contains('hidden'), true);
+  assert.equal(harness.elements.app.inert, false);
 });
 
 test('direct give-up confirmation freezes combat, cancellation resumes it, and acceptance settles the run', async () => {

@@ -1909,6 +1909,222 @@
   50% { opacity: 1; transform: scale(1.15); }
 }
 
+/* Production UI icon library — the same logical asset is reused in every
+   meta surface. No OS emoji or family-level artifact stand-in remains. */
+
+#overlay.meta-overlay .meta-gacha-reveal__art,
+#overlay.meta-overlay .meta-gacha-item__art,
+#overlay.meta-overlay .meta-equip-slot__art,
+#overlay.meta-overlay .meta-equip-item__icon,
+#overlay.meta-overlay .meta-outing-card__icon,
+#overlay.meta-overlay .meta-dex-card__icon,
+.collection-power-icon {
+  overflow: hidden;
+}
+
+#overlay.meta-overlay .meta-gacha-reveal__image,
+#overlay.meta-overlay .meta-gacha-item__image,
+#overlay.meta-overlay .meta-equip-slot__image,
+#overlay.meta-overlay .meta-equip-item__image,
+#overlay.meta-overlay .meta-outing-card__image,
+#overlay.meta-overlay .meta-dex-card__image,
+.collection-power-image {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  filter: drop-shadow(0 5px 8px rgba(0, 0, 0, .34));
+}
+
+#overlay.meta-overlay[data-view="gacha"] #gachaResult .meta-gacha-reveal__art {
+  width: 82px;
+  height: 82px;
+  margin: 4px 0 3px;
+  filter: drop-shadow(0 8px 12px rgba(0, 0, 0, .48));
+  -webkit-filter: drop-shadow(0 8px 12px rgba(0, 0, 0, .48));
+}
+
+#overlay.meta-overlay .meta-gacha-item__art {
+  width: 48px;
+  height: 48px;
+  margin-top: 3px;
+  line-height: 1;
+}
+
+#overlay.meta-overlay .meta-equip-slot__art {
+  width: 39px;
+  height: 39px;
+}
+
+#overlay.meta-overlay .meta-equip-slot.is-empty .meta-equip-slot__image {
+  opacity: .50;
+  filter: grayscale(.2) drop-shadow(0 3px 5px rgba(0, 0, 0, .28));
+}
+
+#overlay.meta-overlay .meta-equip-item__image {
+  width: 48px;
+  height: 48px;
+}
+
+#overlay.meta-overlay .meta-outing-card__image {
+  width: 54px;
+  height: 54px;
+}
+
+#overlay.meta-overlay .meta-outing-card.is-coming-soon > button {
+  border-color: rgba(180, 178, 204, .18);
+  color: rgba(236, 228, 218, .72);
+  background: linear-gradient(180deg, rgba(49, 47, 70, .82), rgba(24, 25, 42, .90)) !important;
+}
+
+#overlay.meta-overlay .meta-dex-card__image {
+  width: 100%;
+  height: 100%;
+}
+
+.collection-power-art,
+#overlay.meta-overlay .meta-dex-card__art {
+  width: 100%;
+  height: 100%;
+  display: block;
+  background-repeat: no-repeat;
+  background-size: 200% 200%;
+  filter: drop-shadow(0 4px 7px rgba(0, 0, 0, .32));
+}
+
+.collection-power-art[data-cell="0"],
+#overlay.meta-overlay .meta-dex-card__art[data-cell="0"] { background-position: 0 0; }
+.collection-power-art[data-cell="1"],
+#overlay.meta-overlay .meta-dex-card__art[data-cell="1"] { background-position: 100% 0; }
+.collection-power-art[data-cell="2"],
+#overlay.meta-overlay .meta-dex-card__art[data-cell="2"] { background-position: 0 100%; }
+.collection-power-art[data-cell="3"],
+#overlay.meta-overlay .meta-dex-card__art[data-cell="3"] { background-position: 100% 100%; }
+
+.collection-power-art[data-skill-atlas="poison"],
+#overlay.meta-overlay .meta-dex-card__art[data-skill-atlas="poison"] { background-image: url("../assets/images/skill-icons/skill-atlas-poison.webp?v=20260813-icon-legibility-1"); }
+.collection-power-art[data-skill-atlas="blast"],
+#overlay.meta-overlay .meta-dex-card__art[data-skill-atlas="blast"] { background-image: url("../assets/images/skill-icons/skill-atlas-blast.webp?v=20260813-icon-legibility-1"); }
+.collection-power-art[data-skill-atlas="combat"],
+#overlay.meta-overlay .meta-dex-card__art[data-skill-atlas="combat"] { background-image: url("../assets/images/skill-icons/skill-atlas-combat.webp?v=20260813-icon-legibility-1"); }
+.collection-power-art[data-skill-atlas="guard"],
+#overlay.meta-overlay .meta-dex-card__art[data-skill-atlas="guard"] { background-image: url("../assets/images/skill-icons/skill-atlas-guard.webp?v=20260813-icon-legibility-1"); }
+.collection-power-art[data-skill-atlas="move"],
+#overlay.meta-overlay .meta-dex-card__art[data-skill-atlas="move"] { background-image: url("../assets/images/skill-icons/skill-atlas-move.webp?v=20260813-icon-legibility-1"); }
+.collection-power-art[data-skill-atlas="star"],
+#overlay.meta-overlay .meta-dex-card__art[data-skill-atlas="star"] { background-image: url("../assets/images/skill-icons/skill-atlas-star.webp?v=20260813-icon-legibility-1"); }
+.collection-power-art[data-skill-atlas="summon"],
+#overlay.meta-overlay .meta-dex-card__art[data-skill-atlas="summon"] { background-image: url("../assets/images/skill-icons/skill-atlas-summon.webp?v=20260813-icon-legibility-1"); }
+.collection-power-art[data-skill-atlas="support"],
+#overlay.meta-overlay .meta-dex-card__art[data-skill-atlas="support"] { background-image: url("../assets/images/skill-icons/skill-atlas-support.webp?v=20260813-icon-legibility-1"); }
+.collection-power-art[data-skill-atlas="upgrade"],
+#overlay.meta-overlay .meta-dex-card__art[data-skill-atlas="upgrade"] { background-image: url("../assets/images/skill-icons/skill-atlas-upgrade.webp?v=20260813-icon-legibility-1"); }
+.collection-power-art[data-skill-atlas="fusion"],
+#overlay.meta-overlay .meta-dex-card__art[data-skill-atlas="fusion"] { background-image: url("../assets/images/skill-icons/skill-atlas-fusion.webp?v=20260813-icon-legibility-1"); }
+
+/* Result and journey records keep powers visually separated by meaning. */
+
+body.kv-visual-refresh #result #resultBadges.badges {
+  width: 100%;
+  display: grid;
+  justify-content: stretch;
+  gap: 9px;
+  margin: 12px 0;
+}
+
+.collection-power-group {
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid rgba(255, 222, 151, .16);
+  border-radius: 14px;
+  background: rgba(7, 8, 24, .27);
+  text-align: left;
+}
+
+.collection-power-group h4 {
+  margin: 0 0 6px;
+  color: rgba(255, 228, 169, .78);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .06em;
+}
+
+.collection-power-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.collection-power-item {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 9px 4px 5px;
+  border: 1px solid rgba(255, 221, 148, .17);
+  border-radius: 12px;
+  color: rgba(255, 241, 215, .90);
+  background: linear-gradient(135deg, rgba(66, 46, 76, .72), rgba(17, 15, 39, .78));
+}
+
+.collection-power-item b {
+  color: inherit;
+  font-size: 10px;
+  line-height: 1.25;
+}
+
+.collection-power-icon {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  background: radial-gradient(circle, rgba(255, 230, 164, .12), rgba(62, 48, 89, .16));
+}
+
+.collection-power-icon:empty {
+  display: none;
+}
+
+.collection-power-item--title,
+.collection-power-item--synergy {
+  min-height: 32px;
+  padding-left: 10px;
+}
+
+.collection-power-group[data-power-group="artifact"] {
+  border-color: rgba(255, 205, 115, .25);
+}
+
+.collection-power-group[data-power-group="fusion"] {
+  border-color: rgba(171, 137, 255, .27);
+}
+
+#overlay.meta-overlay .meta-log-power-groups {
+  display: grid;
+  gap: 6px;
+  padding-top: 4px;
+}
+
+#overlay.meta-overlay .meta-log-power-groups .collection-power-group {
+  padding: 6px;
+}
+
+#overlay.meta-overlay .meta-log-power-groups .collection-power-item {
+  min-height: 34px;
+}
+
+#overlay.meta-overlay .meta-log-power-groups .collection-power-icon {
+  width: 26px;
+  height: 26px;
+  flex-basis: 26px;
+}
+
+#overlay.meta-overlay .meta-log-power-groups .collection-power-item b {
+  font-size: 9px;
+}
+
 @keyframes metaRevealIn {
   0% { opacity: 0; transform: scale(.88) translateY(10px); }
   65% { opacity: 1; transform: scale(1.02) translateY(0); }
@@ -2062,4 +2278,67 @@
     animation-duration: .01ms !important;
     animation-iteration-count: 1 !important;
   }
+}
+
+/* Smartphone legibility floor. Space-constrained layouts reflow or scroll;
+   they no longer shrink decision text into the 7–9px range. */
+#overlay.meta-overlay .meta-shell__subtitle,
+#overlay.meta-overlay .meta-gacha-altar > p,
+#overlay.meta-overlay .meta-equip-stage__copy p,
+#overlay.meta-overlay .meta-equip-item__copy p,
+#overlay.meta-overlay .meta-outing-card__copy p,
+#overlay.meta-overlay .meta-log-card__main > p {
+  font-size: 11px !important;
+}
+
+#overlay.meta-overlay .meta-shell__eyebrow,
+#overlay.meta-overlay .meta-section-head > small,
+#overlay.meta-overlay .meta-section-head span,
+#overlay.meta-overlay .meta-primary > small,
+#overlay.meta-overlay .meta-gacha-action > div small,
+#overlay.meta-overlay .meta-gacha-action > div b span,
+#overlay.meta-overlay[data-view="gacha"] #gachaResult .meta-gacha-reveal > small,
+#overlay.meta-overlay .meta-gacha-item__rarity,
+#overlay.meta-overlay .meta-gacha-item > small,
+#overlay.meta-overlay .meta-gacha-item > b,
+#overlay.meta-overlay .meta-equip-stage__copy > small,
+#overlay.meta-overlay .meta-equip-slot > small,
+#overlay.meta-overlay .meta-equip-slot > b,
+#overlay.meta-overlay .meta-equip-item__copy > div span,
+#overlay.meta-overlay .meta-equip-item__copy > div small,
+#overlay.meta-overlay .meta-outing-map__copy small,
+#overlay.meta-overlay .meta-outing-map__status span,
+#overlay.meta-overlay .meta-outing-card__copy > small,
+#overlay.meta-overlay .meta-dex__progress-copy span,
+#overlay.meta-overlay .meta-tabs button b,
+#overlay.meta-overlay .meta-dex-card__copy > small,
+#overlay.meta-overlay .meta-discovery-list small,
+#overlay.meta-overlay .meta-log-summary small,
+#overlay.meta-overlay .meta-log-summary em,
+#overlay.meta-overlay .meta-log-card__main > header small,
+#overlay.meta-overlay .meta-log-card__main > header > span,
+#overlay.meta-overlay .meta-log-card__stats span,
+#overlay.meta-overlay .meta-log-card__details summary,
+#overlay.meta-overlay .meta-log-card__details summary b,
+#overlay.meta-overlay .meta-chip-list .badge,
+#overlay.meta-overlay .meta-log-power-groups .collection-power-item b {
+  font-size: 10px !important;
+}
+
+#overlay.meta-overlay .meta-dex-card__copy > b {
+  font-size: 12px;
+}
+
+#overlay.meta-overlay .meta-dex-card__copy > div span {
+  min-height: 20px;
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+}
+
+#overlay.meta-overlay .meta-tabs button,
+#overlay.meta-overlay .meta-equip-item__actions button,
+#overlay.meta-overlay .meta-outing-card > button {
+  min-height: 44px;
+  font-size: 11px;
 }

@@ -133,6 +133,8 @@ window.MoguriaSkills = (() => {
     if(skillCapabilityProviders[skill.id]) skill.provides=skillCapabilityProviders[skill.id];
   }
   for(const artifact of artifacts){
+    const asset=window.MoguriaUIAssets?.get?.('artifacts',artifact.id);
+    if(asset) artifact.iconVisual=Object.freeze({...asset,kind:'artifact'});
     if(artifactCapabilityProviders[artifact.id]) artifact.provides=artifactCapabilityProviders[artifact.id];
   }
 
@@ -201,10 +203,8 @@ window.MoguriaSkills = (() => {
 
   function iconVisualForArtifact(artifactOrId){
     const artifact=typeof artifactOrId==='string'?artifacts.find(entry=>entry.id===artifactOrId):artifactOrId;
-    const tags=new Set(artifact?.tags||[]);
-    const kind=tags.has('毒')?'poison':tags.has('召喚')?'summon':(tags.has('爆発')||tags.has('設置'))?'fire':
-      (tags.has('氷')||tags.has('回避')||tags.has('速度'))?'ice':(tags.has('防御')||tags.has('反撃')||tags.has('回復')||tags.has('領域'))?'guard':'star';
-    return {family:kind==='fire'?'blast':kind==='ice'?'move':kind==='guard'?'guard':kind==='summon'?'summon':kind==='poison'?'poison':'star',cell:0,x:0,y:0,kind};
+    if(!artifact) return null;
+    return artifact.iconVisual||window.MoguriaUIAssets?.get?.('artifacts',artifact.id)||null;
   }
 
   function weightedArtifactChoices(count, owned){

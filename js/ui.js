@@ -11,6 +11,44 @@ window.MoguriaUI = (() => {
   const attr = esc;
   const asArray = (value) => Array.isArray(value) ? value : [];
 
+  function imageMarkup(visual, className, alt = ''){
+    if(!visual?.src) return '';
+    return `<img class="${attr(className)}" src="${attr(visual.src)}" alt="${attr(alt)}" loading="lazy" decoding="async" />`;
+  }
+
+  function skillArtMarkup(skill, className = 'collection-power-art'){
+    const visual=window.MoguriaSkills?.iconVisualForSkill?.(skill?.id||skill);
+    if(!visual) return '';
+    return `<span class="${attr(className)}" data-skill-atlas="${attr(visual.family)}" data-cell="${attr(visual.cell)}" aria-hidden="true"></span>`;
+  }
+
+  function artifactArtMarkup(artifact, className = 'collection-power-image'){
+    const visual=window.MoguriaSkills?.iconVisualForArtifact?.(artifact);
+    return imageMarkup(visual,className,'');
+  }
+
+  function collectionItem(name, art, kind){
+    return `<span class="collection-power-item collection-power-item--${attr(kind)}"><i class="collection-power-icon" aria-hidden="true">${art}</i><b>${esc(name)}</b></span>`;
+  }
+
+  function collectionGroupsMarkup({ titles = [], synergies = [], artifacts = [], fusions = [] } = {}){
+    const groups=[];
+    const textGroup=(kind,title,items)=>{
+      const values=asArray(items).filter(Boolean);
+      if(!values.length) return;
+      groups.push(`<section class="collection-power-group" data-power-group="${attr(kind)}"><h4>${esc(title)}</h4><div class="collection-power-items">${values.map(name=>collectionItem(name,'',kind)).join('')}</div></section>`);
+    };
+    textGroup('title','二つ名',titles);
+    if(asArray(artifacts).length){
+      groups.push(`<section class="collection-power-group" data-power-group="artifact"><h4>アーティファクト</h4><div class="collection-power-items">${artifacts.map(artifact=>collectionItem(artifact?.name||'',artifactArtMarkup(artifact),'artifact')).join('')}</div></section>`);
+    }
+    if(asArray(fusions).length){
+      groups.push(`<section class="collection-power-group" data-power-group="fusion"><h4>合体スキル</h4><div class="collection-power-items">${fusions.map(skill=>collectionItem(skill?.name||'',skillArtMarkup(skill),'fusion')).join('')}</div></section>`);
+    }
+    textGroup('synergy','シナジー',synergies);
+    return groups.join('');
+  }
+
   function canFocus(element){
     return Boolean(element && typeof element.focus === 'function');
   }
@@ -139,7 +177,10 @@ window.MoguriaUI = (() => {
     }
     const first = nodes[0];
     const last = nodes[nodes.length - 1];
-    if (event.shiftKey && document.activeElement === first) {
+    if (typeof container.contains === 'function' && !container.contains(document.activeElement)) {
+      event.preventDefault();
+      (event.shiftKey ? last : first).focus();
+    } else if (event.shiftKey && document.activeElement === first) {
       event.preventDefault();
       last.focus();
     } else if (!event.shiftKey && document.activeElement === last) {
@@ -176,7 +217,7 @@ window.MoguriaUI = (() => {
     outing: {
       title: 'おでかけ',
       eyebrow: 'EXPEDITION',
-      subtitle: '今夜は、どの光を探しにいく？',
+      subtitle: '新しい行き先を準備しています。',
       icon: 'assets/images/home-v2/icon_outing.png'
     }
   };
@@ -187,10 +228,6 @@ window.MoguriaUI = (() => {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     target.classList.add('active');
     if (id === 'home') window.MoguriaHome?.update?.();
-  }
-
-  function badgeList(items){
-    return asArray(items).map(x => `<span class="badge">${esc(x)}</span>`).join('');
   }
 
   function coinMark(value, id = ''){
@@ -240,7 +277,7 @@ window.MoguriaUI = (() => {
     noticeEl.textContent = message;
     noticeEl.dataset.tone = tone;
     noticeEl.hidden = false;
-    noticeTimer = window.setTimeout(() => { noticeEl.hidden = true; }, 2800);
+    if(tone!=='error') noticeTimer = window.setTimeout(() => { noticeEl.hidden = true; }, 2800);
   }
 
   function rarityClass(r){
@@ -248,7 +285,7 @@ window.MoguriaUI = (() => {
   }
 
   function rarityName(r){
-    return window.MoguriaMeta?.RARITY_LABELS?.[r] || String(r || 'C').toUpperCase();
+    return window.MoguriaMeta?.RARITY_LABELS?.[r] || '不明';
   }
 
   function emptyState(icon, title, text){
@@ -289,13 +326,12 @@ window.MoguriaUI = (() => {
     const detailHtml = detailStats.map(([k, v]) => `<div class="stat stat--detail"><b>${esc(v ?? 0)}</b><span>${esc(k)}</span></div>`).join('');
     document.getElementById('resultStats').innerHTML = `<div class="result-primary-stats">${primaryHtml}</div><details class="result-detail"><summary>くわしい記録</summary><div class="result-detail-stats">${detailHtml}</div></details>`;
 
-    const badges = [
-      ...asArray(run.titles),
-      ...asArray(run.artifacts).map(a => ' ' + (a?.name || '')),
-      ...asArray(run.skills).filter(s => s?.fusion).map(s => '✦ ' + (s?.name || '')),
-      ...asArray(run.synergies)
-    ].filter(Boolean);
-    document.getElementById('resultBadges').innerHTML = badgeList(badges);
+    document.getElementById('resultBadges').innerHTML = collectionGroupsMarkup({
+      titles: asArray(run.titles),
+      artifacts: asArray(run.artifacts),
+      fusions: asArray(run.skills).filter(skill=>skill?.fusion),
+      synergies: asArray(run.synergies)
+    });
     show('result');
   }
 
@@ -321,7 +357,7 @@ window.MoguriaUI = (() => {
         <strong>${progress}%</strong>
       </section>
       <nav class="meta-tabs" role="tablist" aria-label="図鑑の分類">
-        <button type="button" role="tab" data-dex-tab="artifacts" aria-selected="true">遺物 <b>${artifactCount}</b></button>
+        <button type="button" role="tab" data-dex-tab="artifacts" aria-selected="true">アーティファクト <b>${artifactCount}</b></button>
         <button type="button" role="tab" data-dex-tab="foods" aria-selected="false">食べもの <b>${skillCount}</b></button>
         <button type="button" role="tab" data-dex-tab="synergies" aria-selected="false">シナジー <b>${syn.length}</b></button>
         <button type="button" role="tab" data-dex-tab="titles" aria-selected="false">二つ名 <b>${titles.length}</b></button>
@@ -330,17 +366,18 @@ window.MoguriaUI = (() => {
     `);
 
     const content = document.getElementById('dexContent');
-    const renderEntries = (entries, counts, unit) => `
+    const renderEntries = (entries, counts, unit, type) => `
       <div class="meta-dex-grid">
         ${entries.map(entry => {
           const count = Number(counts[entry.id] || 0);
           const found = count > 0;
-          const tags = asArray(entry.tags).slice(0, 2).map(tag => `<span>${esc(tag)}</span>`).join('');
+          const tags = found?asArray(entry.tags).slice(0, 2).map(tag => `<span>${esc(tag)}</span>`).join(''):'';
+          const art=found?(type==='artifact'?artifactArtMarkup(entry,'meta-dex-card__image'):skillArtMarkup(entry,'meta-dex-card__art')):'';
           return `<article class="meta-dex-card ${found ? 'is-found' : 'is-unknown'}">
-            <div class="meta-dex-card__icon" aria-hidden="true">${found ? esc(entry.icon || '✦') : '？'}</div>
+            <div class="meta-dex-card__icon" aria-hidden="true">${found?art:'？'}</div>
             <div class="meta-dex-card__copy">
               <small>${found ? `${count}${unit}` : '未発見'}</small>
-              <b>${esc(entry.name)}</b>
+              <b>${found?esc(entry.name):'？？？'}</b>
               <div>${tags}</div>
             </div>
           </article>`;
@@ -349,8 +386,8 @@ window.MoguriaUI = (() => {
     `;
 
     const panes = {
-      artifacts: () => renderEntries(artifacts, save.dex.artifacts || {}, '回獲得'),
-      foods: () => renderEntries(skills, save.dex.skills || {}, '回食べた'),
+      artifacts: () => renderEntries(artifacts, save.dex.artifacts || {}, '回獲得','artifact'),
+      foods: () => renderEntries(skills, save.dex.skills || {}, '回食べた','skill'),
       synergies: () => syn.length
         ? `<div class="meta-discovery-list">${syn.map(name => `<div><span>✦</span><b>${esc(name)}</b><small>発見済み</small></div>`).join('')}</div>`
         : emptyState('✧', 'まだ見つかっていません', '組み合わせを変えて、力のつながりを探してみよう。'),
@@ -382,14 +419,9 @@ window.MoguriaUI = (() => {
     const best = save.best || {};
     const html = runs.length
       ? runs.map((run, index) => {
-          const artifacts = asArray(run.artifacts).map(a => a?.name || '').filter(Boolean);
-          const fusionSkills = asArray(run.skills).filter(s => s?.fusion).map(s => '✦ ' + (s?.name || ''));
-          const badges = [
-            ...asArray(run.titles),
-            ...asArray(run.synergies),
-            ...artifacts,
-            ...fusionSkills
-          ].filter(Boolean);
+          const artifacts = asArray(run.artifacts);
+          const fusionSkills = asArray(run.skills).filter(s => s?.fusion);
+          const collectionCount=asArray(run.titles).length+asArray(run.synergies).length+artifacts.length+fusionSkills.length;
           return `
             <article class="meta-log-card">
               <div class="meta-log-card__index"><span>#</span>${esc(runs.length - index)}</div>
@@ -404,7 +436,7 @@ window.MoguriaUI = (() => {
                   <span><b>${esc(run.maxDamage || 0)}</b>最大DMG</span>
                 </div>
                 <p>${esc(run.comment || '今日の冒険を、星が静かに覚えています。')}</p>
-                ${badges.length ? `<details class="meta-log-card__details"><summary>見つけた力 <b>${badges.length}</b></summary><div class="meta-chip-list">${badgeList(badges)}</div></details>` : ''}
+                ${collectionCount ? `<details class="meta-log-card__details"><summary>見つけた力 <b>${collectionCount}</b></summary><div class="meta-log-power-groups">${collectionGroupsMarkup({titles:run.titles,synergies:run.synergies,artifacts,fusions:fusionSkills})}</div></details>` : ''}
               </div>
             </article>
           `;
@@ -427,19 +459,24 @@ window.MoguriaUI = (() => {
     const summary = window.MoguriaMeta.equipmentSummary();
     const equippedUids = new Set(summary.map(entry => entry.item?.uid).filter(Boolean));
     const equippedCount = summary.filter(entry => entry.item).length;
-    const slots = summary.map(entry => `
-      <div class="meta-equip-slot ${entry.item ? 'is-filled' : ''}">
-        <span aria-hidden="true">${esc(entry.item?.icon || '✦')}</span>
+    const slots = summary.map(entry => {
+      const visual=entry.item
+        ? window.MoguriaMeta.iconVisualForEquipment?.(entry.item)
+        : window.MoguriaMeta.iconVisualForSlot?.(entry.slot);
+      return `
+      <div class="meta-equip-slot ${entry.item ? 'is-filled' : 'is-empty'}">
+        <span class="meta-equip-slot__art" aria-hidden="true">${imageMarkup(visual,'meta-equip-slot__image')}</span>
         <small>${esc(entry.label)}</small>
         <b>${entry.item ? `Lv.${esc(entry.item.level || 1)}` : '未装備'}</b>
       </div>
-    `).join('');
+    `;
+    }).join('');
     const inventory = save.meta.inventory.length
       ? save.meta.inventory.map(item => {
           const equipped = equippedUids.has(item.uid);
           return `
             <article class="meta-equip-item ${rarityClass(item.rarity)} ${equipped ? 'is-equipped' : ''}">
-              <div class="meta-equip-item__icon" aria-hidden="true">${esc(item.icon)}</div>
+              <div class="meta-equip-item__icon" aria-hidden="true">${imageMarkup(window.MoguriaMeta.iconVisualForEquipment?.(item),'meta-equip-item__image')}</div>
               <div class="meta-equip-item__copy">
                 <div><span>${esc(rarityName(item.rarity))}</span><small>${esc(window.MoguriaMeta.SLOT_LABELS[item.slot])}</small></div>
                 <h3>${esc(item.name)}</h3>
@@ -476,13 +513,13 @@ window.MoguriaUI = (() => {
     const body = document.getElementById('overlayBody');
     body.querySelectorAll('[data-equip]').forEach(button => {
       button.onclick = () => {
-        const item = window.MoguriaMeta.equip(button.dataset.equip);
-        if (!item) {
-          showNotice('装備が見つかりませんでした。', 'error');
+        const res = window.MoguriaMeta.equip(button.dataset.equip);
+        if (!res?.ok) {
+          showNotice(res?.message||'装備が見つかりませんでした。', 'error');
           return;
         }
         showEquipment();
-        showNotice(`「${item.name}」を装備しました。`, 'success');
+        showNotice(`「${res.item.name}」を装備しました。`, 'success');
       };
     });
     body.querySelectorAll('[data-upgrade]').forEach(button => {
@@ -530,7 +567,7 @@ window.MoguriaUI = (() => {
     const items = window.MoguriaMeta.EQUIPMENT.map(item => `
       <article class="meta-gacha-item ${rarityClass(item.rarity)}">
         <span class="meta-gacha-item__rarity">${esc(rarityName(item.rarity))}</span>
-        <div aria-hidden="true">${esc(item.icon)}</div>
+        <div class="meta-gacha-item__art" aria-hidden="true">${imageMarkup(window.MoguriaMeta.iconVisualForEquipment?.(item),'meta-gacha-item__image')}</div>
         <b>${esc(item.name)}</b>
         <small>${esc(window.MoguriaMeta.SLOT_LABELS[item.slot])}</small>
       </article>
@@ -548,7 +585,7 @@ window.MoguriaUI = (() => {
         <button id="pullGachaBtn" class="meta-primary" type="button"><span>星の泉にもぐる</span><small>装備をひとつ見つける</small></button>
       </section>
       <div id="gachaResult" class="meta-gacha-result" role="status" aria-live="polite"></div>
-      <section class="meta-section-head"><div><span>DISCOVERIES</span><h3>泉から出るもの</h3></div><small>C · R · E</small></section>
+      <section class="meta-section-head"><div><span>DISCOVERIES</span><h3>泉から出るもの</h3></div><small>コモン・レア・エピック</small></section>
       <div class="meta-gacha-grid">${items}</div>
     `);
 
@@ -572,7 +609,7 @@ window.MoguriaUI = (() => {
         <article class="meta-gacha-reveal ${rarityClass(res.item.rarity)}">
           <span class="meta-gacha-reveal__light" aria-hidden="true"></span>
           <small>${esc(rarityName(res.item.rarity))} · NEW EQUIPMENT</small>
-          <div aria-hidden="true">${esc(res.item.icon)}</div>
+          <div class="meta-gacha-reveal__art" aria-hidden="true">${imageMarkup(window.MoguriaMeta.iconVisualForEquipment?.(res.item),'meta-gacha-reveal__image')}</div>
           <h3>${esc(res.item.name)}</h3>
           <p>${esc(res.item.desc)}</p>
         </article>
@@ -597,21 +634,20 @@ window.MoguriaUI = (() => {
       const key = challenge.type === 'daily' ? today : challenge.id;
       return Boolean(claimed[challenge.id + ':' + key]);
     };
-    const completed = window.MoguriaMeta.CHALLENGES.filter(isClaimed).length;
     const cards = window.MoguriaMeta.CHALLENGES.map((challenge, index) => {
       const done = isClaimed(challenge);
       return `
-        <article class="meta-outing-card meta-outing-card--${index + 1} ${done ? 'is-complete' : ''}">
+        <article class="meta-outing-card meta-outing-card--${index + 1} ${done ? 'is-complete' : 'is-coming-soon'}">
           <span class="meta-outing-card__number">0${index + 1}</span>
-          <div class="meta-outing-card__icon" aria-hidden="true">${esc(challenge.icon)}</div>
+          <div class="meta-outing-card__icon" aria-hidden="true">${imageMarkup(window.MoguriaMeta.iconVisualForOuting?.(challenge),'meta-outing-card__image')}</div>
           <div class="meta-outing-card__copy">
             <small>${esc(typeLabels[challenge.type] || 'おでかけ')}</small>
             <h3>${esc(challenge.name)}</h3>
             <p>${esc(challenge.desc)}</p>
-            <span class="meta-outing-card__reward"><img src="assets/images/home-v2/currency_coin.png" alt="" />${esc(challenge.reward)} MC</span>
+            <span class="meta-outing-card__reward"><img src="assets/images/home-v2/currency_coin.png" alt="" />予定報酬 ${esc(challenge.reward)} MC</span>
           </div>
-          <button type="button" ${done ? 'disabled' : `data-claim="${attr(challenge.id)}"`}>
-            <span>${done ? '受け取り済み' : '報酬を受け取る'}</span>
+          <button type="button" disabled>
+            <span>${done ? '受け取り済み' : '準備中'}</span>
           </button>
         </article>
       `;
@@ -619,26 +655,14 @@ window.MoguriaUI = (() => {
 
     overlay('outing', `
       <section class="meta-outing-map">
-        <div class="meta-outing-map__copy"><small>今夜の行き先</small><b>3つの光が<br />Moguを待っています。</b></div>
+        <div class="meta-outing-map__copy"><small>今夜の行き先</small><b>3つのおでかけ先を<br />準備しています。</b></div>
         <img src="assets/images/home-v2/expedition_mogu.png" alt="" />
-        <div class="meta-outing-map__status"><span>完了</span><b>${completed} / ${window.MoguriaMeta.CHALLENGES.length}</b></div>
+        <div class="meta-outing-map__status"><span>公開中</span><b>0 / ${window.MoguriaMeta.CHALLENGES.length}</b></div>
       </section>
       <div class="meta-outing-wallet">${coinMark(save.meta.coins || 0)}</div>
       <section class="meta-outing-list">${cards}</section>
     `);
 
-    document.getElementById('overlayBody').querySelectorAll('[data-claim]').forEach(button => {
-      button.onclick = () => {
-        const res = window.MoguriaMeta.claimChallenge(button.dataset.claim);
-        if (!res.ok) {
-          showNotice(res.message, 'error');
-          return;
-        }
-        showOuting();
-        showNotice(`${res.amount} MoguCoinを受け取りました。`, 'success');
-        window.MoguriaHome.update();
-      };
-    });
   }
 
   function init(){
@@ -674,7 +698,13 @@ window.MoguriaUI = (() => {
         document.getElementById('adventureLoadingCard')?.focus?.();
         return;
       }
-      if (event.key === 'Escape') closeMetaOverlay();
+      const metaOverlay = document.getElementById('overlay');
+      if (metaOverlay && !metaOverlay.classList.contains('hidden')) {
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          closeMetaOverlay();
+        } else trapSystemDialogFocus(event, metaOverlay);
+      }
     });
   }
 

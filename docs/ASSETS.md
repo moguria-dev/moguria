@@ -22,7 +22,7 @@ Do not store the full inventory in `project-state`; it should point to manifests
 - `lazy`: optional files that can load after first interaction.
 - `packs`: coherent groups loaded before a screen, stage, battle renderer, event, or audio set is used.
 
-At the audited baseline, Home uses 18 critical image assets and battle is the `battle-v3` pack. Battle assets do not belong in `critical` merely because they are visually important.
+At the audited baseline, Home uses 15 critical image assets and battle is the `battle-v3` pack. Assets used only after opening a secondary screen stay out of `critical`, even when they remain in the shared image registry. Battle assets do not belong in `critical` merely because they are visually important.
 
 All runtime asset URLs must remain first-party relative paths below the approved asset tree. Remote URLs and path traversal are rejected by policy and tests.
 

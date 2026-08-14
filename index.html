@@ -4,15 +4,16 @@
  <meta charset="utf-8" />
  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
  <meta name="theme-color" content="#171025" />
- <title>Moguria v3.2.1</title>
+ <title>Moguria v3.3.0</title>
  <link rel="stylesheet" href="style.css?v=20260812-startup-loader-1" />
  <link rel="stylesheet" href="css/moguria-kv-visual-refresh.css?v=20260613-asset-rich" />
  <link rel="stylesheet" href="css/moguria-final-ui.css?v=20260803-home-layout-2" />
  <link rel="stylesheet" href="css/moguria-play-ui.css?v=20260812-battle-v3-2" />
  <link rel="stylesheet" href="css/moguria-battle-world.css?v=20260812-battle-v3-2" />
- <link rel="stylesheet" href="css/moguria-meta-ui.css?v=20260813-gacha-contrast-2" />
- <link rel="stylesheet" href="css/moguria-battle-refinement.css?v=20260813-icon-legibility-1" />
+ <link rel="stylesheet" href="css/moguria-meta-ui.css?v=20260814-ui-consistency-1" />
+ <link rel="stylesheet" href="css/moguria-battle-refinement.css?v=20260814-ui-consistency-1" />
  <link rel="stylesheet" href="css/moguria-system-overlays.css?v=20260813-system-overlays-1" />
+ <link rel="stylesheet" href="css/moguria-ui-consistency.css?v=20260814-ui-consistency-1" />
 </head>
 <body class="moguria-booting">
  <section id="startupLoader" class="startup-loader" aria-labelledby="startupLoaderTitle" aria-describedby="startupProgressText" aria-busy="true">
@@ -20,7 +21,7 @@
  <span class="startup-loader__star" aria-hidden="true">✦</span>
  <p class="startup-loader__eyebrow">MOGURIA</p>
  <h1 id="startupLoaderTitle">冒険の準備中</h1>
- <div id="startupProgressBar" class="startup-loader__progress" role="progressbar" aria-label="ホーム画面の準備状況" aria-valuemin="0" aria-valuemax="18" aria-valuenow="0">
+ <div id="startupProgressBar" class="startup-loader__progress" role="progressbar" aria-label="ホーム画面の準備状況" aria-valuemin="0" aria-valuemax="15" aria-valuenow="0">
  <i id="startupProgressFill"></i>
  </div>
  <p id="startupProgressText" class="startup-loader__status" role="status" aria-live="polite">データを確認しています</p>
@@ -44,10 +45,8 @@
 
  <header class="home-v2__topbar">
  <img class="home-v2__logo" src="assets/images/home-v2/logo_moguria_home.png" alt="Moguria もぐりあ" />
- <div class="home-v2__currencies" aria-label="所持通貨">
- <span class="home-v2__currency" aria-label="星 12,850"><img src="assets/images/home-v2/currency_star.png" alt="" /><b>12,850</b></span>
+ <div class="home-v2__currencies home-v2__currencies--single" aria-label="所持通貨">
  <span id="coinCurrency" class="home-v2__currency" aria-label="MoguCoin 0"><img src="assets/images/home-v2/currency_coin.png" alt="" /><b id="coinText" class="home-v2__sr-only" aria-hidden="true">MoguCoin 0</b><b id="coinValue">0</b></span>
- <span class="home-v2__currency" aria-label="宝石 1,210"><img src="assets/images/home-v2/currency_gem.png" alt="" /><b>1,210</b></span>
  </div>
  </header>
 
@@ -62,17 +61,13 @@
  <p id="homeLine" class="home-v2__home-line">小さな光も、集まれば<br />夜を照らすよ。</p>
  </section>
 
+ <div id="homeNotice" class="home-v2__notice" role="status" aria-live="polite" hidden></div>
+
  <nav class="home-v2__side-rail" aria-label="ホーム機能">
  <button id="snackBtn" type="button"><img src="assets/images/home-v2/icon_snack.png" alt="" /><small>おやつ</small></button>
  <button id="dexBtn" type="button"><img src="assets/images/home-v2/icon_dex.png" alt="" /><small>図鑑</small></button>
  <button id="logsBtn" type="button"><img src="assets/images/home-v2/icon_logs.png" alt="" /><small>記録</small></button>
  </nav>
-
- <section class="home-v2__frame home-v2__expedition" aria-label="探索ボーナス">
- <img class="home-v2__expedition-mogu" src="assets/images/home-v2/expedition_mogu.png" alt="" />
- <div class="home-v2__expedition-copy"><b>探索ボーナス</b><strong>02:45:18</strong></div>
- <button class="home-v2__gold-button home-v2__receive" type="button"><span>受け取る</span></button>
- </section>
 
  <nav class="home-v2__frame home-v2__dock" aria-label="メインメニュー">
  <button id="gachaBtn" type="button"><img src="assets/images/home-v2/icon_gacha.png" alt="" /><b>ガチャ</b></button>
@@ -90,18 +85,19 @@
  <div class="play-hud__wave"><small>WAVE</small><b><span id="wave">1</span><i>/12</i></b></div>
  <div class="play-hud__timer"><small>TIME</small><b><span id="timer">0:00</span></b></div>
  </div>
+ <div id="checkpointWarning" class="play-save-warning" role="alert" hidden>冒険の途中経過を保存できていません。端末の空き容量を確認してください。</div>
  <div class="hud bottom play-controls">
  <div class="joystick" id="stick"><i id="knob"></i></div>
  <div class="mini-stats" id="miniStats">最大DMG 0<br>撃破 0<br>爆発 0</div>
  </div>
  <button id="pauseBtn" class="tiny pause play-pause" aria-label="一時停止"><span aria-hidden="true">Ⅱ</span><b>一時停止</b></button>
  <button id="giveupBtn" class="tiny play-giveup">帰る</button>
- <div id="levelModal" class="modal play-choice-modal hidden" tabindex="-1">
+ <div id="levelModal" class="modal play-choice-modal hidden" role="dialog" aria-modal="true" aria-labelledby="levelTitle" tabindex="-1">
  <div class="modal-card play-choice-sheet">
  <header class="play-choice-header">
  <p class="eyebrow">LEVEL UP</p>
- <h2>どれを食べる？</h2>
- <p>食べた力で、Moguが少し変わります。</p>
+ <h2 id="levelTitle">どれを食べる？</h2>
+ <p id="skillSealHelp">食べた力で、Moguが少し変わります。封印した力は、この冒険中は候補に出ません。</p>
  </header>
  <section class="owned-powers owned-powers--skills" aria-labelledby="levelOwnedTitle">
  <header class="owned-powers__header">
@@ -120,7 +116,7 @@
  <div id="artifactModal" class="modal artifact-choice-modal hidden" role="dialog" aria-modal="true" aria-labelledby="artifactTitle" tabindex="-1">
  <div class="modal-card artifact-card artifact-choice-sheet">
  <header class="artifact-choice-header">
- <span class="artifact-choice-header__core" aria-hidden="true"><img src="assets/images/kv-icons/artifact_core.png" alt="" loading="lazy" decoding="async" /></span>
+ <span class="artifact-choice-header__core" aria-hidden="true"><img src="assets/images/ui-refresh/artifacts/artifact-core.webp" alt="" loading="lazy" decoding="async" /></span>
  <div class="artifact-choice-header__copy">
  <p class="eyebrow">RELIC FOUND</p>
  <h2 id="artifactTitle">アーティファクトを選ぼう</h2>
@@ -223,6 +219,27 @@
  <p id="adventureLoadingCost" class="system-loading__cost">おなか 1消費</p>
  <p id="adventureLoadingStatus" class="system-loading__status" role="status" aria-live="polite">戦闘データを読み込んでいます…</p>
  <span class="system-loading__hint">そのまま少し待ってね</span>
+ <div id="adventureLoadingActions" class="system-loading__actions" hidden>
+ <button id="adventureRetryBtn" class="system-confirm__accept" type="button">もう一度ためす</button>
+ <button id="adventureHomeBtn" class="system-confirm__cancel" type="button">ホームへ戻る</button>
+ </div>
+ </div>
+ </section>
+ <section id="settlementError" class="system-overlay system-settlement hidden" role="alertdialog" aria-modal="true" aria-labelledby="settlementErrorTitle" aria-describedby="settlementErrorMessage">
+ <div class="system-dialog system-settlement__card">
+ <span class="system-confirm__mark" aria-hidden="true">✦</span>
+ <p class="system-dialog__eyebrow">SAVE INTERRUPTED</p>
+ <h2 id="settlementErrorTitle">冒険記録を保存できませんでした</h2>
+ <p id="settlementErrorMessage" class="system-confirm__message">空き容量を確認して、保存を再試行してください。冒険の記録は、この画面を閉じるまで保持しています。</p>
+ <div class="system-settlement__stats" aria-label="保存待ちの冒険状況">
+ <span><small>WAVE</small><b id="settlementWaveValue">1 / 12</b></span>
+ <span><small>LEVEL</small><b id="settlementLevelValue">Lv.1</b></span>
+ <span><small>HP</small><b id="settlementHpValue">100 / 100</b></span>
+ </div>
+ <div class="system-confirm__actions">
+ <button id="settlementHomeBtn" class="system-confirm__cancel" type="button">ホームへ戻る</button>
+ <button id="settlementRetryBtn" class="system-confirm__accept" type="button">保存を再試行</button>
+ </div>
  </div>
  </section>
  <section id="confirmDialog" class="system-overlay system-confirm hidden" role="alertdialog" aria-modal="true" aria-labelledby="confirmDialogTitle" aria-describedby="confirmDialogMessage">
@@ -237,21 +254,22 @@
  </div>
  </div>
  </section>
- <script src="js/config.js?v=20260813-skill-system-1"></script>
- <script src="js/debug.js"></script>
+ <script src="js/config.js?v=20260814-ui-consistency-1"></script>
+ <script src="js/debug.js?v=20260814-ui-consistency-1"></script>
  <script src="js/save.js"></script>
- <script src="js/meta.js?v=20260813-system-overlays-1"></script>
- <script src="js/skills.js?v=20260813-icon-legibility-1"></script>
+ <script src="js/ui-assets.js?v=20260814-ui-consistency-1"></script>
+ <script src="js/meta.js?v=20260814-ui-consistency-1"></script>
+ <script src="js/skills.js?v=20260814-ui-consistency-1"></script>
  <script src="js/enemies.js"></script>
  <script src="js/validator.js"></script>
  <script src="js/player.js"></script>
  <script src="js/dungeon.js"></script>
  <script src="js/result.js"></script>
- <script src="js/home.js?v=20260813-system-overlays-1"></script>
+ <script src="js/home.js?v=20260814-ui-consistency-1"></script>
  <script src="js/audio.js"></script>
  <script src="js/battle-v3-loader.js?v=20260813-battle-refinement-2"></script>
- <script src="js/game.js?v=20260813-system-overlays-1"></script>
- <script src="js/ui.js?v=20260813-system-overlays-1"></script>
+ <script src="js/game.js?v=20260814-ui-consistency-1"></script>
+ <script src="js/ui.js?v=20260814-ui-consistency-1"></script>
  <script src="js/assetManager.js?v=20260812-startup-loader-1"></script>
  <script src="js/performance.js"></script>
  <script src="js/network.js"></script>

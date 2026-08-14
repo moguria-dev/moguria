@@ -61,7 +61,7 @@ test('service worker remains off and an attempted ON transition detects stale pr
 test('active production assets have unique lifecycle and provenance catalog records', () => {
   const source = json('config/asset-manifest.json');
   const active = source.catalog.filter((record) => record.lifecycle.status === 'active');
-  assert.equal(active.length, 36);
+  assert.equal(active.length, 86);
   assert.equal(new Set(active.map((record) => record.logicalId)).size, active.length);
   assert.equal(new Set(active.map((record) => record.path)).size, active.length);
   for (const record of active) {
@@ -74,6 +74,12 @@ test('active production assets have unique lifecycle and provenance catalog reco
     assert.match(record.transparency.channels, /^s?graya?$|^s?rgba?$|^cmyka?$/i);
     assert.equal(record.transparency.hasAlpha, record.transparency.channels.toLowerCase().endsWith('a'));
   }
+});
+
+test('root report artifacts ignore rule does not hide nested production artifact art', () => {
+  const ignore = fs.readFileSync(path.join(ROOT, '.gitignore'), 'utf8');
+  assert.match(ignore, /^\/artifacts\/$/m);
+  assert.doesNotMatch(ignore, /^artifacts\/$/m);
 });
 
 test('legacy unknown approval is bound to an immutable ID and SHA-256 allowlist', async () => {
@@ -90,8 +96,13 @@ test('legacy unknown approval is bound to an immutable ID and SHA-256 allowlist'
 });
 
 test('uncataloged runtime references are accepted only at their fixed legacy path and SHA-256', async () => {
-  const { validateLegacyUncatalogedReferences } = await import('../scripts/validate-assets.mjs');
+  const { runtimeReferencedAssets, validateLegacyUncatalogedReferences } = await import('../scripts/validate-assets.mjs');
   const source = json('config/asset-manifest.json');
+  const state = json('config/project-state.json');
+  const runtimeReferences = runtimeReferencedAssets(ROOT, source, state);
+  assert.equal(runtimeReferences.includes(source.generatedFile), false,
+    'the parity-validated generated runtime projection must not be SHA-pinned as legacy media');
+  assert.equal(runtimeReferences.includes(source.runtimeManifest.images.ui_refresh_artifacts_violet_engine), true);
   const legacy = source.legacyUncatalogedReferences[0];
   const fixtureSource = {
     catalog: source.catalog,
