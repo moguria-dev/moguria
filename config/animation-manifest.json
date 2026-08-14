@@ -9,12 +9,37 @@
     "runtimeConsumed": false,
     "paritySource": "schema-projection-and-renderer-behavior-tests",
     "parityLimit": "does-not-deep-compare-hardcoded-DEFAULT_LAYOUTS",
-    "renderMode": "phaser-atlas-with-mogu-rig",
+    "renderMode": "per-actor-continuous-rig-with-boss-atlas",
     "pauseBehavior": "freeze-deterministic-animation-clock",
     "resumeBehavior": "continue-without-time-jump",
     "offscreenBehavior": "retain-semantic-state-and-suspend-ambient-work",
     "performanceScene": "battle-v3 high enemy/projectile/drop/fx load",
-    "budgetSource": "config/project-state.json#/performanceBudgets"
+    "budgetSource": "config/project-state.json#/performanceBudgets",
+    "projectileAuthority": "MoguriaGame-core-position-velocity-collision-and-damage",
+    "companionFormationAuthority": "renderer-only-no-gameplay-coordinate-change"
+  },
+  "continuousRigContract": {
+    "version": "2.0.0",
+    "module": "js/mogu-rig.js",
+    "sampleClock": "actor-local-deterministic-presentation-time",
+    "attackCurves": {
+      "anticipation": "t^2*(3-2*t)",
+      "release": "1+2.70158*(t-1)^3+1.70158*(t-1)^2",
+      "recoil": "t^2*(3-2*t)",
+      "recoveryProgress": "t^2*(3-2*t)",
+      "recoverySettle": "sin(2*pi*1.2*t)*exp(-3.4*t)"
+    },
+    "recoverySettle": {
+      "yAmplitudePx": 1.2,
+      "rotationAmplitudeRadians": 0.012,
+      "scaleXAmplitude": 0.016,
+      "scaleYAmplitude": -0.014
+    },
+    "reducedMotion": {
+      "ambientScale": 0.48,
+      "combatScale": 0.65,
+      "preserveSemanticStates": true
+    }
   },
   "semanticStateMappings": {
     "mogu": {
@@ -48,9 +73,13 @@
   },
   "semanticDerivedStates": {
     "mogu": [
-      { "state": "skill", "composition": ["attack"] }
+      { "state": "skill", "composition": ["attack"] },
+      { "state": "consume", "composition": ["idle"] },
+      { "state": "celebrate", "composition": ["idle"] }
     ],
-    "enemy": [],
+    "enemy": [
+      { "state": "defeat", "composition": ["idle"] }
+    ],
     "companion": [],
     "boss": [
       { "state": "move", "composition": ["idle", "windup"] },
@@ -61,7 +90,7 @@
     "mogu": {
       "animationId": "battle-v3.mogu",
       "actorId": "mogu",
-      "renderMode": "phaser-atlas-with-continuous-rig",
+      "renderMode": "phaser-atlas-with-per-actor-continuous-rig",
       "image": "assets/images/battle-v3/mogu-atlas-hd-v2.png",
       "width": 1536,
       "height": 1024,
@@ -79,6 +108,8 @@
         "attack": { "fps": 14, "loop": false, "holdMs": 0 },
         "skill": { "fps": 14, "loop": false, "holdMs": 0 },
         "hurt": { "fps": 12, "loop": false, "holdMs": 0 },
+        "consume": { "fps": 8, "loop": false, "holdMs": 0 },
+        "celebrate": { "fps": 8, "loop": false, "holdMs": 0 },
         "defeat": { "fps": 7, "loop": false, "holdMs": 0 }
       },
       "states": {
@@ -92,7 +123,7 @@
     "enemy": {
       "animationId": "battle-v3.enemy",
       "actorId": "enemy",
-      "renderMode": "phaser-atlas",
+      "renderMode": "phaser-atlas-with-per-actor-continuous-rig",
       "image": "assets/images/battle-v3/enemy-atlas-v2.png",
       "width": 1152,
       "height": 768,
@@ -108,7 +139,8 @@
         "idle": { "fps": 7, "loop": true, "holdMs": 0 },
         "move": { "fps": 10, "loop": true, "holdMs": 0 },
         "attack": { "fps": 13, "loop": false, "holdMs": 0 },
-        "hurt": { "fps": 11, "loop": false, "holdMs": 0 }
+        "hurt": { "fps": 11, "loop": false, "holdMs": 0 },
+        "defeat": { "fps": 7, "loop": false, "holdMs": 0 }
       },
       "states": {
         "soft": {
@@ -140,7 +172,7 @@
     "companion": {
       "animationId": "battle-v3.companion",
       "actorId": "companion",
-      "renderMode": "phaser-atlas",
+      "renderMode": "phaser-atlas-with-per-actor-continuous-rig",
       "image": "assets/images/battle-v3/companion-atlas.png",
       "width": 1024,
       "height": 512,
@@ -209,7 +241,7 @@
   "motionProfiles": {
     "mogu": {
       "pivot": { "space": "cell-normalized", "x": 0.5, "y": 0.78 },
-      "origin": { "space": "render-box-normalized", "x": 0.5, "y": 0.5 },
+      "origin": { "space": "render-box-normalized", "x": 0.5, "y": 0.62 },
       "facing": {
         "default": "right",
         "mirrorAxis": "x",
@@ -217,6 +249,59 @@
         "lockDuring": ["attack", "hit", "defeat"]
       },
       "noAutoCrop": true,
+      "continuousRig": {
+        "version": "2.0.0",
+        "module": "js/mogu-rig.js",
+        "stableFramePolicy": {
+          "idle": 0,
+          "move": 0,
+          "attack": 0,
+          "hurt": 0,
+          "skill": 0,
+          "consume": 0,
+          "celebrate": 0,
+          "defeat": 0
+        },
+        "ambient": {
+          "idlePeriodSeconds": 1.42,
+          "idleYAmplitudePx": 1.35,
+          "idleRotationAmplitudeRadians": 0.008,
+          "idleScaleXAmplitude": 0.014,
+          "idleScaleYAmplitude": -0.012,
+          "movePeriodSeconds": 0.62,
+          "moveXAmplitudePx": 1.4,
+          "moveYAmplitudePx": 3.2,
+          "moveRotationAmplitudeRadians": 0.018,
+          "moveScaleXAmplitude": 0.028,
+          "moveScaleYAmplitude": -0.037
+        },
+        "attack": {
+          "durationSeconds": 0.84,
+          "phases": {
+            "anticipation": 0.14,
+            "release": 0.2,
+            "recoil": 0.22,
+            "recovery": 0.28
+          },
+          "releaseMarkerNormalized": 0.2666666667,
+          "muzzleOffsetPx": { "x": 25, "y": -13 },
+          "transform": {
+            "pullPx": 4,
+            "dropPx": 1.1,
+            "liftPx": 3,
+            "windupRotationRadians": 0.08,
+            "releaseRotationRadians": 0.11,
+            "compressionX": 0.034,
+            "compressionY": 0.04,
+            "releaseNarrowX": 0.035,
+            "releaseStretchY": 0.055,
+            "lungePx": 8,
+            "recoilPx": 2,
+            "recoilRotationRadians": 0.032,
+            "recoilSquash": 0.028
+          }
+        }
+      },
       "transitions": {
         "defaultDurationMs": 90,
         "allowed": ["idle->move", "move->idle", "*->attack", "*->hit", "*->defeat", "attack->idle", "hit->idle"]
@@ -226,14 +311,17 @@
         "uninterruptibleAfterMarker": ["attack:release"]
       },
       "eventMarkers": [
-        { "id": "attack:release", "state": "attack", "normalizedTime": 0.55 },
+        { "id": "attack:release", "state": "attack", "normalizedTime": 0.2666666667 },
         { "id": "defeat:settled", "state": "defeat", "normalizedTime": 1 }
       ],
       "collisionSync": {
         "authority": "MoguriaGame",
         "mode": "visual-follows-logic",
         "deriveHitboxFromFrame": false,
-        "syncPoint": "requestAnimationFrame"
+        "syncPoint": "requestAnimationFrame",
+        "projectileAuthority": "core-position-velocity-collision-and-damage",
+        "visualWindupMayLeadCoreShot": true,
+        "coreShotIsNeverDelayed": true
       },
       "fallback": {
         "missingState": "idle",
@@ -241,37 +329,106 @@
         "missingAsset": "assets/images/home-v2/mogu_home_idle.png"
       },
       "reducedMotion": {
-        "strategy": "semantic-first-frame",
+        "strategy": "scaled-continuous-rig",
         "preserveStateChanges": true,
-        "maxFps": 4
+        "ambientScale": 0.48,
+        "combatScale": 0.65
       }
     },
     "enemy": {
       "pivot": { "space": "cell-normalized", "x": 0.5, "y": 0.76 },
-      "origin": { "space": "render-box-normalized", "x": 0.5, "y": 0.5 },
+      "origin": { "space": "render-box-normalized", "x": 0.5, "y": 0.62 },
       "facing": {
         "default": "left",
         "mirrorAxis": "x",
-        "movementDeadZonePx": 8,
-        "lockDuring": ["attack", "hit"]
+        "movementDeadZonePx": 0,
+        "frontFacing": true,
+        "rendererMirror": false,
+        "lockDuring": ["idle", "move", "attack", "hit", "defeat"]
       },
       "noAutoCrop": true,
+      "continuousRig": {
+        "version": "2.0.0",
+        "module": "js/mogu-rig.js",
+        "stableFramePolicy": {
+          "soft": { "neutral": 0, "optionalBlink": 1, "hurt": 5 },
+          "bat": { "neutral": 6, "optionalBlink": 7, "hurt": 11 },
+          "stone": { "neutral": 12, "optionalBlink": 13, "hurt": 17 },
+          "ghost": { "neutral": 18, "optionalBlink": 19, "hurt": 23 },
+          "idle": "variant.neutral",
+          "move": "variant.neutral",
+          "attack": "variant.neutral",
+          "defeat": "variant.neutral"
+        },
+        "ambient": {
+          "phaseOffsetSeconds": 0.42,
+          "idlePeriodSeconds": 1.72,
+          "idleYAmplitudePx": 1.35,
+          "idleRotationAmplitudeRadians": 0,
+          "idleScaleXAmplitude": 0.014,
+          "idleScaleYAmplitude": -0.012,
+          "movePeriodSeconds": 0.62,
+          "moveXAmplitudePx": 0.8,
+          "moveYAmplitudePx": 2.6,
+          "moveRotationAmplitudeRadians": 0,
+          "moveScaleXAmplitude": 0.028,
+          "moveScaleYAmplitude": -0.037
+        },
+        "attack": {
+          "durationSeconds": 0.78,
+          "phases": {
+            "anticipation": 0.18,
+            "release": 0.14,
+            "recoil": 0.2,
+            "recovery": 0.26
+          },
+          "releaseMarkerNormalized": 0.3061538462,
+          "muzzleOffsetPx": { "x": -18, "y": -5 },
+          "transform": {
+            "pullPx": 2.4,
+            "dropPx": 2.2,
+            "liftPx": 2.2,
+            "windupRotationRadians": 0,
+            "releaseRotationRadians": 0,
+            "compressionX": 0.055,
+            "compressionY": 0.06,
+            "releaseNarrowX": 0.03,
+            "releaseStretchY": 0.065,
+            "lungePx": 4.8,
+            "recoilPx": 2,
+            "recoilRotationRadians": 0,
+            "recoilSquash": 0.045
+          }
+        },
+        "hurt": {
+          "durationSeconds": 0.52,
+          "xAmplitudePx": 6,
+          "yAmplitudePx": -2,
+          "rotationAmplitudeRadians": 0,
+          "scaleXAmplitude": 0.05,
+          "scaleYAmplitude": -0.07
+        }
+      },
       "transitions": {
         "defaultDurationMs": 70,
         "allowed": ["idle->move", "move->idle", "*->attack", "*->hit", "attack->idle", "hit->idle"]
       },
       "interrupts": {
-        "priority": ["hit", "attack", "move", "idle"],
-        "uninterruptibleAfterMarker": ["attack:impact"]
+        "priority": ["defeat", "hit", "attack", "move", "idle"],
+        "uninterruptibleAfterMarker": ["attack:release"]
       },
       "eventMarkers": [
-        { "id": "attack:impact", "state": "attack", "normalizedTime": 0.6 }
+        { "id": "attack:release", "state": "attack", "normalizedTime": 0.3061538462 },
+        { "id": "defeat:settled", "state": "defeat", "normalizedTime": 1 }
       ],
       "collisionSync": {
         "authority": "MoguriaGame",
         "mode": "visual-follows-logic",
         "deriveHitboxFromFrame": false,
-        "syncPoint": "requestAnimationFrame"
+        "syncPoint": "requestAnimationFrame",
+        "projectileAuthority": "core-position-velocity-collision-and-damage",
+        "visualWindupMayLeadCoreShot": true,
+        "coreShotIsNeverDelayed": true
       },
       "fallback": {
         "missingState": "idle",
@@ -279,14 +436,15 @@
         "missingAsset": "assets/images/kv-sprites/enemy_soft.png"
       },
       "reducedMotion": {
-        "strategy": "semantic-first-frame",
+        "strategy": "scaled-continuous-rig",
         "preserveStateChanges": true,
-        "maxFps": 4
+        "ambientScale": 0.48,
+        "combatScale": 0.65
       }
     },
     "companion": {
       "pivot": { "space": "cell-normalized", "x": 0.5, "y": 0.78 },
-      "origin": { "space": "render-box-normalized", "x": 0.5, "y": 0.5 },
+      "origin": { "space": "render-box-normalized", "x": 0.5, "y": 0.62 },
       "facing": {
         "default": "right",
         "mirrorAxis": "x",
@@ -294,6 +452,73 @@
         "lockDuring": ["attack", "hit", "celebrate"]
       },
       "noAutoCrop": true,
+      "continuousRig": {
+        "version": "2.0.0",
+        "module": "js/mogu-rig.js",
+        "stableFramePolicy": {
+          "idle": 0,
+          "move": 0,
+          "attackAnticipation": 0,
+          "attackRelease": 2,
+          "attackRecoil": 0,
+          "hurt": 0,
+          "celebrate": 7
+        },
+        "ambient": {
+          "phaseOffsetSeconds": 0.2,
+          "idlePeriodSeconds": 1.42,
+          "idleYAmplitudePx": 1.35,
+          "idleRotationAmplitudeRadians": 0.008,
+          "idleScaleXAmplitude": 0.014,
+          "idleScaleYAmplitude": -0.012,
+          "movePeriodSeconds": 0.54,
+          "moveXAmplitudePx": 1.4,
+          "moveYAmplitudePx": 3.2,
+          "moveRotationAmplitudeRadians": 0.018,
+          "moveScaleXAmplitude": 0.028,
+          "moveScaleYAmplitude": -0.037
+        },
+        "attack": {
+          "durationSeconds": 0.58,
+          "phases": {
+            "anticipation": 0.12,
+            "release": 0.13,
+            "recoil": 0.16,
+            "recovery": 0.17
+          },
+          "releaseMarkerNormalized": 0.3010344828,
+          "muzzleOffsetPx": { "x": 18, "y": -11 },
+          "transform": {
+            "pullPx": 4.5,
+            "dropPx": 1.8,
+            "liftPx": 3.4,
+            "windupRotationRadians": 0.11,
+            "releaseRotationRadians": 0.12,
+            "compressionX": 0.05,
+            "compressionY": 0.07,
+            "releaseNarrowX": 0.045,
+            "releaseStretchY": 0.075,
+            "lungePx": 7.5,
+            "recoilPx": 2.4,
+            "recoilRotationRadians": 0.055,
+            "recoilSquash": 0.04
+          }
+        },
+        "formation": {
+          "ownership": "renderer-only",
+          "simulationCoordinatesUnchanged": true,
+          "mode": "rear-slots-with-critically-damped-spring",
+          "springOmegaPerSecond": 12,
+          "slots": [
+            { "backPx": 42, "sidePx": 24, "targetDelaySeconds": 0 },
+            { "backPx": 58, "sidePx": -16, "targetDelaySeconds": 0.03 },
+            { "backPx": 62, "sidePx": 52, "targetDelaySeconds": 0.06 },
+            { "backPx": 80, "sidePx": 12, "targetDelaySeconds": 0.09 },
+            { "backPx": 86, "sidePx": -40, "targetDelaySeconds": 0.12 },
+            { "backPx": 98, "sidePx": 48, "targetDelaySeconds": 0.15 }
+          ]
+        }
+      },
       "transitions": {
         "defaultDurationMs": 80,
         "allowed": ["idle->move", "move->idle", "*->attack", "*->hit", "*->celebrate", "attack->idle", "hit->idle"]
@@ -303,14 +528,17 @@
         "uninterruptibleAfterMarker": ["attack:release"]
       },
       "eventMarkers": [
-        { "id": "attack:release", "state": "attack", "normalizedTime": 0.5 },
+        { "id": "attack:release", "state": "attack", "normalizedTime": 0.3010344828 },
         { "id": "celebrate:peak", "state": "celebrate", "normalizedTime": 0.65 }
       ],
       "collisionSync": {
         "authority": "MoguriaGame",
         "mode": "visual-follows-logic",
         "deriveHitboxFromFrame": false,
-        "syncPoint": "requestAnimationFrame"
+        "syncPoint": "requestAnimationFrame",
+        "projectileAuthority": "core-position-velocity-collision-and-damage",
+        "visualWindupMayLeadCoreShot": true,
+        "coreShotIsNeverDelayed": true
       },
       "fallback": {
         "missingState": "idle",
@@ -318,14 +546,15 @@
         "missingAsset": "assets/images/home-v2/mogu_home_idle.png"
       },
       "reducedMotion": {
-        "strategy": "semantic-first-frame",
+        "strategy": "scaled-continuous-rig",
         "preserveStateChanges": true,
-        "maxFps": 4
+        "ambientScale": 0.48,
+        "combatScale": 0.65
       }
     },
     "boss": {
       "pivot": { "space": "cell-normalized", "x": 0.5, "y": 0.8 },
-      "origin": { "space": "render-box-normalized", "x": 0.5, "y": 0.5 },
+      "origin": { "space": "render-box-normalized", "x": 0.5, "y": 0.62 },
       "facing": {
         "default": "left",
         "mirrorAxis": "x",

@@ -18,7 +18,12 @@ window.MoguriaGame = (() => {
   };
   const LEVEL_UP_CUE_SECONDS=.75;
   const DEFEAT_CUE_SECONDS=.58;
-  const ATTACK_ANIMATION_SECONDS=Math.max(.58,Number(MoguriaConfig.combat?.attackAnimationSeconds)||.62);
+  const MOTION_ATTACK=Object.freeze({
+    mogu:Object.freeze({duration:.84,fireAt:.224}),
+    companion:Object.freeze({duration:.58,fireAt:.1746}),
+    enemy:Object.freeze({duration:.78,fireAt:.2388})
+  });
+  const ATTACK_ANIMATION_SECONDS=Math.max(MOTION_ATTACK.mogu.duration,Number(MoguriaConfig.combat?.attackAnimationSeconds)||.62);
   const COLLECT_ALL_SCHEDULE=Object.freeze({
     minWaveGap:Math.max(1,Math.floor(Number(MoguriaConfig.collectAll?.minWaveGap)||2)),
     maxWaveGap:Math.max(1,Math.floor(Number(MoguriaConfig.collectAll?.maxWaveGap)||4)),
@@ -182,11 +187,17 @@ window.MoguriaGame = (() => {
     let player=MoguriaPlayer.create();
     if(checkpoint?.player) player=MoguriaPlayer.restore(checkpoint.player,player);
     else if(window.MoguriaMeta) MoguriaMeta.applyEquipmentToPlayer(player);
-    state={ mode:'run', runId:String(options.runId||options.activeRun?.runId||''), startedAt:Number(options.activeRun?.startedAt)||Date.now(), p:player, enemies:[], bullets:[], enemyBullets:[], mines:[], fx:[], drops:[], companions:[], scheduled:[], dungeon:MoguriaDungeon.create(checkpoint?.dungeon?.seed||Date.now()), time:0, last:performance.now(), spawnCd:0, floor:1,
+    state={ mode:'run', runId:String(options.runId||options.activeRun?.runId||''), startedAt:Number(options.activeRun?.startedAt)||Date.now(), p:player, enemies:[], defeatedEnemies:[], bullets:[], enemyBullets:[], mines:[], fx:[], drops:[], companions:[], scheduled:[], dungeon:MoguriaDungeon.create(checkpoint?.dungeon?.seed||Date.now()), time:0, last:performance.now(), spawnCd:0, floor:1,
       wave:0, maxWave:MoguriaConfig.run.maxWave, timeLimit:MoguriaConfig.run.timeLimit||480, waveState:'ready', waveSpawned:0, waveTarget:0, waveClearTimer:0, cleared:false, timeout:false, introTimer:2.15, bossAlertTimer:0, clearTimer:0, mobEvent:null,
       stats:{kills:0,maxDamage:0,totalDamage:0,shots:0,crits:0,hitsTaken:0,dodges:0,explosions:0,poisonKills:0,rareKills:0,bossKills:0,combo:0,bestCombo:0}, rerolls:MoguriaConfig.run.rerolls, artifactRerolls:Math.max(0,Math.floor(Number(MoguriaConfig.run.artifactRerolls??3))), bans:2, bannedSkills:[], pendingChoice:null, levelUpCue:null, defeatCue:null, collectAllSchedule:null, shake:0, hitStop:0, flash:0, particles:[], comboTimer:0, awakenTimer:0, dangerPulse:0, nearMissCd:0, bossPhaseTimer:0, artifactWaves:{}, mapBounds:{...MoguriaConfig.map}, depthCueShown:false, criticalCueCd:0, chainCueCd:0, returnGlow:0, checkpointElapsed:0, hudAt:0, finalizing:false };
     if(checkpoint) restoreCheckpoint(checkpoint);
     else { state.p.x=0; state.p.y=0; state.p.hp=state.p.maxHp; state.collectAllSchedule=createCollectAllSchedule(0); }
+    // Presentation-only event fields are intentionally reconstructed instead
+    // of entering the checkpoint schema. Combat values above remain the sole
+    // save authority.
+    state.defeatedEnemies=[];
+    state.projectileSerial=0;
+    Object.assign(state.p,{attackSerial:0,attackCueArmed:false,attackStartElapsed:0,attackReleasedSerial:0,hurtSerial:0,munchSerial:0,munchTimer:0,celebrateSerial:0});
     if(!checkpoint?.collectAllSchedule) persistCheckpoint('collect-all-plan');
     if(state.pendingChoice) restorePendingChoice();
     MoguriaAudio?.play('start');
@@ -614,6 +625,7 @@ window.MoguriaGame = (() => {
     } else p.hp-=dmg;
     state.stats.hitsTaken++;
     p.invuln=invuln;
+    p.hurtSerial=Math.max(0,Math.floor(Number(p.hurtSerial)||0))+1;
     return dmg;
   }
   function waveLabel(w){ if(w===7) return '中ボス'; if(w===12) return '大ボス'; return `Wave ${w}`; }
@@ -849,7 +861,9 @@ window.MoguriaGame = (() => {
     const il=Math.hypot(ix,iy)||1; if(Math.hypot(ix,iy)>0){ix/=il;iy/=il;}
     p.x += ix*p.speed*dt; p.y += iy*p.speed*dt;
     const mb=state.mapBounds; p.x=Math.max(mb.minX+p.r,Math.min(mb.maxX-p.r,p.x)); p.y=Math.max(mb.minY+p.r,Math.min(mb.maxY-p.r,p.y));
-    p.invuln=Math.max(0,p.invuln-dt); p.attackCd-=dt; p.attackAnimTimer=Math.max(0,(p.attackAnimTimer||0)-dt);
+    p.invuln=Math.max(0,p.invuln-dt); p.attackCd-=dt; p.attackAnimTimer=Math.max(0,(p.attackAnimTimer||0)-dt); p.munchTimer=Math.max(0,(p.munchTimer||0)-dt);
+    for(const defeated of state.defeatedEnemies||[]) defeated.remaining=Math.max(0,(Number(defeated.remaining)||0)-dt);
+    state.defeatedEnemies=(state.defeatedEnemies||[]).filter(defeated=>defeated.remaining>0);
     state.awakenTimer=Math.max(0,(state.awakenTimer||0)-dt);
     state.dangerPulse=Math.max(0,(state.dangerPulse||0)-dt); state.nearMissCd=Math.max(0,(state.nearMissCd||0)-dt); state.bossPhaseTimer=Math.max(0,(state.bossPhaseTimer||0)-dt); state.criticalCueCd=Math.max(0,(state.criticalCueCd||0)-dt); state.chainCueCd=Math.max(0,(state.chainCueCd||0)-dt); state.returnGlow=Math.max(0,(state.returnGlow||0)-dt);
     if(p.hp/p.maxHp<.28 && state.dangerPulse<=0){ state.dangerPulse=.75; state.flash=Math.max(state.flash,.08); } p.summonCd-=dt; if(p.regen>0) p.hp=Math.min(p.maxHp,p.hp+p.regen*dt);
@@ -896,7 +910,16 @@ window.MoguriaGame = (() => {
         if(l<260){ e.x-=dx/l*e.speed*.75*slowMul*dt; e.y-=dy/l*e.speed*.75*slowMul*dt; }
         else if(l>360){ e.x+=dx/l*e.speed*.55*slowMul*dt; e.y+=dy/l*e.speed*.55*slowMul*dt; }
         e.attackCd=(e.attackCd||1)-dt;
-        if(e.attackCd<=0 && l<520){ e.attackCd=e.kind==='midBoss'?1.15:2.1; e.attackVisualTimer=.3; addEnemyBullet(e.x,e.y,-dx/l*160,-dy/l*160,e.kind==='midBoss'?12:7); }
+        if(e.attackCd>0&&e.attackCd<=MOTION_ATTACK.enemy.fireAt&&l<520&&state.enemyBullets.length<=36){
+          beginPresentationAttack(e,'enemy',p,Math.max(0,MOTION_ATTACK.enemy.fireAt-e.attackCd));
+        }
+        if(e.attackCd<=0 && l<520){
+          e.attackCd=e.kind==='midBoss'?1.15:2.1;
+          if(addEnemyBullet(e.x,e.y,-dx/l*160,-dy/l*160,e.kind==='midBoss'?12:7,String(e.id??''))){
+            confirmPresentationAttack(e,'enemy',p);
+            e.attackVisualTimer=Math.max(.3,(e.attackAnimTimer||0));
+          } else cancelPresentationAttack(e);
+        }
       } else if(e.behavior==='charge'){
         e.chargeCd=(e.chargeCd||1)-dt;
         const boost=e.chargeCd<.42?2.15:1;
@@ -912,6 +935,7 @@ window.MoguriaGame = (() => {
       const contactDist=Math.hypot(p.x-e.x,p.y-e.y);
       e.hitFlash=Math.max(0,e.hitFlash-dt);
       e.attackVisualTimer=Math.max(0,(Number(e.attackVisualTimer)||0)-dt);
+      e.attackAnimTimer=Math.max(0,(Number(e.attackAnimTimer)||0)-dt);
       if(e.hitFlash>0 && !e.bossAction) e.visualState='hurt';
       else if(!e.bossAction && e.visualState==='hurt') e.visualState='';
       if(e.poison>0){ e.poison-=dt; e.poisonTick-=dt; if(e.poisonTick<=0){ e.poisonTick=.5; hurtEnemy(e,p.poisonPower,false,'poison'); } }
@@ -921,11 +945,20 @@ window.MoguriaGame = (() => {
       if(contactDist<e.r+p.r && p.invuln<=0){
         if(Math.random()<p.dodge){ state.stats.dodges++; p.invuln=.45; if(p.dodgeShot) shootAtNearest(7,true); if(p.dodgeBomb) explosion(p.x,p.y,p.explosionRadius*.8,18,true); }
         else { applyDamageToPlayer(e.dmg,.55); if(p.thorns) hurtEnemy(e,p.thorns,false,'thorn'); }
-        e.attackVisualTimer=.3;
+        confirmPresentationAttack(e,'enemy',p);
+        e.attackVisualTimer=Math.max(.3,(e.attackAnimTimer||0));
       }
     }
     separateEnemies(dt);
-    if(p.attackCd<=0){ p.attackCd=p.attackRate; if(shootAtNearest(p.baseDamage*MoguriaPlayer.damageMultiplier(p),false)) p.attackAnimTimer=ATTACK_ANIMATION_SECONDS; }
+    armPresentationAttack(p,'mogu',p.attackCd,false,1);
+    if(p.attackCd<=0){
+      p.attackCd=p.attackRate;
+      const selection=nearestAttackTarget(p,false);
+      if(shootAtNearest(p.baseDamage*MoguriaPlayer.damageMultiplier(p),false,p,selection)){
+        confirmPresentationAttack(p,'mogu',selection?.target,1);
+        p.attackAnimTimer=Math.max(p.attackAnimTimer||0,ATTACK_ANIMATION_SECONDS-MOTION_ATTACK.mogu.fireAt);
+      } else cancelPresentationAttack(p);
+    }
     for(const b of state.bullets){ b.x+=b.vx*dt; b.y+=b.vy*dt; b.life-=dt; }
     for(const eb of state.enemyBullets||[]){ eb.x+=eb.vx*dt; eb.y+=eb.vy*dt; eb.life-=dt; if(Math.hypot(eb.x-p.x,eb.y-p.y)<p.r+eb.r && p.invuln<=0){ if(Math.random()<p.dodge){ state.stats.dodges++; p.invuln=.35; } else applyDamageToPlayer(eb.dmg,.45); eb.dead=true; } }
     for(const eb of state.enemyBullets||[]){
@@ -1080,12 +1113,69 @@ window.MoguriaGame = (() => {
     }
   }
 
+  function nearestAttackTarget(source,summon){
+    const p=state.p;
+    const range=summon?(p.summonRange||MoguriaConfig.combat.summonRange):(p.attackRange||MoguriaConfig.combat.attackRange);
+    let best=null,bd=Infinity;
+    for(const e of state.enemies){
+      if(!e||e.hp<=0||(e.kind==='rare'&&(e.fleeLife||9)<.15)) continue;
+      const distance=(e.x-source.x)**2+(e.y-source.y)**2;
+      if(distance<bd){bd=distance;best=e;}
+    }
+    return best&&bd<=range*range?{target:best,distanceSq:bd}:null;
+  }
+
+  function beginPresentationAttack(actor,role,target,startElapsed=0,durationScale=1){
+    if(!actor||actor.attackCueArmed) return false;
+    const timing=MOTION_ATTACK[role]||MOTION_ATTACK.mogu;
+    const scale=Math.max(.18,Math.min(1,Number(durationScale)||1));
+    actor.attackSerial=Math.max(0,Math.floor(Number(actor.attackSerial)||0))+1;
+    actor.attackCueArmed=true;
+    actor.attackStartElapsed=Math.max(0,Math.min(timing.duration*scale,Number(startElapsed)||0));
+    actor.attackDurationScale=scale;
+    actor.attackFacing=target&&Number(target.x)<Number(actor.x)?-1:1;
+    actor.attackAnimTimer=Math.max(Number(actor.attackAnimTimer)||0,timing.duration*scale-actor.attackStartElapsed);
+    return true;
+  }
+
+  function armPresentationAttack(actor,role,cooldown,summon,durationScale=1){
+    if(!actor||actor.attackCueArmed||cooldown<=0) return null;
+    const scale=Math.max(.18,Math.min(1,Number(durationScale)||1));
+    const fireAt=(MOTION_ATTACK[role]||MOTION_ATTACK.mogu).fireAt*scale;
+    if(cooldown>fireAt) return null;
+    const selection=nearestAttackTarget(actor,summon);
+    if(!selection) return null;
+    const maxProjectiles=MoguriaConfig.performance.maxProjectiles||80;
+    if(state.bullets.length>maxProjectiles) return null;
+    beginPresentationAttack(actor,role,selection.target,Math.max(0,fireAt-cooldown),scale);
+    return selection;
+  }
+
+  function confirmPresentationAttack(actor,role,target,durationScale=1){
+    if(!actor) return false;
+    const timing=MOTION_ATTACK[role]||MOTION_ATTACK.mogu;
+    const scale=Math.max(.18,Math.min(1,Number(durationScale)||1));
+    // Immediate/first shots seek to the exact release marker. Gameplay never
+    // waits for presentation; an already armed windup keeps the same serial.
+    if(!actor.attackCueArmed) beginPresentationAttack(actor,role,target,timing.fireAt*scale,scale);
+    actor.attackReleasedSerial=actor.attackSerial;
+    actor.attackAnimTimer=Math.max(Number(actor.attackAnimTimer)||0,(timing.duration-timing.fireAt)*scale);
+    actor.attackCueArmed=false;
+    return true;
+  }
+
+  function cancelPresentationAttack(actor){
+    if(!actor) return;
+    actor.attackCueArmed=false;
+    actor.attackAnimTimer=0;
+  }
+
   function updateCompanions(dt){
     const p=state.p;
     const count=Math.max(0,Math.min(6,Math.floor(Number(p.summons)||0)));
     while(state.companions.length<count){
       const index=state.companions.length;
-      state.companions.push({id:`friend_${index}_${state.runId}`,x:p.x+(index%2?30:-30),y:p.y+24,r:10,attackCd:index*.12,attackFlash:0,visualState:'move'});
+      state.companions.push({id:`friend_${index}_${state.runId}`,x:p.x+(index%2?30:-30),y:p.y+24,r:10,attackCd:index*.12,attackFlash:0,attackAnimTimer:0,attackSerial:0,attackCueArmed:false,attackStartElapsed:0,attackReleasedSerial:0,visualState:'move'});
     }
     if(state.companions.length>count) state.companions.length=count;
     const cadence=Math.max(.22,(p.summonRate||1.1)/Math.max(1,count*.75));
@@ -1099,45 +1189,55 @@ window.MoguriaGame = (() => {
       friend.y+=(targetY-friend.y)*follow;
       friend.attackCd-=dt;
       friend.attackFlash=Math.max(0,(friend.attackFlash||0)-dt);
-      friend.visualState=friend.attackFlash>0?'attack':'move';
+      friend.attackAnimTimer=Math.max(0,(friend.attackAnimTimer||0)-dt);
+      friend.attackRate=cadence;
+      friend.attackDurationScale=Math.min(1,cadence/MOTION_ATTACK.companion.duration);
+      armPresentationAttack(friend,'companion',friend.attackCd,true,friend.attackDurationScale);
+      friend.visualState=friend.attackAnimTimer>0?'attack':'move';
       if(friend.attackCd<=0){
         friend.attackCd+=cadence;
-        if(shootAtNearest(6+count*2,true,friend)){ friend.attackFlash=.18; friend.visualState='attack'; }
+        const selection=nearestAttackTarget(friend,true);
+        if(shootAtNearest(6+count*2,true,friend,selection)){
+          confirmPresentationAttack(friend,'companion',selection?.target,friend.attackDurationScale);
+          friend.attackFlash=Math.min(.18,MOTION_ATTACK.companion.duration*friend.attackDurationScale);
+          friend.visualState='attack';
+        } else cancelPresentationAttack(friend);
       }
     }
   }
 
-  function shootAtNearest(dmg,summon,origin){
-    const p=state.p, source=origin||p; let best=null, bd=999999;
-    const range = summon ? (p.summonRange||MoguriaConfig.combat.summonRange) : (p.attackRange||MoguriaConfig.combat.attackRange);
-    for(const e of state.enemies){
-      if(e.kind==='rare' && (e.fleeLife||9)<.15) continue;
-      const d=(e.x-source.x)**2+(e.y-source.y)**2;
-      if(d<bd){bd=d;best=e;}
-    }
+  function shootAtNearest(dmg,summon,origin,selected){
+    const p=state.p,source=origin||p;
+    const selection=selected&&selected.target?selected:nearestAttackTarget(source,summon);
+    const best=selection?.target;
     // 画面外や遠すぎる敵を無意識に倒さないよう、Moguが認知できる距離だけ攻撃する。
-    if(!best || bd>range*range) return false;
+    if(!best) return false;
     const dx=best.x-source.x, dy=best.y-source.y, l=Math.hypot(dx,dy)||1;
     const speed=summon?330:380;
+    let emitted=0;
     if(!summon && p.fanShot){
       const base=Math.atan2(dy,dx);
       for(const a of [base-.28, base, base+.28]){
-        addBullet(source.x,source.y,Math.cos(a)*speed,Math.sin(a)*speed,dmg*.86,6,false,{pierce:p.pierce,split:p.splitShot});
+        if(addBullet(source.x,source.y,Math.cos(a)*speed,Math.sin(a)*speed,dmg*.86,6,false,{pierce:p.pierce,split:p.splitShot,sourceId:'player'})) emitted++;
       }
     } else {
-      addBullet(source.x,source.y,dx/l*speed,dy/l*speed,dmg,summon?5:6,summon,{pierce:summon?0:p.pierce,split:(!summon&&p.splitShot),sourceId:source.id});
+      if(addBullet(source.x,source.y,dx/l*speed,dy/l*speed,dmg,summon?5:6,summon,{pierce:summon?0:p.pierce,split:(!summon&&p.splitShot),sourceId:origin?.id||(summon?'dodge':'player')})) emitted++;
     }
-    return true;
+    return emitted>0;
   }
   function addBullet(x,y,vx,vy,dmg,r,summon,opts={}){
-    if(state.bullets.length > (MoguriaConfig.performance.maxProjectiles||80)) return;
-    state.bullets.push({x,y,vx,vy,r,dmg,life:1.7,summon,sourceId:opts.sourceId||'',pierce:opts.pierce||0,split:!!opts.split,splitDepth:opts.splitDepth||0,hitIds:[]});
+    if(state.bullets.length > (MoguriaConfig.performance.maxProjectiles||80)) return false;
+    state.projectileSerial=Math.max(0,Math.floor(Number(state.projectileSerial)||0))+1;
+    state.bullets.push({id:`shot_${state.projectileSerial}`,spawnedAt:state.time||0,x,y,vx,vy,r,dmg,life:1.7,summon,sourceId:opts.sourceId||'',pierce:opts.pierce||0,split:!!opts.split,splitDepth:opts.splitDepth||0,hitIds:[]});
     state.stats.shots++;
+    return true;
   }
-  function addEnemyBullet(x,y,vx,vy,dmg){
+  function addEnemyBullet(x,y,vx,vy,dmg,sourceId=''){
     if(!state.enemyBullets) state.enemyBullets=[];
-    if(state.enemyBullets.length>36) return;
-    state.enemyBullets.push({x,y,vx,vy,dmg,r:5,life:3.2});
+    if(state.enemyBullets.length>36) return false;
+    state.projectileSerial=Math.max(0,Math.floor(Number(state.projectileSerial)||0))+1;
+    state.enemyBullets.push({id:`enemy-shot_${state.projectileSerial}`,spawnedAt:state.time||0,sourceId,x,y,vx,vy,dmg,r:5,life:3.2});
+    return true;
   }
   function updateSpecialAttacks(dt){
     const p=state.p;
@@ -1208,6 +1308,8 @@ window.MoguriaGame = (() => {
   function hurtEnemy(e,dmg,crit,source){
     if((e.kind==='boss'||e.kind==='midBoss'||e.kind==='rare') && state.p.bossDamageBonus) dmg*=1+state.p.bossDamageBonus;
     e.hp-=dmg; e.hitFlash=.08; state.stats.totalDamage+=dmg; state.stats.maxDamage=Math.max(state.stats.maxDamage,Math.floor(dmg));
+    e.hurtSerial=Math.max(0,Math.floor(Number(e.hurtSerial)||0))+1;
+    e.hurtDirection=Number(e.x)<Number(state.p.x)?-1:1;
     if(dmg>10){ state.hitStop=Math.max(state.hitStop, Math.min(.045, dmg/2400)); }
     if(Math.random()<.55) MoguriaAudio?.play('hit');
     addImpact(e.x,e.y,crit?'#ffe27c':(source==='poison'?'#b68ad7':source==='lightning'?'#bfefff':'#fff0a6'), crit?9:5);
@@ -1275,7 +1377,11 @@ window.MoguriaGame = (() => {
       const gain=baseExp*(1+(Number(p.xpBonus)||0));
       if(Number.isFinite(gain)) p.exp+=gain;
       drop.dead=true;
-      if(gain>0) addFx(drop.x,drop.y,'+EXP','#fff0a6');
+      if(gain>0){
+        p.munchSerial=Math.max(0,Math.floor(Number(p.munchSerial)||0))+1;
+        p.munchTimer=Math.max(Number(p.munchTimer)||0,.34);
+        addFx(drop.x,drop.y,'+EXP','#fff0a6');
+      }
       return;
     }
     // Unknown runtime drops must never poison EXP with undefined/NaN values.
@@ -1289,8 +1395,10 @@ window.MoguriaGame = (() => {
       const dist=Math.hypot(dx,dy);
       const attractRadius=p.magnetRadius||82;
       const forceMagnet=!!drop.forceMagnet&&(drop.kind==='exp'||drop.kind==='heal');
+      drop.magnetActive=false;
       if(dist>0.001&&(forceMagnet||dist<attractRadius)){
         drop.magnet=true;
+        drop.magnetActive=true;
         const pull=forceMagnet?Math.min(2200,900+dist*4):Math.min(760,170+(attractRadius-dist)*7.2);
         const travel=Math.min(dist,pull*dt);
         drop.x+=dx/dist*travel;
@@ -1313,8 +1421,15 @@ window.MoguriaGame = (() => {
     if((state.stats.combo>=10 && state.stats.combo%10===0) && state.chainCueCd<=0){ state.chainCueCd=.9; MoguriaAudio?.play('chain'); pushFx({x:p.x,y:p.y,r:92+state.stats.combo*2.2,life:.52,type:'megaChain'}); }
     if(state.stats.combo===12 || state.stats.combo===24 || state.stats.combo===40){ state.awakenTimer=2.2; state.flash=Math.max(state.flash,.2); state.shake=Math.max(state.shake,5); sparkleBurst(p.x,p.y,42,'#fff0a6'); pushFx({x:p.x,y:p.y,r:130,life:.8,type:'chainBurst'}); bigToast('もぐ覚醒！', `${state.stats.combo}連鎖のひかり`); }
     if(e.kind==='boss'||e.kind==='midBoss'){ state.stats.bossKills++; pushFx({x:e.x,y:e.y,r:e.r*3.2,life:1.05,type:'bossFade'}); state.shake=Math.max(state.shake,9); sparkleBurst(e.x,e.y,48,'#d9b3ff'); }
+    state.defeatedEnemies=state.defeatedEnemies||[];
+    state.defeatedEnemies.push({
+      id:String(e.id??`defeat_${state.stats.kills}`),x:e.x,y:e.y,r:e.r,
+      kind:e.kind,behavior:e.behavior,spriteVariant:e.spriteVariant,
+      visualVariant:e.visualVariant,remaining:.52,duration:.52,
+      defeatSerial:state.stats.kills
+    });
+    if(state.defeatedEnemies.length>64) state.defeatedEnemies.splice(0,state.defeatedEnemies.length-64);
     state.drops.push({x:e.x,y:e.y,exp:e.exp,rare:e.kind==='rare'||e.kind==='boss'||e.kind==='midBoss',kind:'exp'});
-    pushFx({x:e.x,y:e.y,tx:p.x,ty:p.y,life:.42,type:'absorb'});
     if(Math.random()<((e.kind==='boss'||e.kind==='midBoss') ? .75 : e.kind==='rare' ? .45 : .075)){
       state.drops.push({x:e.x+(Math.random()*32-16),y:e.y+(Math.random()*32-16),kind:'heal',heal:e.kind==='normal'?18:34,rare:e.kind!=='normal'});
     }
@@ -1365,6 +1480,7 @@ window.MoguriaGame = (() => {
     rememberPendingChoice('skill',options.wave??state.wave,choices);
     if(!resume){
       state.mode='levelup';
+      state.p.celebrateSerial=Math.max(0,Math.floor(Number(state.p.celebrateSerial)||0))+1;
       state.levelUpCue={remaining:LEVEL_UP_CUE_SECONDS,duration:LEVEL_UP_CUE_SECONDS,level:state.p.lv};
       updateHud();
       // Persist the incremented level and exact cards before the celebratory gap.

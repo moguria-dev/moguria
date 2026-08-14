@@ -35,6 +35,32 @@ function chainableLayer(key) {
   };
 }
 
+function chainableActor() {
+  return {
+    x: 0,
+    y: 0,
+    alpha: 1,
+    scaleX: 1,
+    scaleY: 1,
+    flipX: false,
+    destroyed: false,
+    moguriaFallback: false,
+    moguriaState: '',
+    anims: { stop() {}, pause() {}, resume() {} },
+    setPosition(x, y) { this.x = x; this.y = y; return this; },
+    setDisplaySize(width, height) { this.displayWidth = width; this.displayHeight = height; return this; },
+    setDepth(value) { this.depth = value; return this; },
+    setAlpha(value) { this.alpha = value; return this; },
+    setFlipX(value) { this.flipX = value; return this; },
+    setFrame(value) { this.frame = value; return this; },
+    setRotation(value) { this.rotation = value; return this; },
+    setScale(x, y) { this.scaleX = x; this.scaleY = y; return this; },
+    setTint(value) { this.tint = value; return this; },
+    clearTint() { this.tint = null; return this; },
+    destroy() { this.destroyed = true; }
+  };
+}
+
 function recordingGraphics() {
   const calls = [];
   const graphics = { calls };
@@ -595,13 +621,14 @@ test('backgrounds show ordered parallax during an ordinary 120px move', () => {
   assert.deepEqual(Array.from(scene.layouts.mogu.idle.frames), [0, 1, 2, 3, 4, 5]);
   assert.deepEqual(Array.from(scene.layouts.mogu.move.frames), [6, 7, 8, 9, 10, 11]);
   assert.deepEqual(Array.from(scene.layouts.mogu.attack.frames), [12, 13, 14, 15, 16, 17, 18, 19]);
+  assert.match(scene.assets.manifest.src, /atlas\.json\?v=20260814-motion-rig2-1$/);
   assert.match(scene.assets.sheets.mogu.src, /mogu-atlas-hd-v2\.png\?v=20260812-battle-motion-2$/);
   assert.equal(scene.assets.sheets.mogu.frameWidth, 256);
 
   harness.context.MoguriaBattleV3.stop({ destroy: true, restoreLegacy: true });
 });
 
-test('v2 actor atlases are RGBA sheets with complete regular cells', () => {
+test('Motion Rig 2 atlas projection keeps the RGBA source sheets and complete regular cells', () => {
   const atlasPath = path.join(ROOT, 'assets/images/battle-v3/mogu-atlas-hd-v2.png');
   const bytes = fs.readFileSync(atlasPath);
   assert.deepEqual(pngDimensions(bytes), { width:1536, height:1024, colorType:6 });
@@ -623,13 +650,24 @@ test('v2 actor atlases are RGBA sheets with complete regular cells', () => {
   );
 });
 
-test('enemy and boss actions compose semantic multi-frame animation', () => {
+test('regular enemies and companions hold front-neutral art while bosses retain semantic sequences', () => {
   const harness = createHarness();
   harness.context.MoguriaBattleV3.boot({ parent: harness.parent });
   const scene = harness.makeScene();
 
-  assert.deepEqual(Array.from(scene.variantLayouts.enemy.soft.attack.frames), [2, 3, 4, 0, 1]);
-  assert.deepEqual(Array.from(scene.variantLayouts.enemy.ghost.hurt.frames), [23, 18, 19]);
+  const expectedEnemyRows = { soft:0, bat:6, stone:12, ghost:18 };
+  for (const [variant, neutral] of Object.entries(expectedEnemyRows)) {
+    const layout = scene.variantLayouts.enemy[variant];
+    assert.deepEqual(Array.from(layout.move.frames), [neutral]);
+    assert.deepEqual(Array.from(layout.attack.frames), [neutral]);
+    assert.deepEqual(Array.from(layout.hurt.frames), [neutral + 5]);
+    assert.ok(!layout.move.frames.some(frame => [neutral + 2, neutral + 3, neutral + 4].includes(frame)));
+    assert.ok(!layout.attack.frames.some(frame => [neutral + 2, neutral + 3, neutral + 4].includes(frame)));
+  }
+  assert.deepEqual(Array.from(scene.layouts.companion.idle.frames), [0]);
+  assert.deepEqual(Array.from(scene.layouts.companion.move.frames), [0]);
+  assert.deepEqual(Array.from(scene.layouts.companion.attack.frames), [2]);
+  assert.equal(scene.layouts.companion.attack.frames.includes(3), false);
   assert.deepEqual(Array.from(scene.variantLayouts.boss.midBoss.telegraph.frames), [0, 1, 2, 3]);
   assert.deepEqual(Array.from(scene.variantLayouts.boss.midBoss.attack.frames), [2, 3, 4, 5, 6, 7]);
   assert.deepEqual(Array.from(scene.variantLayouts.boss.boss.attack.frames), [10, 11, 12, 13, 14, 15]);
@@ -674,18 +712,20 @@ test('reduced motion keeps semantic animation and player-linked parallax', () =>
   harness.context.MoguriaBattleV3.stop({ destroy: true, restoreLegacy: true });
 });
 
-test('continuous Mogu rig owns frame zero and applies one blended pose per Phaser frame', () => {
+test('continuous Mogu rig owns frame zero, release timing, pause, and destruction', () => {
   const updates = [];
+  const creations = [];
   const pauses = [];
   let stops = 0;
   let destroys = 0;
   const harness = createHarness({
     rig: {
-      createController() {
+      createController(options) {
+        creations.push({ ...options });
         return {
           update(options) {
             updates.push({ ...options });
-            return { x:3, y:4, rotation:0.2, scaleX:1.1, scaleY:0.9, state:'attack', elapsed:0.1 };
+            return { x:3, y:4, rotation:0.2, scaleX:1.1, scaleY:0.9, state:'attack', stage:'release', elapsed:0.224 };
           },
           setPaused(value) { pauses.push(value); },
           destroy() { destroys += 1; }
@@ -706,12 +746,21 @@ test('continuous Mogu rig owns frame zero and applies one blended pose per Phase
   scene.playerSprite = sprite;
 
   assert.equal(scene.createPlayerRig(), true);
+  assert.ok(scene.playerRig);
+  assert.deepEqual(creations, [{ role:'mogu', phaseOffset:0 }]);
   scene.visualFrameDelta = 1 / 60;
-  assert.equal(scene.applyPlayerRig(sprite, 'skill', { facing:-1, attackSerial:4 }, { mode:'run' }, { x:10, y:20 }), true);
+  assert.equal(scene.applyPlayerRig(
+    sprite,
+    'attack',
+    { facing:-1, attackSerial:4 },
+    { mode:'run' },
+    { x:10, y:20, attackSerial:4, attackStartElapsed:0.224 }
+  ), true);
 
   assert.equal(updates.length, 1);
   assert.deepEqual(updates[0], {
-    state:'skill', attackSerial:8, delta:1 / 60, advance:true, reducedMotion:false, quality:'high'
+    state:'attack', eventSerial:4, startElapsed:0.224, durationScale:1,
+    delta:1 / 60, advance:true, reducedMotion:false, quality:'high'
   });
   assert.equal(sprite.frame, 0);
   assert.equal(sprite.x, 7);
@@ -719,7 +768,7 @@ test('continuous Mogu rig owns frame zero and applies one blended pose per Phase
   assert.equal(sprite.rotation, -0.2);
   assert.ok(Math.abs(sprite.scaleX - (82 / 256 * 1.1)) < 1e-12);
   assert.ok(Math.abs(sprite.scaleY - (82 / 256 * 0.9)) < 1e-12);
-  assert.equal(sprite.moguriaState, 'rig:attack');
+  assert.equal(sprite.moguriaState, 'rig:mogu:attack:release');
   assert.ok(stops >= 2, 'atlas playback must remain stopped while the rig owns Mogu');
 
   scene.visualFrameDelta = 0;
@@ -730,6 +779,102 @@ test('continuous Mogu rig owns frame zero and applies one blended pose per Phase
   scene.releaseSceneObjects();
   assert.equal(destroys, 1);
   assert.equal(scene.playerRig, null);
+
+  harness.context.MoguriaBattleV3.stop({ destroy: true, restoreLegacy: true });
+});
+
+test('enemy and companion rigs keep approved frames, front-facing enemies, and per-actor lifecycle', () => {
+  const stages = { enemy:'release', companion:'anticipate' };
+  const creations = [];
+  const updates = { enemy:[], companion:[] };
+  const pauses = { enemy:[], companion:[] };
+  const destroys = { enemy:0, companion:0 };
+  const harness = createHarness({
+    rig: {
+      profiles: { enemy:{ ambientPhase:.42 }, companion:{ ambientPhase:.2 } },
+      createController(options) {
+        const role = options.role;
+        creations.push({ ...options });
+        return {
+          update(updateOptions) {
+            updates[role].push({ ...updateOptions });
+            return {
+              x:3, y:4, rotation:.3, scaleX:1.1, scaleY:.9,
+              state:updateOptions.state, stage:stages[role]
+            };
+          },
+          setPaused(value) { pauses[role].push(value); },
+          destroy() { destroys[role] += 1; }
+        };
+      }
+    }
+  });
+  harness.context.MoguriaBattleV3.boot({ parent: harness.parent });
+  const scene = harness.makeScene();
+  scene.cameras = { main:{ worldView:{ x:-500, y:-500, width:1000, height:1000 } } };
+  scene.visualFrameDelta = 1 / 60;
+
+  const enemy = chainableActor();
+  assert.equal(scene.applyActorRig(
+    'enemy:ghost-1', enemy, 'enemy', 'attack',
+    { facing:-1, attackSerial:3 }, { mode:'run' },
+    { attackSerial:3 }, { x:100, y:200, size:54, variant:'ghost' }
+  ), true);
+  assert.equal(enemy.frame, 18, 'ghost move/attack must hold its front-neutral row frame');
+  assert.equal(enemy.x, 103, 'front-facing enemy attack displacement must not mirror');
+  assert.equal(enemy.rotation, 0);
+  assert.equal(enemy.flipX, false);
+
+  stages.enemy = 'hurt';
+  assert.equal(scene.applyActorRig(
+    'enemy:ghost-1', enemy, 'enemy', 'hurt',
+    { facing:-1, hurtSerial:2 }, { mode:'run' },
+    { hurtSerial:2, hurtDirection:-1 }, { x:100, y:200, size:54, variant:'ghost' }
+  ), true);
+  assert.equal(enemy.frame, 23, 'only the row +5 painting is used for a regular-enemy hit');
+  assert.equal(enemy.x, 97, 'hurt knockback may mirror while the painting remains front-facing');
+  assert.equal(enemy.rotation, 0);
+  assert.equal(enemy.flipX, false);
+
+  const companion = chainableActor();
+  assert.equal(scene.applyActorRig(
+    'companion:one', companion, 'companion', 'attack',
+    { facing:-1, attackSerial:5 }, { mode:'run' },
+    { attackSerial:5 }, { x:40, y:60, size:50, variant:'default' }
+  ), true);
+  assert.equal(companion.frame, 0, 'anticipation uses the neutral companion painting');
+  assert.equal(companion.flipX, true);
+  assert.equal(companion.rotation, -.3);
+  stages.companion = 'release';
+  scene.applyActorRig(
+    'companion:one', companion, 'companion', 'attack',
+    { facing:-1, attackSerial:5 }, { mode:'run' },
+    { attackSerial:5 }, { x:40, y:60, size:50, variant:'default' }
+  );
+  assert.equal(companion.frame, 2, 'release uses the single approved companion painting');
+  assert.notEqual(companion.frame, 3, 'projectile art must never become the actor frame');
+
+  scene.cameras.main.worldView = { x:0, y:0, width:100, height:100 };
+  stages.enemy = 'idle';
+  scene.applyActorRig(
+    'enemy:ghost-1', enemy, 'enemy', 'idle',
+    { facing:1 }, { mode:'run' }, {}, { x:1000, y:1000, size:54, variant:'ghost' }
+  );
+  assert.equal(updates.enemy.at(-1).advance, false, 'offscreen ambient rig work is suspended');
+  assert.equal(pauses.enemy.at(-1), true);
+
+  assert.deepEqual(creations.map(item => item.role), ['enemy', 'companion']);
+  assert.equal(scene.actorRigs.size, 2);
+  scene.applyAnimationPause(true);
+  assert.equal(pauses.enemy.at(-1), true);
+  assert.equal(pauses.companion.at(-1), true);
+  scene.disableActorRig('enemy:ghost-1', enemy);
+  assert.equal(destroys.enemy, 1);
+  assert.equal(scene.actorRigs.has('enemy:ghost-1'), false);
+  scene.releaseSceneObjects();
+  assert.equal(destroys.enemy, 1, 'individually removed controllers must not be destroyed twice');
+  assert.equal(destroys.companion, 1);
+  assert.equal(scene.actorRigs.size, 0);
 
   harness.context.MoguriaBattleV3.stop({ destroy: true, restoreLegacy: true });
 });
@@ -761,7 +906,7 @@ test('a failed continuous rig falls back to the existing Mogu atlas in the same 
     setAlpha() { return this; }
   };
   scene.playerSprite = sprite;
-  assert.equal(scene.createPlayerRig(), true);
+  assert.ok(scene.createPlayerRig());
   scene.animationPauseSignature = 'true:high:1';
   scene.sampleMotion = () => ({ facing:1, attackSerial:2 });
   scene.inferredState = () => 'attack';
@@ -783,7 +928,7 @@ test('a failed continuous rig falls back to the existing Mogu atlas in the same 
   harness.context.MoguriaBattleV3.stop({ destroy: true, restoreLegacy: true });
 });
 
-test('attack animations preserve every pose and same-key attacks restart', () => {
+test('atlas fallback preserves boss poses but uses Motion Rig 2-safe regular actor frames', () => {
   const harness = createHarness();
   harness.context.MoguriaBattleV3.boot({ parent: harness.parent });
   const scene = harness.makeScene();
@@ -810,6 +955,16 @@ test('attack animations preserve every pose and same-key attacks restart', () =>
   assert.equal(heroAttack.frameRate, 14);
   assert.equal(heroAttack.skipMissedFrames, false);
   assert.equal(created.find(item => item.key === 'moguria-v3-mogu-default-idle').skipMissedFrames, true);
+
+  const enemyAttack = created.find(item => item.key === 'moguria-v3-enemy-ghost-attack');
+  const enemyMove = created.find(item => item.key === 'moguria-v3-enemy-ghost-move');
+  const enemyHurt = created.find(item => item.key === 'moguria-v3-enemy-ghost-hurt');
+  assert.deepEqual(Array.from(enemyMove.frames, item => item.frame), [18]);
+  assert.deepEqual(Array.from(enemyAttack.frames, item => item.frame), [18]);
+  assert.deepEqual(Array.from(enemyHurt.frames, item => item.frame), [23]);
+  const companionAttack = created.find(item => item.key === 'moguria-v3-companion-default-attack');
+  assert.deepEqual(Array.from(companionAttack.frames, item => item.frame), [2]);
+  assert.equal(companionAttack.frames.some(item => item.frame === 3), false);
 
   scene.anims = { exists: key => key === 'moguria-v3-mogu-default-attack' };
   const sprite = {
@@ -910,7 +1065,11 @@ test('a short core hit flash remains visible for the full enemy hurt sequence', 
   track = scene.sampleMotion('enemy:hit', entity);
   assert.equal(scene.inferredState('enemy', entity, track), 'hurt');
 
-  scene.stateTime = 1.31;
+  scene.stateTime = 1.53;
+  track = scene.sampleMotion('enemy:hit', entity);
+  assert.equal(scene.inferredState('enemy', entity, track), 'hurt');
+
+  scene.stateTime = 1.55;
   track = scene.sampleMotion('enemy:hit', entity);
   assert.equal(scene.inferredState('enemy', entity, track), 'move');
 
@@ -977,67 +1136,80 @@ test('battle actors use the compact presentation scale without changing boss hie
   harness.context.MoguriaBattleV3.stop({ destroy: true, restoreLegacy: true });
 });
 
-test('enemy facing ignores close jitter, dwells before reversal, and locks through actions', () => {
+test('companions use delayed rear formation and presentation-only muzzle offsets', () => {
   const harness = createHarness();
   harness.context.MoguriaBattleV3.boot({ parent: harness.parent });
   const scene = harness.makeScene();
-  const track = { facing:1, time:0 };
-  const entity = { x:30, y:0, r:16 };
-  const player = { x:0, y:0 };
+  scene.stateTime = 1;
+  scene.actorTracks.set('player', { facing:1, vx:0, vy:0 });
+  const expectedSlots = [
+    { x:58, y:224 },
+    { x:42, y:184 },
+    { x:38, y:252 },
+    { x:20, y:212 },
+    { x:14, y:160 },
+    { x:2, y:248 }
+  ];
+  for (let index = 0; index < expectedSlots.length; index += 1) {
+    const target = scene.companionFormationTarget({ x:100, y:200 }, index, {});
+    assert.deepEqual({ x:target.x, y:target.y }, expectedSlots[index]);
+  }
 
-  scene.stateTime = 0;
-  assert.equal(scene.stabilizeEnemyFacing(track, entity, player, 'move'), -1, 'spawn should face Mogu immediately');
+  const springTrack = {};
+  scene.advanceCompanionSpring(springTrack, { x:0, y:0 });
+  scene.visualFrameDelta = 1 / 60;
+  scene.advanceCompanionSpring(springTrack, { x:120, y:0 });
+  assert.ok(springTrack.renderX > 0 && springTrack.renderX < 120, 'formation must converge without snapping or orbiting');
+  assert.equal(springTrack.renderY, 0);
 
-  entity.x = -30;
-  scene.stateTime = 0.01;
-  assert.equal(scene.stabilizeEnemyFacing(track, entity, player, 'move'), -1);
-  entity.x = 30;
-  scene.stateTime = 0.06;
-  assert.equal(scene.stabilizeEnemyFacing(track, entity, player, 'move'), -1, 'brief sign jitter must clear the pending reversal');
-  entity.x = -30;
-  scene.stateTime = 0.08;
-  assert.equal(scene.stabilizeEnemyFacing(track, entity, player, 'attack'), -1, 'attack pose must keep its facing');
-  scene.stateTime = 0.18;
-  assert.equal(scene.stabilizeEnemyFacing(track, entity, player, 'hurt'), -1, 'hurt pose must keep its facing');
-  scene.stateTime = 0.28;
-  assert.equal(scene.stabilizeEnemyFacing(track, entity, player, 'telegraph'), -1, 'telegraph pose must keep its facing');
-  scene.stateTime = 0.38;
-  assert.equal(scene.stabilizeEnemyFacing(track, entity, player, 'recover'), -1, 'recover pose must keep its facing');
+  scene.playerSprite = chainableActor();
+  scene.sampleMotion = () => ({ facing:-1, attackSerial:0 });
+  scene.inferredState = () => 'idle';
+  scene.applyPlayerRig = () => false;
+  scene.setActorAnimation = () => {};
+  scene.applyProceduralActorMotion = () => {};
+  scene.syncPlayer({ mode:'run', levelUpCue:null }, { x:100, y:200, hp:100, invuln:0 });
+  const playerOrigin = scene.displayOrigins.get('player');
+  assert.deepEqual(
+    { attackX:playerOrigin.attackX, attackY:playerOrigin.attackY, facing:playerOrigin.facing },
+    { attackX:75, attackY:187, facing:-1 }
+  );
 
-  scene.stateTime = 0.41;
-  assert.equal(scene.stabilizeEnemyFacing(track, entity, player, 'move'), -1);
-  scene.stateTime = 0.52;
-  assert.equal(scene.stabilizeEnemyFacing(track, entity, player, 'move'), -1, 'reversal must dwell for about 120ms');
-  scene.stateTime = 0.54;
-  assert.equal(scene.stabilizeEnemyFacing(track, entity, player, 'move'), 1, 'sustained reversal should eventually commit');
+  scene.createActorSprite = () => chainableActor();
+  scene.sampleMotion = () => ({ facing:-1, attackSerial:0 });
+  scene.inferredState = () => 'move';
+  scene.applyActorRig = () => false;
+  scene.syncEnemies({ enemies:[{ id:'ghost-1', x:140, y:230, hp:10, r:16, behavior:'ranged' }], defeatedEnemies:[] }, { x:100, y:200 });
+  const enemyOrigin = scene.displayOrigins.get('enemy:ghost-1');
+  assert.deepEqual(
+    { attackX:enemyOrigin.attackX, attackY:enemyOrigin.attackY, facing:enemyOrigin.facing },
+    { attackX:122, attackY:225, facing:1 }
+  );
+  assert.equal(scene.enemySprites.get('ghost-1').sprite.flipX, false, 'regular enemy paintings are always front-facing');
 
-  entity.x = 5;
-  scene.stateTime = 0.7;
-  assert.equal(scene.stabilizeEnemyFacing(track, entity, player, 'move'), 1, 'contact dead zone must preserve facing');
-
-  harness.context.MoguriaBattleV3.stop({ destroy: true, restoreLegacy: true });
-});
-
-test('enemy sampled velocity cannot override an action-locked facing', () => {
-  const harness = createHarness();
-  harness.context.MoguriaBattleV3.boot({ parent: harness.parent });
-  const scene = harness.makeScene();
-  const player = { x:0, y:0 };
-  const entity = { x:30, y:0, r:16, hp:10, visualState:'move', attackVisualTimer:0 };
-
-  scene.stateTime = 0;
-  let track = scene.sampleMotion('enemy:facing-lock', entity);
-  assert.equal(scene.stabilizeEnemyFacing(track, entity, player, 'move'), -1);
-
-  // A ranged retreat or overlap correction may move right while the enemy is
-  // still facing and attacking Mogu to its left. Velocity must not flip it.
-  scene.stateTime = 0.02;
-  entity.x = 36;
-  entity.visualState = 'attack';
-  entity.attackVisualTimer = 0.3;
-  track = scene.sampleMotion('enemy:facing-lock', entity);
-  assert.ok(track.vx > 6);
-  assert.equal(scene.stabilizeEnemyFacing(track, entity, player, 'attack'), -1);
+  const companionTrack = { facing:1, semanticAttackUntil:0 };
+  scene.actorTracks.set('player', { facing:-1, vx:0, vy:0 });
+  scene.sampleMotion = () => companionTrack;
+  scene.companionFormationTarget = () => ({ x:70, y:80 });
+  scene.advanceCompanionSpring = (track, target) => {
+    track.renderX = target.x;
+    track.renderY = target.y;
+  };
+  scene.syncCompanions(
+    { mode:'run', companions:[{ id:'one', x:0, y:0, attackSerial:1, attackAnimTimer:.2 }] },
+    { x:100, y:200, summons:1 }
+  );
+  const companionOrigin = scene.displayOrigins.get('companion:one');
+  assert.deepEqual(
+    { attackX:companionOrigin.attackX, attackY:companionOrigin.attackY, facing:companionOrigin.facing },
+    { attackX:52, attackY:69, facing:-1 }
+  );
+  assert.equal(scene.companionSprites.get('one').displayWidth, 50);
+  const publicOrigin = harness.context.MoguriaBattleV3.getCompanionOrigins()[0];
+  assert.deepEqual(
+    { attackX:publicOrigin.attackX, attackY:publicOrigin.attackY, facing:publicOrigin.facing },
+    { attackX:52, attackY:69, facing:-1 }
+  );
 
   harness.context.MoguriaBattleV3.stop({ destroy: true, restoreLegacy: true });
 });
