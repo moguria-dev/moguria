@@ -95,6 +95,7 @@
       "serviceWorker": "npm run validate:service-worker",
       "html": "npm run validate:html",
       "tests": "node --test",
+      "browser": "npm run qa:browser",
       "preflight": "npm run ci"
     },
     "assetSource": "config/asset-manifest.json",
@@ -116,18 +117,22 @@
       "tests/save-v3.test.js",
       "tests/skill-icon-assets.test.js",
       "tests/system-overlays.test.js",
-      "tests/development-environment.test.js"
+      "tests/development-environment.test.js",
+      "tests/browser-qa-contract.test.js"
     ],
     "requiredFiles": [
       ".nvmrc",
       ".nojekyll",
       "package.json",
+      "package-lock.json",
       ".github/workflows/ci.yml",
+      ".github/workflows/browser-qa.yml",
       ".github/workflows/deploy-pages.yml",
       "config/project-state.json",
       "config/asset-manifest.json",
       "config/animation-manifest.json",
       "scripts/preflight.mjs",
+      "scripts/run-browser-qa.mjs",
       "scripts/prepare-pages.mjs",
       "scripts/validate-project-state.mjs",
       "scripts/validate-assets.mjs",

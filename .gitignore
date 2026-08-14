@@ -4,6 +4,7 @@ coverage/
 artifacts/
 playwright-report/
 test-results/
+browser-qa-output/
 _site/
 _site.moguria-generated
 

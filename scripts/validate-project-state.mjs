@@ -120,6 +120,7 @@ export function validateProjectState(root = ROOT) {
     serviceWorker: 'npm run validate:service-worker',
     html: 'npm run validate:html',
     tests: 'node --test',
+    browser: 'npm run qa:browser',
     preflight: 'npm run ci'
   };
   for (const [key, value] of Object.entries(expectedCommands)) {

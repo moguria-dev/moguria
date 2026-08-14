@@ -10,6 +10,7 @@
   },
   "scripts": {
     "test": "node --test",
+    "qa:browser": "node scripts/run-browser-qa.mjs",
     "validate:project": "node scripts/validate-project-state.mjs",
     "validate:assets": "node scripts/validate-assets.mjs",
     "validate:service-worker": "node scripts/validate-service-worker.mjs",
@@ -17,5 +18,8 @@
     "prepare:pages": "node scripts/prepare-pages.mjs",
     "preflight": "node scripts/preflight.mjs",
     "ci": "node scripts/preflight.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.62.0"
   }
 }
