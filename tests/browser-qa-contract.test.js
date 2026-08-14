@@ -69,7 +69,7 @@ test('runner contract covers both mobile viewports and every approved screen', a
     pause: ['#pauseModal .pause-power-panels'],
     result: ['#result']
   });
-  assert.deepStrictEqual(runner.GLOBAL_VISUAL_SCROLL_ROOTS, ['html', 'body', '#app']);
+  assert.deepStrictEqual(runner.GLOBAL_VISUAL_SCROLL_ROOTS, ['html', 'body', '#app', '#overlay']);
   assert.deepStrictEqual(runner.VIEWPORT_SURFACE_SCREENS, [
     'home', 'dex', 'logs', 'equipment', 'gacha', 'outing', 'battle-hud', 'result'
   ]);

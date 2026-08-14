@@ -28,7 +28,7 @@ export const VISUAL_SCROLL_ROOTS = Object.freeze({
   pause: Object.freeze(['#pauseModal .pause-power-panels']),
   result: Object.freeze(['#result'])
 });
-export const GLOBAL_VISUAL_SCROLL_ROOTS = Object.freeze(['html', 'body', '#app']);
+export const GLOBAL_VISUAL_SCROLL_ROOTS = Object.freeze(['html', 'body', '#app', '#overlay']);
 export const VIEWPORT_SURFACE_SCREENS = Object.freeze([
   'home', 'dex', 'logs', 'equipment', 'gacha', 'outing', 'battle-hud', 'result'
 ]);
