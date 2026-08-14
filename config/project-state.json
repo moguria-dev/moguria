@@ -73,10 +73,10 @@
     }
   },
   "versions": {
-    "display": "3.2.1",
-    "application": "3.2.1-battle-v3",
+    "display": "3.3.0",
+    "application": "3.3.0-ui-consistency",
     "saveSchema": 3,
-    "assetManifest": "3.2.1-battle-v3",
+    "assetManifest": "3.3.0-ui-consistency",
     "animationManifest": 2
   },
   "performanceBudgets": {
@@ -118,6 +118,8 @@
       "tests/skill-icon-assets.test.js",
       "tests/system-overlays.test.js",
       "tests/development-environment.test.js",
+      "tests/ui-consistency.test.js",
+      "tests/ui-refresh-assets.test.js",
       "tests/browser-qa-contract.test.js"
     ],
     "requiredFiles": [

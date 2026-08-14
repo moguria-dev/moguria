@@ -15,6 +15,36 @@ export const SCREEN_IDS = Object.freeze([
   'home', 'dex', 'logs', 'equipment', 'gacha', 'outing',
   'battle-hud', 'skill-choice', 'artifact-choice', 'pause', 'result'
 ]);
+export const VISUAL_SCROLL_ROOTS = Object.freeze({
+  home: Object.freeze([]),
+  dex: Object.freeze(['#overlayBody']),
+  logs: Object.freeze(['#overlayBody']),
+  equipment: Object.freeze(['#overlayBody']),
+  gacha: Object.freeze(['#overlayBody']),
+  outing: Object.freeze(['#overlayBody']),
+  'battle-hud': Object.freeze([]),
+  'skill-choice': Object.freeze(['#levelOwnedSkills', '#skillChoices']),
+  'artifact-choice': Object.freeze(['#artifactOwnedSkills', '#artifactChoices']),
+  pause: Object.freeze(['#pauseModal .pause-power-panels']),
+  result: Object.freeze(['#result'])
+});
+export const GLOBAL_VISUAL_SCROLL_ROOTS = Object.freeze(['html', 'body', '#app', '#overlay']);
+export const VIEWPORT_SURFACE_SCREENS = Object.freeze([
+  'home', 'dex', 'logs', 'equipment', 'gacha', 'outing', 'battle-hud', 'result'
+]);
+export const TRANSIENT_ABSENCE = Object.freeze({
+  'battle-hud': Object.freeze(['#game.active > .big-cue', '#game.active > .wave-toast'])
+});
+export const BATTLE_CANVAS_PROBE = Object.freeze({
+  xRatio: 0.1,
+  yRatio: 0.2,
+  widthRatio: 0.8,
+  heightRatio: 0.55,
+  requiredPasses: 2,
+  intervalMs: 250,
+  minStandardDeviation: 8,
+  minColorBuckets: 80
+});
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DEFAULT_OUTPUT = path.join(ROOT, 'browser-qa-output');
@@ -37,10 +67,11 @@ const MIME = Object.freeze({
 });
 
 function parseArgs(argv = process.argv.slice(2)) {
-  const parsed = { browser: 'chromium', output: DEFAULT_OUTPUT };
+  const parsed = { browser: 'chromium', output: DEFAULT_OUTPUT, headed: false };
   for (const argument of argv) {
     if (argument.startsWith('--browser=')) parsed.browser = argument.slice('--browser='.length);
     else if (argument.startsWith('--output=')) parsed.output = path.resolve(ROOT, argument.slice('--output='.length));
+    else if (argument === '--headed') parsed.headed = true;
     else if (argument === '--list') parsed.list = true;
     else throw new Error(`Unknown argument: ${argument}`);
   }
@@ -348,6 +379,7 @@ const SCREEN_CONTRACTS = Object.freeze({
   dex: {
     surface: '#overlay[data-view="dex"]:not(.hidden) .meta-shell',
     touch: ['#closeOverlay', '[data-dex-tab]'],
+    fit: ['[data-dex-tab]'],
     setup: async (page) => {
       await page.click('#dexBtn');
       await page.locator('#overlay[data-view="dex"]:not(.hidden)').waitFor({ state: 'visible' });
@@ -458,10 +490,24 @@ const SCREEN_CONTRACTS = Object.freeze({
   }
 });
 
-async function settleVisuals(page, surfaceSelector) {
-  await page.evaluate(async (selector) => {
+async function waitForTransientAbsence(page, selectors = []) {
+  if (!selectors.length) return;
+  await page.waitForFunction((targets) => (
+    targets.every((selector) => !document.querySelector(selector))
+  ), selectors, { timeout: 7000 });
+}
+
+async function settleVisuals(page, surfaceSelector, scrollRootSelectors = []) {
+  const scrollState = await page.evaluate(async ({ selector, rootSelectors, globalRootSelectors }) => {
     if (document.fonts?.ready) await document.fonts.ready;
     const surface = document.querySelector(selector);
+    if (!surface) throw new Error(`visual surface is missing: ${selector}`);
+    const allRootSelectors = [...globalRootSelectors, ...rootSelectors];
+    const scrollRoots = allRootSelectors.map((rootSelector) => {
+      const root = document.querySelector(rootSelector);
+      if (!root) throw new Error(`visual scroll root is missing: ${rootSelector}`);
+      return { root, selector: rootSelector };
+    });
     const surfaceImages = surface ? [...surface.querySelectorAll('img')] : [];
     for (const image of surfaceImages) {
       if (!image.getClientRects().length) continue;
@@ -476,16 +522,156 @@ async function settleVisuals(page, surfaceSelector) {
         await image.decode().catch(() => {});
       }
     }
-    document.getElementById('overlayBody')?.scrollTo?.({ top: 0, behavior: 'auto' });
-    document.querySelectorAll('.modal-card, .meta-shell__body').forEach((element) => { element.scrollTop = 0; });
-    window.scrollTo(0, 0);
+
+    const resetScroll = () => {
+      for (const { root } of scrollRoots) {
+        root.scrollTop = 0;
+        root.scrollLeft = 0;
+      }
+      const documentRoot = document.scrollingElement;
+      if (documentRoot) {
+        documentRoot.scrollTop = 0;
+        documentRoot.scrollLeft = 0;
+      }
+      window.scrollTo(0, 0);
+    };
+    resetScroll();
     await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-  }, surfaceSelector);
+    resetScroll();
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    return scrollRoots.map(({ root, selector: rootSelector }) => ({
+      selector: rootSelector,
+      top: Number(root.scrollTop.toFixed(1)),
+      left: Number(root.scrollLeft.toFixed(1)),
+      scrollHeight: root.scrollHeight,
+      clientHeight: root.clientHeight
+    }));
+  }, {
+    selector: surfaceSelector,
+    rootSelectors: scrollRootSelectors,
+    globalRootSelectors: GLOBAL_VISUAL_SCROLL_ROOTS
+  });
+  const unrestored = scrollState.filter(({ top, left }) => Math.abs(top) > 1 || Math.abs(left) > 1);
+  if (unrestored.length) throw new Error(`visual scroll roots did not return to origin: ${JSON.stringify(unrestored)}`);
   await page.waitForTimeout(100);
+  return scrollState;
 }
 
-async function auditDom(page, contract, viewport) {
-  return page.evaluate(({ surfaceSelector, touchSelectors, width, height }) => {
+async function battleRendererDiagnostics(page) {
+  return page.evaluate(() => {
+    const canvas = document.querySelector('#moguriaBattleV3CanvasHost canvas[data-moguria-battle-v3="true"]');
+    const phaserGame = [...(window.Phaser?.GAMES || [])].find((game) => game?.canvas === canvas) || null;
+    const gl = phaserGame?.renderer?.gl || null;
+    const renderer = window.MoguriaBattleV3;
+    const stringify = (value) => String(value?.message || value || 'unknown');
+    const rect = canvas?.getBoundingClientRect?.();
+    return {
+      canvas: canvas ? {
+        width: canvas.width,
+        height: canvas.height,
+        clientWidth: canvas.clientWidth,
+        clientHeight: canvas.clientHeight,
+        rect: rect ? { x: rect.x, y: rect.y, width: rect.width, height: rect.height } : null
+      } : null,
+      phaser: {
+        games: window.Phaser?.GAMES?.length || 0,
+        rendererType: phaserGame?.renderer?.type ?? null,
+        drawingBufferWidth: gl?.drawingBufferWidth ?? null,
+        drawingBufferHeight: gl?.drawingBufferHeight ?? null,
+        contextLost: typeof gl?.isContextLost === 'function' ? gl.isContextLost() : null
+      },
+      renderer: {
+        ready: renderer?.isReady?.() === true,
+        loadErrors: (renderer?.getLoadErrors?.() || []).map(stringify),
+        fallbackAssets: (renderer?.getFallbackAssets?.() || []).map(stringify),
+        coreStepError: renderer?.getLastCoreStepError?.()
+          ? stringify(renderer.getLastCoreStepError())
+          : null
+      },
+      contextEvents: [...(window.__moguriaQaCanvasEvents || [])]
+    };
+  });
+}
+
+async function recoverBattleCanvas(page) {
+  const recovery = await page.evaluate(async () => {
+    const state = window.MoguriaGame?.getState?.();
+    let synced = false;
+    let error = null;
+    try {
+      synced = window.MoguriaBattleV3?.sync?.(state) === true;
+      window.dispatchEvent(new Event('resize'));
+    } catch (caught) {
+      error = String(caught?.message || caught);
+    }
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    return { synced, error };
+  });
+  await page.waitForTimeout(BATTLE_CANVAS_PROBE.intervalMs);
+  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  return recovery;
+}
+
+async function waitForBattleProbeInterval(page) {
+  await page.waitForTimeout(BATTLE_CANVAS_PROBE.intervalMs);
+  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+}
+
+async function captureBattleProbe(page, clip, output, viewport, label, scale = 'device') {
+  const fileName = `${viewport.id}--battle-hud--canvas-probe-${label}.png`;
+  const filePath = path.join(output, 'screenshots', fileName);
+  const screenshot = await page.screenshot({ path: filePath, clip, scale, animations: 'disabled' });
+  const visual = pngVisualStats(screenshot);
+  return {
+    screenshot: path.posix.join('screenshots', fileName),
+    scale,
+    passed: !visual.nearBlank
+      && visual.standardDeviation >= BATTLE_CANVAS_PROBE.minStandardDeviation
+      && visual.colorBuckets >= BATTLE_CANVAS_PROBE.minColorBuckets,
+    visual,
+    renderer: await battleRendererDiagnostics(page)
+  };
+}
+
+async function verifyBattleCanvas(page, viewport, output) {
+  const x = Math.floor(viewport.width * BATTLE_CANVAS_PROBE.xRatio);
+  const y = Math.floor(viewport.height * BATTLE_CANVAS_PROBE.yRatio);
+  const clip = {
+    x,
+    y,
+    width: Math.max(1, Math.floor(viewport.width * BATTLE_CANVAS_PROBE.widthRatio)),
+    height: Math.max(1, Math.floor(viewport.height * BATTLE_CANVAS_PROBE.heightRatio))
+  };
+  const result = {
+    clip,
+    passed: false,
+    preProbeRenderer: await battleRendererDiagnostics(page),
+    unassisted: []
+  };
+  result.backingStoreReady = Number(result.preProbeRenderer.canvas?.width) > 0
+    && Number(result.preProbeRenderer.canvas?.height) > 0;
+  for (let attempt = 1; attempt <= BATTLE_CANVAS_PROBE.requiredPasses; attempt += 1) {
+    const item = await captureBattleProbe(page, clip, output, viewport, `${attempt}-device`);
+    result.unassisted.push({ attempt, ...item });
+    if (attempt < BATTLE_CANVAS_PROBE.requiredPasses) await waitForBattleProbeInterval(page);
+  }
+  result.passed = result.backingStoreReady
+    && result.unassisted.length === BATTLE_CANVAS_PROBE.requiredPasses
+    && result.unassisted.every((item) => item.passed);
+  if (!result.passed) {
+    result.cssScaleDiagnostic = await captureBattleProbe(
+      page, clip, output, viewport, 'css-diagnostic', 'css'
+    );
+    result.recovery = await recoverBattleCanvas(page);
+    result.recoveryProbe = await captureBattleProbe(
+      page, clip, output, viewport, '3-recovery-device'
+    );
+  }
+  return result;
+}
+
+async function auditDom(page, contract, viewport, screenId) {
+  return page.evaluate(({ surfaceSelector, touchSelectors, contentFitSelectors, width, height, viewportSurfaceExpected }) => {
     const visible = (element) => {
       if (!element) return false;
       const rect = element.getBoundingClientRect();
@@ -499,6 +685,17 @@ async function auditDom(page, contract, viewport) {
     const surfaceRect = surface?.getBoundingClientRect();
     if (surfaceRect && (surfaceRect.left < -1 || surfaceRect.right > width + 1)) {
       failures.push(`active surface overflows horizontally: ${surfaceRect.left.toFixed(1)}..${surfaceRect.right.toFixed(1)}`);
+    }
+    if (surfaceRect && viewportSurfaceExpected) {
+      const viewportDelta = Math.max(
+        Math.abs(surfaceRect.x), Math.abs(surfaceRect.y),
+        Math.abs(surfaceRect.width - width), Math.abs(surfaceRect.height - height)
+      );
+      if (viewportDelta > 1) {
+        failures.push(`full-viewport surface is displaced by ${viewportDelta.toFixed(1)}px: `
+          + `${surfaceRect.x.toFixed(1)},${surfaceRect.y.toFixed(1)} `
+          + `${surfaceRect.width.toFixed(1)}x${surfaceRect.height.toFixed(1)}`);
+      }
     }
     const rootOverflow = Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - document.documentElement.clientWidth;
     if (rootOverflow > 1) failures.push(`document horizontal overflow is ${rootOverflow}px`);
@@ -539,6 +736,29 @@ async function auditDom(page, contract, viewport) {
         }
       }
     }
+
+    const contentFit = [];
+    for (const selector of contentFitSelectors) {
+      const nodes = [...document.querySelectorAll(selector)].filter(visible);
+      if (!nodes.length) {
+        failures.push(`required content-fit control is missing: ${selector}`);
+        continue;
+      }
+      for (const node of nodes) {
+        const record = {
+          selector,
+          id: node.id || node.getAttribute('data-dex-tab') || '',
+          clientWidth: node.clientWidth,
+          scrollWidth: node.scrollWidth,
+          clientHeight: node.clientHeight,
+          scrollHeight: node.scrollHeight
+        };
+        contentFit.push(record);
+        if (record.scrollWidth > record.clientWidth + 1 || record.scrollHeight > record.clientHeight + 1) {
+          failures.push(`required content overflows its control: ${selector} ${record.id || '(unidentified)'}`);
+        }
+      }
+    }
     const textLength = (surface?.innerText || '').replace(/\s+/g, '').length;
     const canvasCount = surface ? [...surface.querySelectorAll('canvas')].filter(visible).length : 0;
     const imageCount = surface ? [...surface.querySelectorAll('img')].filter(visible).length : 0;
@@ -552,8 +772,18 @@ async function auditDom(page, contract, viewport) {
       const canvasRect = battleCanvas.getBoundingClientRect();
       rendererCanvas = {
         game: { x: gameRect.x, y: gameRect.y, width: gameRect.width, height: gameRect.height },
-        canvas: { x: canvasRect.x, y: canvasRect.y, width: canvasRect.width, height: canvasRect.height }
+        canvas: {
+          x: canvasRect.x,
+          y: canvasRect.y,
+          width: canvasRect.width,
+          height: canvasRect.height,
+          backingWidth: battleCanvas.width,
+          backingHeight: battleCanvas.height
+        }
       };
+      if (battleCanvas.width <= 0 || battleCanvas.height <= 0) {
+        failures.push(`battle renderer canvas backing store is ${battleCanvas.width}x${battleCanvas.height}`);
+      }
       const delta = Math.max(
         Math.abs(gameRect.x - canvasRect.x), Math.abs(gameRect.y - canvasRect.y),
         Math.abs(gameRect.width - canvasRect.width), Math.abs(gameRect.height - canvasRect.height)
@@ -565,6 +795,7 @@ async function auditDom(page, contract, viewport) {
       rootOverflow,
       brokenImages,
       touchTargets,
+      contentFit,
       surface: surfaceRect ? {
         x: Number(surfaceRect.x.toFixed(1)), y: Number(surfaceRect.y.toFixed(1)),
         width: Number(surfaceRect.width.toFixed(1)), height: Number(surfaceRect.height.toFixed(1))
@@ -577,8 +808,10 @@ async function auditDom(page, contract, viewport) {
   }, {
     surfaceSelector: contract.surface,
     touchSelectors: contract.touch,
+    contentFitSelectors: contract.fit || [],
     width: viewport.width,
-    height: viewport.height
+    height: viewport.height,
+    viewportSurfaceExpected: VIEWPORT_SURFACE_SCREENS.includes(screenId)
   });
 }
 
@@ -608,6 +841,20 @@ async function runScreen(browser, baseUrl, browserName, viewport, screenId, outp
     } : {})
   });
   await context.addInitScript((seed) => {
+    window.__moguriaQaCanvasEvents = [];
+    const recordCanvasEvent = (event) => {
+      const canvas = event.target;
+      window.__moguriaQaCanvasEvents.push({
+        type: event.type,
+        at: Number(performance.now().toFixed(1)),
+        width: Number(canvas?.width || 0),
+        height: Number(canvas?.height || 0),
+        statusMessage: String(event.statusMessage || '')
+      });
+    };
+    document.addEventListener('webglcontextlost', recordCanvasEvent, true);
+    document.addEventListener('webglcontextrestored', recordCanvasEvent, true);
+    document.addEventListener('webglcontextcreationerror', recordCanvasEvent, true);
     let value = seed >>> 0;
     Math.random = () => {
       value += 0x6D2B79F5;
@@ -636,8 +883,16 @@ async function runScreen(browser, baseUrl, browserName, viewport, screenId, outp
     await page.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 45000 });
     await waitForStablePage(page);
     await contract.setup(page);
-    await settleVisuals(page, contract.surface);
-    record.dom = await auditDom(page, contract, viewport);
+    await waitForTransientAbsence(page, TRANSIENT_ABSENCE[screenId]);
+    record.scrollRoots = await settleVisuals(page, contract.surface, VISUAL_SCROLL_ROOTS[screenId]);
+    record.dom = await auditDom(page, contract, viewport, screenId);
+    if (screenId === 'battle-hud') {
+      record.canvasProbe = await verifyBattleCanvas(page, viewport, output);
+      if (!record.canvasProbe.passed) {
+        throw new Error('battle canvas probe did not pass two consecutive unassisted captures: '
+          + JSON.stringify(record.canvasProbe));
+      }
+    }
     const screenshot = await page.screenshot({ path: screenshotPath, fullPage: false, animations: 'disabled' });
     record.visual = pngVisualStats(screenshot);
     if (['logs', 'equipment', 'gacha', 'outing'].includes(screenId)) {
@@ -673,6 +928,7 @@ function summaryMarkdown(summary) {
     '# Moguria browser visual QA',
     '',
     `- Browser: ${summary.browser}`,
+    `- Mode: ${summary.headed ? 'headed' : 'headless'}`,
     `- Playwright: ${summary.playwrightVersion}`,
     `- Seed: ${summary.seed}`,
     `- Result: ${summary.passed ? 'PASS' : 'FAIL'}`,
@@ -700,7 +956,13 @@ function summaryMarkdown(summary) {
 async function main() {
   const options = parseArgs();
   if (options.list) {
-    console.log(JSON.stringify({ playwright: PLAYWRIGHT_VERSION, browsers: ['chromium', 'webkit'], viewports: VIEWPORTS, screens: SCREEN_IDS }, null, 2));
+    console.log(JSON.stringify({
+      playwright: PLAYWRIGHT_VERSION,
+      browsers: ['chromium', 'webkit'],
+      headed: options.headed,
+      viewports: VIEWPORTS,
+      screens: SCREEN_IDS
+    }, null, 2));
     return;
   }
   fs.rmSync(options.output, { recursive: true, force: true });
@@ -716,7 +978,7 @@ async function main() {
   const startedAt = new Date().toISOString();
   try {
     ({ server, baseUrl: options.baseUrl } = await startStaticServer());
-    browser = await browserType.launch({ headless: true });
+    browser = await browserType.launch({ headless: !options.headed });
     const records = [];
     for (const viewport of VIEWPORTS) {
       for (const screenId of SCREEN_IDS) {
@@ -731,6 +993,8 @@ async function main() {
       generatedAt: new Date().toISOString(),
       startedAt,
       browser: options.browser,
+      headed: options.headed,
+      headless: !options.headed,
       playwrightVersion: PLAYWRIGHT_VERSION,
       seed: FIXED_SEED,
       locale: 'ja-JP',

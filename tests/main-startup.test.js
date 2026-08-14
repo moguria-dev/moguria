@@ -202,7 +202,7 @@ test('startup markup is image-free, determinate, accessible, and Home is not ini
   assert.doesNotMatch(loader, /<img\b/i);
   assert.match(loader, /role="progressbar"/);
   assert.match(loader, /aria-valuemin="0"/);
-  assert.match(loader, /aria-valuemax="18"/);
+  assert.match(loader, /aria-valuemax="15"/);
   assert.match(loader, /role="status"/);
   assert.match(loader, /aria-live="polite"/);
   assert.match(html, /<div id="app" inert aria-hidden="true">/);

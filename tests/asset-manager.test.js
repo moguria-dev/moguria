@@ -239,18 +239,17 @@ test('asset URLs cannot escape the first-party relative asset tree', async () =>
   assert.match(harness.assets.stats().errors.join('\n'), /no safe URL/);
 });
 
-test('the startup manifest contains exactly the 18 visible Home assets and no battle pack asset', () => {
+test('the startup manifest contains exactly the 15 visible Home assets and no battle pack asset', () => {
   const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'assets/manifest.json'), 'utf8'));
   const expected = new Set([
     'home_v2_background', 'home_v2_mogu', 'home_v2_star_companion', 'home_v2_logo',
     'home_v2_frame', 'home_v2_button', 'home_v2_button_gold', 'home_v2_icon_snack',
     'home_v2_icon_dex', 'home_v2_icon_logs', 'home_v2_icon_gacha', 'home_v2_icon_equip',
-    'home_v2_icon_dungeon', 'home_v2_icon_outing', 'home_v2_currency_star',
-    'home_v2_currency_coin', 'home_v2_currency_gem', 'home_v2_expedition_mogu'
+    'home_v2_icon_dungeon', 'home_v2_icon_outing', 'home_v2_currency_coin'
   ]);
   const actual = new Set(manifest.critical.map(asset => asset.id));
 
-  assert.equal(manifest.critical.length, 18);
+  assert.equal(manifest.critical.length, 15);
   assert.deepEqual(actual, expected);
   assert.ok(manifest.critical.every(asset => asset.type === 'image'));
   assert.ok(manifest.critical.every(asset => !asset.src.includes('battle-v3')));

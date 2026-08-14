@@ -2,7 +2,9 @@ window.MoguriaHome = (() => {
   let save;
   let initialized = false;
   let recoveryTimer = null;
+  let homeNoticeTimer = null;
   let startPending = false;
+  let adventureErrorKeysBound = false;
 
   const $ = (id) => document.getElementById(id);
 
@@ -14,6 +16,91 @@ window.MoguriaHome = (() => {
   function setText(id, text){
     const el = $(id);
     if (el) el.textContent = text;
+  }
+
+  function showHomeNotice(message, { error = false, persistent = false } = {}){
+    const notice = $('homeNotice');
+    if (!notice) return;
+    if (homeNoticeTimer) clearTimeout(homeNoticeTimer);
+    homeNoticeTimer = null;
+    notice.textContent = String(message || '');
+    notice.dataset.tone = error ? 'error' : 'info';
+    notice.setAttribute('role', error ? 'alert' : 'status');
+    notice.hidden = !message;
+    if (message && !persistent) {
+      homeNoticeTimer = setTimeout(() => {
+        notice.hidden = true;
+        homeNoticeTimer = null;
+      }, 4600);
+    }
+  }
+
+  function resetAdventureError(){
+    const loading = $('adventureLoading');
+    const actions = $('adventureLoadingActions');
+    const hint = loading?.querySelector?.('.system-loading__hint');
+    if (loading) {
+      delete loading.dataset.state;
+      loading.setAttribute('aria-busy', 'true');
+    }
+    if (actions) actions.hidden = true;
+    if (hint) hint.textContent = 'そのまま少し待ってね';
+  }
+
+  function showAdventureError(message){
+    const loading = $('adventureLoading');
+    const actions = $('adventureLoadingActions');
+    const hint = loading?.querySelector?.('.system-loading__hint');
+    if (!loading) return;
+    loading.dataset.state = 'error';
+    loading.setAttribute('aria-busy', 'false');
+    setText('adventureLoadingTitle', '冒険を始められませんでした');
+    setText('adventureLoadingCost', 'おなかは追加で消費されません');
+    setText('adventureLoadingStatus', message || '通信と空き容量を確認して、もう一度ためしてね。');
+    if (hint) hint.textContent = 'この案内は操作するまで消えません';
+    if (actions) actions.hidden = false;
+    window.requestAnimationFrame?.(() => $('adventureRetryBtn')?.focus?.());
+  }
+
+  function closeAdventureError(focusTarget = ''){
+    resetAdventureError();
+    window.MoguriaUI?.hideAdventureLoading?.({
+      restoreFocus: false,
+      focusTarget
+    });
+  }
+
+  function bindAdventureErrorActions(){
+    const retry = $('adventureRetryBtn');
+    if (retry) retry.onclick = () => {
+      closeAdventureError();
+      void beginAdventure($('startBtn'));
+    };
+    const home = $('adventureHomeBtn');
+    if (home) home.onclick = () => {
+      closeAdventureError('startBtn');
+      window.MoguriaUI?.show?.('home');
+    };
+    if (adventureErrorKeysBound || typeof document.addEventListener !== 'function') return;
+    adventureErrorKeysBound = true;
+    document.addEventListener('keydown', event => {
+      const loading = $('adventureLoading');
+      if (!loading || loading.dataset.state !== 'error' || loading.classList.contains('hidden')) return;
+      if (event.key !== 'Tab' && event.key !== 'Escape') return;
+      event.preventDefault();
+      event.stopImmediatePropagation?.();
+      const first = $('adventureRetryBtn');
+      const last = $('adventureHomeBtn');
+      if (event.key === 'Escape') {
+        first?.focus?.();
+        return;
+      }
+      const active = document.activeElement;
+      const next = event.shiftKey
+        ? (active === first ? last : first)
+        : (active === last ? first : last);
+      next?.focus?.();
+    }, true);
   }
 
   function init(){
@@ -30,12 +117,16 @@ window.MoguriaHome = (() => {
         loadSave();
         const now = Date.now();
         if (now - (save.snackAt || 0) < 1000 * 60 * 60 * 6) {
-          setText('homeLine', 'おやつはさっき食べたみたい。今はすやすやしてる。');
+          showHomeNotice('おやつはさっき食べたみたい。今はすやすやしてる。');
         } else {
           save.snackAt = now;
           save.belly = Math.min(save.maxBelly, save.belly + 1);
-          window.MoguriaSave.save(save);
-          setText('homeLine', 'おやつをもぐもぐ。少し元気になったみたい。');
+          const saved = window.MoguriaSave.save(save);
+          if (saved?.ok === false) {
+            showHomeNotice('おやつの記録を保存できませんでした。空き容量を確認して、もう一度ためしてね。', { error: true, persistent: true });
+          } else {
+            showHomeNotice('おやつをもぐもぐ。少し元気になったみたい。');
+          }
         }
         update();
       };
@@ -52,6 +143,8 @@ window.MoguriaHome = (() => {
     const outingBtn = $('outingBtn');
     if (outingBtn) outingBtn.onclick = () => window.MoguriaUI.showOuting();
 
+    bindAdventureErrorActions();
+
     update();
     if (!recoveryTimer) {
       recoveryTimer = setInterval(() => {
@@ -67,7 +160,7 @@ window.MoguriaHome = (() => {
     loadSave();
     const existingRun = save.activeRun || null;
     if (!existingRun && save.belly <= 0) {
-      setText('homeLine', 'Mogu、今日はいっぱい食べたみたい…少し休ませてあげよう。');
+      showHomeNotice('Mogu、今日はいっぱい食べたみたい…少し休ませてあげよう。');
       $('homeMogu')?.classList.add('idle');
       renderStartButton(startBtn, false, false);
       return;
@@ -77,7 +170,9 @@ window.MoguriaHome = (() => {
     renderStartButton(startBtn, true, Boolean(existingRun), true);
     let gameOpened = false;
     let adventureStarted = false;
+    let failureMessage = '';
     window.MoguriaUI?.showAdventureLoading?.({ resume: Boolean(existingRun) });
+    resetAdventureError();
 
     try {
       window.MoguriaUI?.updateAdventureLoading?.(existingRun
@@ -87,7 +182,7 @@ window.MoguriaHome = (() => {
       if (loader?.prepare) {
         const prepared = await loader.prepare();
         if (prepared?.ok === false) {
-          setText('homeLine', '冒険の準備に失敗しました。通信を確認して、もう一度ためしてね。');
+          failureMessage = '冒険の準備に失敗しました。通信を確認して、もう一度ためしてね。';
           return;
         }
       }
@@ -103,11 +198,11 @@ window.MoguriaHome = (() => {
 
       if (!session?.ok) {
         if (session?.reason === 'no-belly') {
-          setText('homeLine', 'Mogu、今日はいっぱい食べたみたい…少し休ませてあげよう。');
+          failureMessage = 'Mogu、今日はいっぱい食べたみたい…少し休ませてあげよう。';
         } else if (session?.reason === 'save-failed') {
-          setText('homeLine', '冒険の準備を保存できませんでした。もう一度ためしてね。');
+          failureMessage = '冒険の準備を保存できませんでした。空き容量を確認して、もう一度ためしてね。';
         } else {
-          setText('homeLine', '冒険を始められませんでした。もう一度ためしてね。');
+          failureMessage = '冒険を始められませんでした。もう一度ためしてね。';
         }
         return;
       }
@@ -120,19 +215,20 @@ window.MoguriaHome = (() => {
       const started = await Promise.resolve(window.MoguriaGame.start({ runId: session.runId, activeRun, resume }));
       if (started === false) {
         window.MoguriaUI.show('home');
+        failureMessage = window.MoguriaGame?.getStartError?.() || '戦闘画面を開始できませんでした。もう一度ためしてね。';
         return;
       }
       adventureStarted = true;
     } catch (error) {
       console.warn('[MoguriaHome] battle preparation failed', error);
       if (gameOpened) window.MoguriaUI?.show?.('home');
-      setText('homeLine', '冒険の準備に失敗しました。通信を確認して、もう一度ためしてね。');
+      failureMessage = '冒険の準備に失敗しました。通信を確認して、もう一度ためしてね。';
     } finally {
       startPending = false;
       update();
       if (!adventureStarted) {
-        window.MoguriaUI?.updateAdventureLoading?.(document.getElementById('homeLine')?.textContent || '冒険を始められませんでした。もう一度ためしてね。');
-        await new Promise(resolve => setTimeout(resolve, 320));
+        showAdventureError(failureMessage || '冒険を始められませんでした。もう一度ためしてね。');
+        return;
       }
       const battleMode = window.MoguriaGame?.getState?.()?.mode;
       const focusTarget = !adventureStarted ? 'startBtn'

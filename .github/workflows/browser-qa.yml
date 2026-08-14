@@ -44,8 +44,12 @@ jobs:
         run: npm ci --ignore-scripts
       - name: Install pinned browser and system dependencies
         run: npx playwright install --with-deps "${{ matrix.browser }}"
-      - name: Capture and audit mobile screens
-        run: npm run qa:browser -- --browser="${{ matrix.browser }}" --output="browser-qa-output/${{ matrix.browser }}"
+      - name: Capture and audit Chromium mobile screens
+        if: matrix.browser == 'chromium'
+        run: npm run qa:browser -- --browser="chromium" --output="browser-qa-output/chromium"
+      - name: Capture and audit WebKit mobile screens
+        if: matrix.browser == 'webkit'
+        run: xvfb-run -a npm run qa:browser -- --browser="webkit" --headed --output="browser-qa-output/webkit"
       - name: Upload browser QA evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

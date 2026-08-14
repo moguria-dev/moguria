@@ -1,5 +1,5 @@
 {
-  "version": "3.2.1-battle-v3",
+  "version": "3.3.0-ui-consistency",
   "policy": {
     "criticalBudgetMB": 4,
     "initialAudio": "metadata-only",
@@ -78,24 +78,9 @@
       "src": "assets/images/home-v2/icon_outing.png"
     },
     {
-      "id": "home_v2_currency_star",
-      "type": "image",
-      "src": "assets/images/home-v2/currency_star.png"
-    },
-    {
       "id": "home_v2_currency_coin",
       "type": "image",
       "src": "assets/images/home-v2/currency_coin.png"
-    },
-    {
-      "id": "home_v2_currency_gem",
-      "type": "image",
-      "src": "assets/images/home-v2/currency_gem.png"
-    },
-    {
-      "id": "home_v2_expedition_mogu",
-      "type": "image",
-      "src": "assets/images/home-v2/expedition_mogu.png"
     }
   ],
   "lazy": [],
@@ -109,15 +94,307 @@
       "id": "battle-v3",
       "label": "星影洞窟 battle-v3",
       "assets": [
-        { "id": "battle_v3_mogu", "type": "image", "src": "assets/images/battle-v3/mogu-atlas-hd-v2.png?v=20260812-battle-motion-2" },
-        { "id": "battle_v3_enemies", "type": "image", "src": "assets/images/battle-v3/enemy-atlas-v2.png?v=20260812-battle-motion-2" },
-        { "id": "battle_v3_companions", "type": "image", "src": "assets/images/battle-v3/companion-atlas.png?v=20260812-battle-motion-2" },
-        { "id": "battle_v3_bosses", "type": "image", "src": "assets/images/battle-v3/boss-atlas-v2.png?v=20260812-battle-motion-2" },
-        { "id": "battle_v3_far", "type": "image", "src": "assets/images/battle-v3/bg-far.webp?v=20260812-battle-motion-2" },
-        { "id": "battle_v3_mid", "type": "image", "src": "assets/images/battle-v3/bg-mid.webp?v=20260812-battle-motion-2" },
-        { "id": "battle_v3_ground", "type": "image", "src": "assets/images/battle-v3/bg-ground.webp?v=20260812-battle-motion-2" },
-        { "id": "battle_v3_foreground", "type": "image", "src": "assets/images/battle-v3/bg-foreground.webp?v=20260812-battle-motion-2" },
-        { "id": "battle_v3_atlas_manifest", "type": "json", "src": "assets/images/battle-v3/atlas.json?v=20260812-battle-motion-2" }
+        {
+          "id": "battle_v3_mogu",
+          "type": "image",
+          "src": "assets/images/battle-v3/mogu-atlas-hd-v2.png?v=20260812-battle-motion-2"
+        },
+        {
+          "id": "battle_v3_enemies",
+          "type": "image",
+          "src": "assets/images/battle-v3/enemy-atlas-v2.png?v=20260812-battle-motion-2"
+        },
+        {
+          "id": "battle_v3_companions",
+          "type": "image",
+          "src": "assets/images/battle-v3/companion-atlas.png?v=20260812-battle-motion-2"
+        },
+        {
+          "id": "battle_v3_bosses",
+          "type": "image",
+          "src": "assets/images/battle-v3/boss-atlas-v2.png?v=20260812-battle-motion-2"
+        },
+        {
+          "id": "battle_v3_far",
+          "type": "image",
+          "src": "assets/images/battle-v3/bg-far.webp?v=20260812-battle-motion-2"
+        },
+        {
+          "id": "battle_v3_mid",
+          "type": "image",
+          "src": "assets/images/battle-v3/bg-mid.webp?v=20260812-battle-motion-2"
+        },
+        {
+          "id": "battle_v3_ground",
+          "type": "image",
+          "src": "assets/images/battle-v3/bg-ground.webp?v=20260812-battle-motion-2"
+        },
+        {
+          "id": "battle_v3_foreground",
+          "type": "image",
+          "src": "assets/images/battle-v3/bg-foreground.webp?v=20260812-battle-motion-2"
+        },
+        {
+          "id": "battle_v3_atlas_manifest",
+          "type": "json",
+          "src": "assets/images/battle-v3/atlas.json?v=20260812-battle-motion-2"
+        }
+      ]
+    },
+    {
+      "id": "ui-refresh",
+      "label": "UI一貫性刷新アイコン",
+      "assets": [
+        {
+          "id": "ui_refresh_artifacts_artifact_core",
+          "type": "image",
+          "src": "assets/images/ui-refresh/artifacts/artifact-core.webp"
+        },
+        {
+          "id": "ui_refresh_artifacts_violet_engine",
+          "type": "image",
+          "src": "assets/images/ui-refresh/artifacts/violet_engine.webp"
+        },
+        {
+          "id": "ui_refresh_artifacts_pop_crown",
+          "type": "image",
+          "src": "assets/images/ui-refresh/artifacts/pop_crown.webp"
+        },
+        {
+          "id": "ui_refresh_artifacts_runner_cloak",
+          "type": "image",
+          "src": "assets/images/ui-refresh/artifacts/runner_cloak.webp"
+        },
+        {
+          "id": "ui_refresh_artifacts_shell_heart",
+          "type": "image",
+          "src": "assets/images/ui-refresh/artifacts/shell_heart.webp"
+        },
+        {
+          "id": "ui_refresh_artifacts_little_parade",
+          "type": "image",
+          "src": "assets/images/ui-refresh/artifacts/little_parade.webp"
+        },
+        {
+          "id": "ui_refresh_artifacts_star_orbit",
+          "type": "image",
+          "src": "assets/images/ui-refresh/artifacts/star_orbit.webp"
+        },
+        {
+          "id": "ui_refresh_artifacts_field_core",
+          "type": "image",
+          "src": "assets/images/ui-refresh/artifacts/field_core.webp"
+        },
+        {
+          "id": "ui_refresh_artifacts_split_lens",
+          "type": "image",
+          "src": "assets/images/ui-refresh/artifacts/split_lens.webp"
+        },
+        {
+          "id": "ui_refresh_artifacts_pierce_needle",
+          "type": "image",
+          "src": "assets/images/ui-refresh/artifacts/pierce_needle.webp"
+        },
+        {
+          "id": "ui_refresh_artifacts_fan_shell",
+          "type": "image",
+          "src": "assets/images/ui-refresh/artifacts/fan_shell.webp"
+        },
+        {
+          "id": "ui_refresh_artifacts_hungry_moon",
+          "type": "image",
+          "src": "assets/images/ui-refresh/artifacts/hungry_moon.webp"
+        },
+        {
+          "id": "ui_refresh_artifacts_magnet_bell",
+          "type": "image",
+          "src": "assets/images/ui-refresh/artifacts/magnet_bell.webp"
+        },
+        {
+          "id": "ui_refresh_artifacts_reroll_spoon",
+          "type": "image",
+          "src": "assets/images/ui-refresh/artifacts/reroll_spoon.webp"
+        },
+        {
+          "id": "ui_refresh_artifacts_late_bloomer",
+          "type": "image",
+          "src": "assets/images/ui-refresh/artifacts/late_bloomer.webp"
+        },
+        {
+          "id": "ui_refresh_artifacts_boss_cookie",
+          "type": "image",
+          "src": "assets/images/ui-refresh/artifacts/boss_cookie.webp"
+        },
+        {
+          "id": "ui_refresh_artifacts_calm_blanket",
+          "type": "image",
+          "src": "assets/images/ui-refresh/artifacts/calm_blanket.webp"
+        },
+        {
+          "id": "ui_refresh_artifacts_double_bite",
+          "type": "image",
+          "src": "assets/images/ui-refresh/artifacts/double_bite.webp"
+        },
+        {
+          "id": "ui_refresh_artifacts_glass_cannon",
+          "type": "image",
+          "src": "assets/images/ui-refresh/artifacts/glass_cannon.webp"
+        },
+        {
+          "id": "ui_refresh_artifacts_safe_pouch",
+          "type": "image",
+          "src": "assets/images/ui-refresh/artifacts/safe_pouch.webp"
+        },
+        {
+          "id": "ui_refresh_artifacts_mystery_pot",
+          "type": "image",
+          "src": "assets/images/ui-refresh/artifacts/mystery_pot.webp"
+        },
+        {
+          "id": "ui_refresh_artifacts_thunder_totem",
+          "type": "image",
+          "src": "assets/images/ui-refresh/artifacts/thunder_totem.webp"
+        },
+        {
+          "id": "ui_refresh_artifacts_moon_ring",
+          "type": "image",
+          "src": "assets/images/ui-refresh/artifacts/moon_ring.webp"
+        },
+        {
+          "id": "ui_refresh_artifacts_trap_lunchbox",
+          "type": "image",
+          "src": "assets/images/ui-refresh/artifacts/trap_lunchbox.webp"
+        },
+        {
+          "id": "ui_refresh_artifacts_cold_mirror",
+          "type": "image",
+          "src": "assets/images/ui-refresh/artifacts/cold_mirror.webp"
+        },
+        {
+          "id": "ui_refresh_artifacts_life_jam",
+          "type": "image",
+          "src": "assets/images/ui-refresh/artifacts/life_jam.webp"
+        },
+        {
+          "id": "ui_refresh_artifacts_study_notebook",
+          "type": "image",
+          "src": "assets/images/ui-refresh/artifacts/study_notebook.webp"
+        },
+        {
+          "id": "ui_refresh_equipment_hat_leaf",
+          "type": "image",
+          "src": "assets/images/ui-refresh/equipment/hat_leaf.webp"
+        },
+        {
+          "id": "ui_refresh_equipment_hat_spore",
+          "type": "image",
+          "src": "assets/images/ui-refresh/equipment/hat_spore.webp"
+        },
+        {
+          "id": "ui_refresh_equipment_hat_star",
+          "type": "image",
+          "src": "assets/images/ui-refresh/equipment/hat_star.webp"
+        },
+        {
+          "id": "ui_refresh_equipment_body_cotton",
+          "type": "image",
+          "src": "assets/images/ui-refresh/equipment/body_cotton.webp"
+        },
+        {
+          "id": "ui_refresh_equipment_body_shell",
+          "type": "image",
+          "src": "assets/images/ui-refresh/equipment/body_shell.webp"
+        },
+        {
+          "id": "ui_refresh_equipment_body_moon",
+          "type": "image",
+          "src": "assets/images/ui-refresh/equipment/body_moon.webp"
+        },
+        {
+          "id": "ui_refresh_equipment_hand_seed",
+          "type": "image",
+          "src": "assets/images/ui-refresh/equipment/hand_seed.webp"
+        },
+        {
+          "id": "ui_refresh_equipment_hand_spark",
+          "type": "image",
+          "src": "assets/images/ui-refresh/equipment/hand_spark.webp"
+        },
+        {
+          "id": "ui_refresh_equipment_hand_comet",
+          "type": "image",
+          "src": "assets/images/ui-refresh/equipment/hand_comet.webp"
+        },
+        {
+          "id": "ui_refresh_equipment_foot_clover",
+          "type": "image",
+          "src": "assets/images/ui-refresh/equipment/foot_clover.webp"
+        },
+        {
+          "id": "ui_refresh_equipment_foot_breeze",
+          "type": "image",
+          "src": "assets/images/ui-refresh/equipment/foot_breeze.webp"
+        },
+        {
+          "id": "ui_refresh_equipment_foot_shadow",
+          "type": "image",
+          "src": "assets/images/ui-refresh/equipment/foot_shadow.webp"
+        },
+        {
+          "id": "ui_refresh_equipment_charm_cookie",
+          "type": "image",
+          "src": "assets/images/ui-refresh/equipment/charm_cookie.webp"
+        },
+        {
+          "id": "ui_refresh_equipment_charm_bomb",
+          "type": "image",
+          "src": "assets/images/ui-refresh/equipment/charm_bomb.webp"
+        },
+        {
+          "id": "ui_refresh_equipment_charm_mogu",
+          "type": "image",
+          "src": "assets/images/ui-refresh/equipment/charm_mogu.webp"
+        },
+        {
+          "id": "ui_refresh_outings_daily_mutation",
+          "type": "image",
+          "src": "assets/images/ui-refresh/outings/daily_mutation.webp"
+        },
+        {
+          "id": "ui_refresh_outings_abyss_trial",
+          "type": "image",
+          "src": "assets/images/ui-refresh/outings/abyss_trial.webp"
+        },
+        {
+          "id": "ui_refresh_outings_snack_walk",
+          "type": "image",
+          "src": "assets/images/ui-refresh/outings/snack_walk.webp"
+        },
+        {
+          "id": "ui_refresh_slots_hat",
+          "type": "image",
+          "src": "assets/images/ui-refresh/slots/hat.webp"
+        },
+        {
+          "id": "ui_refresh_slots_body",
+          "type": "image",
+          "src": "assets/images/ui-refresh/slots/body.webp"
+        },
+        {
+          "id": "ui_refresh_slots_hand",
+          "type": "image",
+          "src": "assets/images/ui-refresh/slots/hand.webp"
+        },
+        {
+          "id": "ui_refresh_slots_foot",
+          "type": "image",
+          "src": "assets/images/ui-refresh/slots/foot.webp"
+        },
+        {
+          "id": "ui_refresh_slots_charm",
+          "type": "image",
+          "src": "assets/images/ui-refresh/slots/charm.webp"
+        }
       ]
     },
     {
@@ -144,6 +421,56 @@
     "home_v2_expedition_mogu": "assets/images/home-v2/expedition_mogu.png",
     "home_v2_frame": "assets/images/home-v2/frame_glass_gold_9slice.png",
     "home_v2_button": "assets/images/home-v2/button_pearl_9slice.png",
-    "home_v2_button_gold": "assets/images/home-v2/button_gold_9slice.png"
+    "home_v2_button_gold": "assets/images/home-v2/button_gold_9slice.png",
+    "ui_refresh_artifacts_artifact_core": "assets/images/ui-refresh/artifacts/artifact-core.webp",
+    "ui_refresh_artifacts_violet_engine": "assets/images/ui-refresh/artifacts/violet_engine.webp",
+    "ui_refresh_artifacts_pop_crown": "assets/images/ui-refresh/artifacts/pop_crown.webp",
+    "ui_refresh_artifacts_runner_cloak": "assets/images/ui-refresh/artifacts/runner_cloak.webp",
+    "ui_refresh_artifacts_shell_heart": "assets/images/ui-refresh/artifacts/shell_heart.webp",
+    "ui_refresh_artifacts_little_parade": "assets/images/ui-refresh/artifacts/little_parade.webp",
+    "ui_refresh_artifacts_star_orbit": "assets/images/ui-refresh/artifacts/star_orbit.webp",
+    "ui_refresh_artifacts_field_core": "assets/images/ui-refresh/artifacts/field_core.webp",
+    "ui_refresh_artifacts_split_lens": "assets/images/ui-refresh/artifacts/split_lens.webp",
+    "ui_refresh_artifacts_pierce_needle": "assets/images/ui-refresh/artifacts/pierce_needle.webp",
+    "ui_refresh_artifacts_fan_shell": "assets/images/ui-refresh/artifacts/fan_shell.webp",
+    "ui_refresh_artifacts_hungry_moon": "assets/images/ui-refresh/artifacts/hungry_moon.webp",
+    "ui_refresh_artifacts_magnet_bell": "assets/images/ui-refresh/artifacts/magnet_bell.webp",
+    "ui_refresh_artifacts_reroll_spoon": "assets/images/ui-refresh/artifacts/reroll_spoon.webp",
+    "ui_refresh_artifacts_late_bloomer": "assets/images/ui-refresh/artifacts/late_bloomer.webp",
+    "ui_refresh_artifacts_boss_cookie": "assets/images/ui-refresh/artifacts/boss_cookie.webp",
+    "ui_refresh_artifacts_calm_blanket": "assets/images/ui-refresh/artifacts/calm_blanket.webp",
+    "ui_refresh_artifacts_double_bite": "assets/images/ui-refresh/artifacts/double_bite.webp",
+    "ui_refresh_artifacts_glass_cannon": "assets/images/ui-refresh/artifacts/glass_cannon.webp",
+    "ui_refresh_artifacts_safe_pouch": "assets/images/ui-refresh/artifacts/safe_pouch.webp",
+    "ui_refresh_artifacts_mystery_pot": "assets/images/ui-refresh/artifacts/mystery_pot.webp",
+    "ui_refresh_artifacts_thunder_totem": "assets/images/ui-refresh/artifacts/thunder_totem.webp",
+    "ui_refresh_artifacts_moon_ring": "assets/images/ui-refresh/artifacts/moon_ring.webp",
+    "ui_refresh_artifacts_trap_lunchbox": "assets/images/ui-refresh/artifacts/trap_lunchbox.webp",
+    "ui_refresh_artifacts_cold_mirror": "assets/images/ui-refresh/artifacts/cold_mirror.webp",
+    "ui_refresh_artifacts_life_jam": "assets/images/ui-refresh/artifacts/life_jam.webp",
+    "ui_refresh_artifacts_study_notebook": "assets/images/ui-refresh/artifacts/study_notebook.webp",
+    "ui_refresh_equipment_hat_leaf": "assets/images/ui-refresh/equipment/hat_leaf.webp",
+    "ui_refresh_equipment_hat_spore": "assets/images/ui-refresh/equipment/hat_spore.webp",
+    "ui_refresh_equipment_hat_star": "assets/images/ui-refresh/equipment/hat_star.webp",
+    "ui_refresh_equipment_body_cotton": "assets/images/ui-refresh/equipment/body_cotton.webp",
+    "ui_refresh_equipment_body_shell": "assets/images/ui-refresh/equipment/body_shell.webp",
+    "ui_refresh_equipment_body_moon": "assets/images/ui-refresh/equipment/body_moon.webp",
+    "ui_refresh_equipment_hand_seed": "assets/images/ui-refresh/equipment/hand_seed.webp",
+    "ui_refresh_equipment_hand_spark": "assets/images/ui-refresh/equipment/hand_spark.webp",
+    "ui_refresh_equipment_hand_comet": "assets/images/ui-refresh/equipment/hand_comet.webp",
+    "ui_refresh_equipment_foot_clover": "assets/images/ui-refresh/equipment/foot_clover.webp",
+    "ui_refresh_equipment_foot_breeze": "assets/images/ui-refresh/equipment/foot_breeze.webp",
+    "ui_refresh_equipment_foot_shadow": "assets/images/ui-refresh/equipment/foot_shadow.webp",
+    "ui_refresh_equipment_charm_cookie": "assets/images/ui-refresh/equipment/charm_cookie.webp",
+    "ui_refresh_equipment_charm_bomb": "assets/images/ui-refresh/equipment/charm_bomb.webp",
+    "ui_refresh_equipment_charm_mogu": "assets/images/ui-refresh/equipment/charm_mogu.webp",
+    "ui_refresh_outings_daily_mutation": "assets/images/ui-refresh/outings/daily_mutation.webp",
+    "ui_refresh_outings_abyss_trial": "assets/images/ui-refresh/outings/abyss_trial.webp",
+    "ui_refresh_outings_snack_walk": "assets/images/ui-refresh/outings/snack_walk.webp",
+    "ui_refresh_slots_hat": "assets/images/ui-refresh/slots/hat.webp",
+    "ui_refresh_slots_body": "assets/images/ui-refresh/slots/body.webp",
+    "ui_refresh_slots_hand": "assets/images/ui-refresh/slots/hand.webp",
+    "ui_refresh_slots_foot": "assets/images/ui-refresh/slots/foot.webp",
+    "ui_refresh_slots_charm": "assets/images/ui-refresh/slots/charm.webp"
   }
 }

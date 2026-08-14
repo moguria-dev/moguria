@@ -1,0 +1,391 @@
+/* Moguria UI consistency fixes.
+   This layer removes placeholder-facing Home content and makes consequential
+   choice/error states explicit without changing progression or save schemas. */
+
+/* Home exposes only the currency that is backed by the current save data. */
+#home.home-v2 .home-v2__currencies--single {
+  width: min(31vw, 112px);
+  grid-template-columns: minmax(0, 1fr);
+}
+
+#home.home-v2 .home-v2__currencies--single .home-v2__currency {
+  min-width: 86px;
+  padding-inline: 9px;
+}
+
+#home.home-v2 .home-v2__currencies--single .home-v2__currency b {
+  font-size: clamp(10px, 2.9vw, 12px);
+}
+
+#home.home-v2 .home-v2__notice {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: calc(var(--home-safe-bottom) + 110px);
+  z-index: 12;
+  min-height: 44px;
+  padding: 10px 14px;
+  display: grid;
+  place-items: center;
+  color: #fff1d6;
+  border: 1px solid rgba(226, 180, 92, .48);
+  border-radius: 14px;
+  background: rgba(12, 13, 38, .94);
+  box-shadow: 0 8px 22px rgba(1, 2, 12, .50);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.35;
+  text-align: center;
+}
+
+#home.home-v2 .home-v2__notice[data-tone="error"] {
+  border-color: rgba(255, 157, 122, .72);
+  background: rgba(65, 26, 43, .96);
+}
+
+#home.home-v2 .home-v2__notice[hidden] {
+  display: none !important;
+}
+
+/* Checkpoint persistence errors stay visible without interrupting combat. */
+#game .play-save-warning {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 62px);
+  left: 50%;
+  z-index: 28;
+  width: min(342px, calc(100vw - 28px));
+  min-height: 44px;
+  padding: 10px 13px;
+  transform: translateX(-50%);
+  color: #fff0d5;
+  border: 1px solid rgba(255, 169, 124, .62);
+  border-radius: 13px;
+  background: rgba(64, 25, 44, .94);
+  box-shadow: 0 8px 20px rgba(1, 2, 12, .52);
+  font-size: 11px;
+  font-weight: 850;
+  line-height: 1.35;
+  text-align: center;
+  pointer-events: none;
+}
+
+#game .play-save-warning[hidden] {
+  display: none !important;
+}
+
+/* Each normal skill is a real selection button with a separate seal action. */
+#levelModal #skillChoices > .skill-choice-entry {
+  position: relative;
+  min-width: 0;
+  min-height: 92px;
+  height: 100%;
+}
+
+body.kv-visual-refresh #levelModal .skill-choice-entry > .skill-card {
+  width: 100%;
+  height: 100%;
+  padding-right: 72px !important;
+}
+
+#levelModal .skill-choice-entry > .skill-card:focus-visible,
+#levelModal .skill-choice-entry > .ban-skill:focus-visible {
+  outline: 2px solid #fff0a8 !important;
+  outline-offset: -3px;
+}
+
+#levelModal .skill-card__pick {
+  position: absolute;
+  right: 67px;
+  bottom: 14px;
+  z-index: 4;
+  min-width: 42px;
+  min-height: 24px;
+  padding: 4px 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #30213e;
+  border: 1px solid rgba(255, 246, 211, .76);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #fff0b9, #dbaa62);
+  box-shadow: 0 3px 8px rgba(2, 3, 15, .34);
+  font-size: 10px;
+  font-weight: 950;
+  line-height: 1;
+  text-shadow: none;
+  pointer-events: none;
+}
+
+body.kv-visual-refresh #levelModal .skill-choice-entry > .ban-skill {
+  position: absolute !important;
+  right: 12px;
+  bottom: 9px;
+  z-index: 6;
+  width: 50px;
+  min-width: 50px;
+  height: 44px;
+  min-height: 44px;
+  padding: 4px 3px !important;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+#levelModal .skill-choice-entry > .ban-skill span,
+#levelModal .skill-choice-entry > .ban-skill small {
+  display: block;
+  margin: 0;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  line-height: 1;
+}
+
+#levelModal .skill-choice-entry > .ban-skill small {
+  font-size: 9px;
+  opacity: .78;
+}
+
+#levelModal #skillSealHelp {
+  max-width: 34em;
+  margin-inline: auto;
+  font-size: 10px !important;
+  line-height: 1.4;
+}
+
+body.kv-visual-refresh #levelModal .skill-card .skill-card__badge {
+  min-height: 20px;
+  font-size: 9px;
+}
+
+body.kv-visual-refresh #levelModal .tag {
+  min-height: 20px;
+  font-size: 9px !important;
+}
+
+/* Loading failures remain visible and provide explicit recovery actions. */
+.system-loading__actions {
+  width: 100%;
+  margin-top: 4px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+}
+
+.system-loading__actions[hidden] {
+  display: none !important;
+}
+
+.system-loading__actions button {
+  min-height: 46px;
+  margin: 0;
+  padding: 9px 12px;
+  border-radius: 14px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+#adventureLoading[data-state="error"] .system-loading__orb {
+  animation: none;
+  filter: saturate(.7);
+}
+
+#adventureLoading[data-state="error"] .system-loading__hint {
+  color: rgba(255, 218, 184, .84);
+}
+
+/* Settlement persistence failure has its own truthful, blocking surface. */
+.system-settlement {
+  z-index: 1210;
+}
+
+.system-settlement__card {
+  width: min(356px, calc(100vw - 28px));
+  display: grid;
+  gap: 13px;
+  text-align: center;
+}
+
+.system-settlement__card h2,
+.system-settlement__card p {
+  margin: 0;
+}
+
+.system-settlement__stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.system-settlement__stats > span {
+  min-width: 0;
+  padding: 9px 5px;
+  display: grid;
+  gap: 3px;
+  border: 1px solid rgba(226, 180, 92, .28);
+  border-radius: 12px;
+  background: rgba(3, 5, 20, .48);
+}
+
+.system-settlement__stats small {
+  color: rgba(237, 210, 162, .7);
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: .08em;
+}
+
+.system-settlement__stats b {
+  overflow: hidden;
+  color: #fff0ce;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.system-settlement .system-confirm__actions button {
+  min-height: 48px;
+}
+
+/* Meaning-bearing labels remain readable on the two supported phone sizes. */
+#game .play-hud small {
+  font-size: 9px !important;
+  letter-spacing: .10em !important;
+}
+
+#levelModal .owned-powers__header h3,
+#artifactModal .owned-powers__header h3 {
+  font-size: 10px;
+}
+
+#levelModal .owned-powers__header small,
+#artifactModal .owned-powers__header small,
+.owned-powers__detail,
+.owned-powers__detail small,
+.owned-powers__detail span {
+  font-size: 10px !important;
+}
+
+#levelOwnedSkills,
+#artifactOwnedSkills,
+#levelOwnedSkills > button,
+#artifactOwnedSkills > button,
+.owned-power {
+  min-height: 44px !important;
+}
+
+body.kv-visual-refresh #artifactModal .artifact-choice .tag {
+  min-height: 18px;
+  padding: 2px 6px !important;
+  font-size: 9px !important;
+}
+
+#artifactModal .artifact-choice__pick {
+  min-width: 44px;
+  font-size: 10px !important;
+}
+
+#artifactModal .artifact-choice-header__core img {
+  width: 68px;
+  height: 68px;
+  filter: saturate(1.08) brightness(1.04) contrast(1.04) drop-shadow(0 4px 7px rgba(1, 2, 12, .48));
+}
+
+body.kv-visual-refresh #pauseModal .pause-power-tabs button,
+#overlay.meta-overlay .meta-tabs button,
+#overlay.meta-overlay .meta-equip-item__actions button,
+#overlay.meta-overlay .meta-outing-card > button,
+#overlay.meta-overlay .meta-log-card__details summary,
+body.kv-visual-refresh #result .result-detail > summary {
+  min-height: 44px !important;
+}
+
+body.kv-visual-refresh #pauseModal .pause-power-tabs button,
+#overlay.meta-overlay .meta-log-card__details summary {
+  font-size: 10px !important;
+}
+
+#overlay.meta-overlay .meta-dex-card__copy > small,
+#overlay.meta-overlay .meta-dex-card__copy > div span,
+#overlay.meta-overlay .meta-discovery-list small,
+#overlay.meta-overlay .meta-tabs button b {
+  font-size: 9px !important;
+}
+
+/* Keep the long canonical category name and every count visible at once. */
+#overlay.meta-overlay .meta-tabs {
+  grid-template-columns: 1.5fr 1fr .9fr .8fr;
+}
+
+#overlay.meta-overlay .meta-tabs button {
+  min-width: 0;
+  padding-inline: 3px;
+  font-size: 10px !important;
+}
+
+#home.home-v2 .home-v2__eyebrow,
+#home.home-v2 .home-v2__caption,
+#home.home-v2 .home-v2__side-rail small,
+#home.home-v2 .home-v2__dock button b,
+#home.home-v2 .home-v2__start b {
+  font-size: 10px !important;
+}
+
+#home.home-v2 .home-v2__start small {
+  font-size: 9px;
+}
+
+@media (max-height: 720px) {
+  #levelModal #skillChoices > .skill-choice-entry {
+    min-height: 84px;
+  }
+
+  body.kv-visual-refresh #levelModal .skill-choice-entry > .skill-card {
+    min-height: 84px !important;
+    padding-right: 68px !important;
+  }
+
+  #levelModal .skill-card__pick {
+    right: 63px;
+    bottom: 11px;
+    min-height: 22px;
+    padding: 3px 7px;
+    font-size: 9px;
+  }
+
+  body.kv-visual-refresh #levelModal .skill-choice-entry > .ban-skill {
+    right: 9px;
+    bottom: 7px;
+    width: 48px;
+    min-width: 48px;
+  }
+
+  body.kv-visual-refresh #levelModal .skill-card .skill-card__badge,
+  body.kv-visual-refresh #levelModal .tag {
+    font-size: 9px !important;
+  }
+
+  body.kv-visual-refresh #artifactModal .artifact-choice .tag {
+    min-height: 18px;
+    font-size: 9px !important;
+  }
+
+  body.kv-visual-refresh #pauseModal .pause-power-tabs button {
+    min-height: 44px !important;
+  }
+}
+
+@media (max-width: 360px) {
+  #home.home-v2 .home-v2__currencies--single {
+    width: 96px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #adventureLoading[data-state="error"] *,
+  .system-settlement * {
+    animation: none !important;
+  }
+}

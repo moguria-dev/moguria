@@ -27,7 +27,7 @@
     }
   },
   "runtimeManifest": {
-    "version": "3.2.1-battle-v3",
+    "version": "3.3.0-ui-consistency",
     "policy": {
       "initialAudio": "metadata-only",
       "lazyLoad": true,
@@ -105,24 +105,9 @@
         "src": "assets/images/home-v2/icon_outing.png"
       },
       {
-        "id": "home_v2_currency_star",
-        "type": "image",
-        "src": "assets/images/home-v2/currency_star.png"
-      },
-      {
         "id": "home_v2_currency_coin",
         "type": "image",
         "src": "assets/images/home-v2/currency_coin.png"
-      },
-      {
-        "id": "home_v2_currency_gem",
-        "type": "image",
-        "src": "assets/images/home-v2/currency_gem.png"
-      },
-      {
-        "id": "home_v2_expedition_mogu",
-        "type": "image",
-        "src": "assets/images/home-v2/expedition_mogu.png"
       }
     ],
     "lazy": [],
@@ -184,6 +169,262 @@
         ]
       },
       {
+        "id": "ui-refresh",
+        "label": "UI一貫性刷新アイコン",
+        "assets": [
+          {
+            "id": "ui_refresh_artifacts_artifact_core",
+            "type": "image",
+            "src": "assets/images/ui-refresh/artifacts/artifact-core.webp"
+          },
+          {
+            "id": "ui_refresh_artifacts_violet_engine",
+            "type": "image",
+            "src": "assets/images/ui-refresh/artifacts/violet_engine.webp"
+          },
+          {
+            "id": "ui_refresh_artifacts_pop_crown",
+            "type": "image",
+            "src": "assets/images/ui-refresh/artifacts/pop_crown.webp"
+          },
+          {
+            "id": "ui_refresh_artifacts_runner_cloak",
+            "type": "image",
+            "src": "assets/images/ui-refresh/artifacts/runner_cloak.webp"
+          },
+          {
+            "id": "ui_refresh_artifacts_shell_heart",
+            "type": "image",
+            "src": "assets/images/ui-refresh/artifacts/shell_heart.webp"
+          },
+          {
+            "id": "ui_refresh_artifacts_little_parade",
+            "type": "image",
+            "src": "assets/images/ui-refresh/artifacts/little_parade.webp"
+          },
+          {
+            "id": "ui_refresh_artifacts_star_orbit",
+            "type": "image",
+            "src": "assets/images/ui-refresh/artifacts/star_orbit.webp"
+          },
+          {
+            "id": "ui_refresh_artifacts_field_core",
+            "type": "image",
+            "src": "assets/images/ui-refresh/artifacts/field_core.webp"
+          },
+          {
+            "id": "ui_refresh_artifacts_split_lens",
+            "type": "image",
+            "src": "assets/images/ui-refresh/artifacts/split_lens.webp"
+          },
+          {
+            "id": "ui_refresh_artifacts_pierce_needle",
+            "type": "image",
+            "src": "assets/images/ui-refresh/artifacts/pierce_needle.webp"
+          },
+          {
+            "id": "ui_refresh_artifacts_fan_shell",
+            "type": "image",
+            "src": "assets/images/ui-refresh/artifacts/fan_shell.webp"
+          },
+          {
+            "id": "ui_refresh_artifacts_hungry_moon",
+            "type": "image",
+            "src": "assets/images/ui-refresh/artifacts/hungry_moon.webp"
+          },
+          {
+            "id": "ui_refresh_artifacts_magnet_bell",
+            "type": "image",
+            "src": "assets/images/ui-refresh/artifacts/magnet_bell.webp"
+          },
+          {
+            "id": "ui_refresh_artifacts_reroll_spoon",
+            "type": "image",
+            "src": "assets/images/ui-refresh/artifacts/reroll_spoon.webp"
+          },
+          {
+            "id": "ui_refresh_artifacts_late_bloomer",
+            "type": "image",
+            "src": "assets/images/ui-refresh/artifacts/late_bloomer.webp"
+          },
+          {
+            "id": "ui_refresh_artifacts_boss_cookie",
+            "type": "image",
+            "src": "assets/images/ui-refresh/artifacts/boss_cookie.webp"
+          },
+          {
+            "id": "ui_refresh_artifacts_calm_blanket",
+            "type": "image",
+            "src": "assets/images/ui-refresh/artifacts/calm_blanket.webp"
+          },
+          {
+            "id": "ui_refresh_artifacts_double_bite",
+            "type": "image",
+            "src": "assets/images/ui-refresh/artifacts/double_bite.webp"
+          },
+          {
+            "id": "ui_refresh_artifacts_glass_cannon",
+            "type": "image",
+            "src": "assets/images/ui-refresh/artifacts/glass_cannon.webp"
+          },
+          {
+            "id": "ui_refresh_artifacts_safe_pouch",
+            "type": "image",
+            "src": "assets/images/ui-refresh/artifacts/safe_pouch.webp"
+          },
+          {
+            "id": "ui_refresh_artifacts_mystery_pot",
+            "type": "image",
+            "src": "assets/images/ui-refresh/artifacts/mystery_pot.webp"
+          },
+          {
+            "id": "ui_refresh_artifacts_thunder_totem",
+            "type": "image",
+            "src": "assets/images/ui-refresh/artifacts/thunder_totem.webp"
+          },
+          {
+            "id": "ui_refresh_artifacts_moon_ring",
+            "type": "image",
+            "src": "assets/images/ui-refresh/artifacts/moon_ring.webp"
+          },
+          {
+            "id": "ui_refresh_artifacts_trap_lunchbox",
+            "type": "image",
+            "src": "assets/images/ui-refresh/artifacts/trap_lunchbox.webp"
+          },
+          {
+            "id": "ui_refresh_artifacts_cold_mirror",
+            "type": "image",
+            "src": "assets/images/ui-refresh/artifacts/cold_mirror.webp"
+          },
+          {
+            "id": "ui_refresh_artifacts_life_jam",
+            "type": "image",
+            "src": "assets/images/ui-refresh/artifacts/life_jam.webp"
+          },
+          {
+            "id": "ui_refresh_artifacts_study_notebook",
+            "type": "image",
+            "src": "assets/images/ui-refresh/artifacts/study_notebook.webp"
+          },
+          {
+            "id": "ui_refresh_equipment_hat_leaf",
+            "type": "image",
+            "src": "assets/images/ui-refresh/equipment/hat_leaf.webp"
+          },
+          {
+            "id": "ui_refresh_equipment_hat_spore",
+            "type": "image",
+            "src": "assets/images/ui-refresh/equipment/hat_spore.webp"
+          },
+          {
+            "id": "ui_refresh_equipment_hat_star",
+            "type": "image",
+            "src": "assets/images/ui-refresh/equipment/hat_star.webp"
+          },
+          {
+            "id": "ui_refresh_equipment_body_cotton",
+            "type": "image",
+            "src": "assets/images/ui-refresh/equipment/body_cotton.webp"
+          },
+          {
+            "id": "ui_refresh_equipment_body_shell",
+            "type": "image",
+            "src": "assets/images/ui-refresh/equipment/body_shell.webp"
+          },
+          {
+            "id": "ui_refresh_equipment_body_moon",
+            "type": "image",
+            "src": "assets/images/ui-refresh/equipment/body_moon.webp"
+          },
+          {
+            "id": "ui_refresh_equipment_hand_seed",
+            "type": "image",
+            "src": "assets/images/ui-refresh/equipment/hand_seed.webp"
+          },
+          {
+            "id": "ui_refresh_equipment_hand_spark",
+            "type": "image",
+            "src": "assets/images/ui-refresh/equipment/hand_spark.webp"
+          },
+          {
+            "id": "ui_refresh_equipment_hand_comet",
+            "type": "image",
+            "src": "assets/images/ui-refresh/equipment/hand_comet.webp"
+          },
+          {
+            "id": "ui_refresh_equipment_foot_clover",
+            "type": "image",
+            "src": "assets/images/ui-refresh/equipment/foot_clover.webp"
+          },
+          {
+            "id": "ui_refresh_equipment_foot_breeze",
+            "type": "image",
+            "src": "assets/images/ui-refresh/equipment/foot_breeze.webp"
+          },
+          {
+            "id": "ui_refresh_equipment_foot_shadow",
+            "type": "image",
+            "src": "assets/images/ui-refresh/equipment/foot_shadow.webp"
+          },
+          {
+            "id": "ui_refresh_equipment_charm_cookie",
+            "type": "image",
+            "src": "assets/images/ui-refresh/equipment/charm_cookie.webp"
+          },
+          {
+            "id": "ui_refresh_equipment_charm_bomb",
+            "type": "image",
+            "src": "assets/images/ui-refresh/equipment/charm_bomb.webp"
+          },
+          {
+            "id": "ui_refresh_equipment_charm_mogu",
+            "type": "image",
+            "src": "assets/images/ui-refresh/equipment/charm_mogu.webp"
+          },
+          {
+            "id": "ui_refresh_outings_daily_mutation",
+            "type": "image",
+            "src": "assets/images/ui-refresh/outings/daily_mutation.webp"
+          },
+          {
+            "id": "ui_refresh_outings_abyss_trial",
+            "type": "image",
+            "src": "assets/images/ui-refresh/outings/abyss_trial.webp"
+          },
+          {
+            "id": "ui_refresh_outings_snack_walk",
+            "type": "image",
+            "src": "assets/images/ui-refresh/outings/snack_walk.webp"
+          },
+          {
+            "id": "ui_refresh_slots_hat",
+            "type": "image",
+            "src": "assets/images/ui-refresh/slots/hat.webp"
+          },
+          {
+            "id": "ui_refresh_slots_body",
+            "type": "image",
+            "src": "assets/images/ui-refresh/slots/body.webp"
+          },
+          {
+            "id": "ui_refresh_slots_hand",
+            "type": "image",
+            "src": "assets/images/ui-refresh/slots/hand.webp"
+          },
+          {
+            "id": "ui_refresh_slots_foot",
+            "type": "image",
+            "src": "assets/images/ui-refresh/slots/foot.webp"
+          },
+          {
+            "id": "ui_refresh_slots_charm",
+            "type": "image",
+            "src": "assets/images/ui-refresh/slots/charm.webp"
+          }
+        ]
+      },
+      {
         "id": "audio-basic",
         "label": "基本SE/BGM",
         "assets": []
@@ -207,7 +448,57 @@
       "home_v2_expedition_mogu": "assets/images/home-v2/expedition_mogu.png",
       "home_v2_frame": "assets/images/home-v2/frame_glass_gold_9slice.png",
       "home_v2_button": "assets/images/home-v2/button_pearl_9slice.png",
-      "home_v2_button_gold": "assets/images/home-v2/button_gold_9slice.png"
+      "home_v2_button_gold": "assets/images/home-v2/button_gold_9slice.png",
+      "ui_refresh_artifacts_artifact_core": "assets/images/ui-refresh/artifacts/artifact-core.webp",
+      "ui_refresh_artifacts_violet_engine": "assets/images/ui-refresh/artifacts/violet_engine.webp",
+      "ui_refresh_artifacts_pop_crown": "assets/images/ui-refresh/artifacts/pop_crown.webp",
+      "ui_refresh_artifacts_runner_cloak": "assets/images/ui-refresh/artifacts/runner_cloak.webp",
+      "ui_refresh_artifacts_shell_heart": "assets/images/ui-refresh/artifacts/shell_heart.webp",
+      "ui_refresh_artifacts_little_parade": "assets/images/ui-refresh/artifacts/little_parade.webp",
+      "ui_refresh_artifacts_star_orbit": "assets/images/ui-refresh/artifacts/star_orbit.webp",
+      "ui_refresh_artifacts_field_core": "assets/images/ui-refresh/artifacts/field_core.webp",
+      "ui_refresh_artifacts_split_lens": "assets/images/ui-refresh/artifacts/split_lens.webp",
+      "ui_refresh_artifacts_pierce_needle": "assets/images/ui-refresh/artifacts/pierce_needle.webp",
+      "ui_refresh_artifacts_fan_shell": "assets/images/ui-refresh/artifacts/fan_shell.webp",
+      "ui_refresh_artifacts_hungry_moon": "assets/images/ui-refresh/artifacts/hungry_moon.webp",
+      "ui_refresh_artifacts_magnet_bell": "assets/images/ui-refresh/artifacts/magnet_bell.webp",
+      "ui_refresh_artifacts_reroll_spoon": "assets/images/ui-refresh/artifacts/reroll_spoon.webp",
+      "ui_refresh_artifacts_late_bloomer": "assets/images/ui-refresh/artifacts/late_bloomer.webp",
+      "ui_refresh_artifacts_boss_cookie": "assets/images/ui-refresh/artifacts/boss_cookie.webp",
+      "ui_refresh_artifacts_calm_blanket": "assets/images/ui-refresh/artifacts/calm_blanket.webp",
+      "ui_refresh_artifacts_double_bite": "assets/images/ui-refresh/artifacts/double_bite.webp",
+      "ui_refresh_artifacts_glass_cannon": "assets/images/ui-refresh/artifacts/glass_cannon.webp",
+      "ui_refresh_artifacts_safe_pouch": "assets/images/ui-refresh/artifacts/safe_pouch.webp",
+      "ui_refresh_artifacts_mystery_pot": "assets/images/ui-refresh/artifacts/mystery_pot.webp",
+      "ui_refresh_artifacts_thunder_totem": "assets/images/ui-refresh/artifacts/thunder_totem.webp",
+      "ui_refresh_artifacts_moon_ring": "assets/images/ui-refresh/artifacts/moon_ring.webp",
+      "ui_refresh_artifacts_trap_lunchbox": "assets/images/ui-refresh/artifacts/trap_lunchbox.webp",
+      "ui_refresh_artifacts_cold_mirror": "assets/images/ui-refresh/artifacts/cold_mirror.webp",
+      "ui_refresh_artifacts_life_jam": "assets/images/ui-refresh/artifacts/life_jam.webp",
+      "ui_refresh_artifacts_study_notebook": "assets/images/ui-refresh/artifacts/study_notebook.webp",
+      "ui_refresh_equipment_hat_leaf": "assets/images/ui-refresh/equipment/hat_leaf.webp",
+      "ui_refresh_equipment_hat_spore": "assets/images/ui-refresh/equipment/hat_spore.webp",
+      "ui_refresh_equipment_hat_star": "assets/images/ui-refresh/equipment/hat_star.webp",
+      "ui_refresh_equipment_body_cotton": "assets/images/ui-refresh/equipment/body_cotton.webp",
+      "ui_refresh_equipment_body_shell": "assets/images/ui-refresh/equipment/body_shell.webp",
+      "ui_refresh_equipment_body_moon": "assets/images/ui-refresh/equipment/body_moon.webp",
+      "ui_refresh_equipment_hand_seed": "assets/images/ui-refresh/equipment/hand_seed.webp",
+      "ui_refresh_equipment_hand_spark": "assets/images/ui-refresh/equipment/hand_spark.webp",
+      "ui_refresh_equipment_hand_comet": "assets/images/ui-refresh/equipment/hand_comet.webp",
+      "ui_refresh_equipment_foot_clover": "assets/images/ui-refresh/equipment/foot_clover.webp",
+      "ui_refresh_equipment_foot_breeze": "assets/images/ui-refresh/equipment/foot_breeze.webp",
+      "ui_refresh_equipment_foot_shadow": "assets/images/ui-refresh/equipment/foot_shadow.webp",
+      "ui_refresh_equipment_charm_cookie": "assets/images/ui-refresh/equipment/charm_cookie.webp",
+      "ui_refresh_equipment_charm_bomb": "assets/images/ui-refresh/equipment/charm_bomb.webp",
+      "ui_refresh_equipment_charm_mogu": "assets/images/ui-refresh/equipment/charm_mogu.webp",
+      "ui_refresh_outings_daily_mutation": "assets/images/ui-refresh/outings/daily_mutation.webp",
+      "ui_refresh_outings_abyss_trial": "assets/images/ui-refresh/outings/abyss_trial.webp",
+      "ui_refresh_outings_snack_walk": "assets/images/ui-refresh/outings/snack_walk.webp",
+      "ui_refresh_slots_hat": "assets/images/ui-refresh/slots/hat.webp",
+      "ui_refresh_slots_body": "assets/images/ui-refresh/slots/body.webp",
+      "ui_refresh_slots_hand": "assets/images/ui-refresh/slots/hand.webp",
+      "ui_refresh_slots_foot": "assets/images/ui-refresh/slots/foot.webp",
+      "ui_refresh_slots_charm": "assets/images/ui-refresh/slots/charm.webp"
     }
   },
   "legacyUncatalogedReferences": [
@@ -406,10 +697,6 @@
     {
       "path": "assets/images/play-ui/skill_summon.png",
       "sha256": "5f750bfb52dd073fd3c5594d380ddca04fba448efb0ebcae5a5ee7ec059de9e4"
-    },
-    {
-      "path": "assets/manifest.json",
-      "sha256": "4d2f75021c698ef750c47dc95b227162db7f7e83d07c4c7689388424b0845ad7"
     }
   ],
   "legacyBackfill": [
@@ -2811,6 +3098,3348 @@
       "approval": {
         "status": "audit-backfill-unknown",
         "approvedAt": null
+      }
+    },
+    {
+      "logicalId": "ui_refresh_artifacts_artifact_core",
+      "path": "assets/images/ui-refresh/artifacts/artifact-core.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "artifact-choice"
+        ],
+        "states": [
+          "header"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260814-ui-consistency-1"
+      },
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "minDisplay": {
+        "width": 48,
+        "height": 48,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "ai-generated-production-art",
+        "source": "OpenAI image generation via Codex imagegen, independently generated from approved Moguria key-visual direction",
+        "approvedDate": "2026-08-14"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "a551240eae4addea2ba17fcdd64e1bc9a474a5f6",
+        "sha256": "a11b0f4d70db5f998ea7a7212d8348106019ab1203219d3ecb37962805c61471"
+      },
+      "category": "artifact-header",
+      "semanticRole": "artifact-choice.header",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": "openai-imagegen:exec-df3c5c9b-ca5f-4cf3-81f5-ae0f1f3bd36f",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-14"
+      }
+    },
+    {
+      "logicalId": "ui_refresh_artifacts_violet_engine",
+      "path": "assets/images/ui-refresh/artifacts/violet_engine.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "artifact-choice",
+          "pause",
+          "dex",
+          "result",
+          "journey-log"
+        ],
+        "states": [
+          "candidate",
+          "owned",
+          "collection",
+          "summary"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260814-ui-consistency-1"
+      },
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "minDisplay": {
+        "width": 26,
+        "height": 26,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "ai-generated-production-art",
+        "source": "OpenAI image generation via Codex imagegen, independently generated from approved Moguria key-visual direction",
+        "approvedDate": "2026-08-14"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "8c709d5981daf63afe13e9a1a24bc23fd00eef35",
+        "sha256": "6df8ee07ccf5ac9ccab4ffe6c70f541ea06ef58258f42eff2b1639f62c380016"
+      },
+      "category": "artifact-icon",
+      "semanticRole": "artifact.identity.violet_engine",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": "openai-imagegen:exec-cf402cd3-12aa-44ab-9adc-e49a7b03611e",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-14"
+      }
+    },
+    {
+      "logicalId": "ui_refresh_artifacts_pop_crown",
+      "path": "assets/images/ui-refresh/artifacts/pop_crown.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "artifact-choice",
+          "pause",
+          "dex",
+          "result",
+          "journey-log"
+        ],
+        "states": [
+          "candidate",
+          "owned",
+          "collection",
+          "summary"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260814-ui-consistency-1"
+      },
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "minDisplay": {
+        "width": 26,
+        "height": 26,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "ai-generated-production-art",
+        "source": "OpenAI image generation via Codex imagegen, independently generated from approved Moguria key-visual direction",
+        "approvedDate": "2026-08-14"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "297ad6bc6337a9767d796b816f80827f35467a02",
+        "sha256": "997855140c9df93d06cb246e13ac9df3c519d20b738f234d05de9c861b811325"
+      },
+      "category": "artifact-icon",
+      "semanticRole": "artifact.identity.pop_crown",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": "openai-imagegen:exec-336d74dd-d67e-4a9d-a7f9-df3b49b49751",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-14"
+      }
+    },
+    {
+      "logicalId": "ui_refresh_artifacts_runner_cloak",
+      "path": "assets/images/ui-refresh/artifacts/runner_cloak.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "artifact-choice",
+          "pause",
+          "dex",
+          "result",
+          "journey-log"
+        ],
+        "states": [
+          "candidate",
+          "owned",
+          "collection",
+          "summary"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260814-ui-consistency-1"
+      },
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "minDisplay": {
+        "width": 26,
+        "height": 26,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "ai-generated-production-art",
+        "source": "OpenAI image generation via Codex imagegen, independently generated from approved Moguria key-visual direction",
+        "approvedDate": "2026-08-14"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "fc29e554ece95dd083e6c0c9af39b8aadbc29d3d",
+        "sha256": "ee22e504736bd811cf224cea929382421d3a6db79adb0e18c901c48738f62ca7"
+      },
+      "category": "artifact-icon",
+      "semanticRole": "artifact.identity.runner_cloak",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": "openai-imagegen:exec-09983d56-e399-4dba-8f6e-a4c0a40781cc",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-14"
+      }
+    },
+    {
+      "logicalId": "ui_refresh_artifacts_shell_heart",
+      "path": "assets/images/ui-refresh/artifacts/shell_heart.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "artifact-choice",
+          "pause",
+          "dex",
+          "result",
+          "journey-log"
+        ],
+        "states": [
+          "candidate",
+          "owned",
+          "collection",
+          "summary"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260814-ui-consistency-1"
+      },
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "minDisplay": {
+        "width": 26,
+        "height": 26,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "ai-generated-production-art",
+        "source": "OpenAI image generation via Codex imagegen, independently generated from approved Moguria key-visual direction",
+        "approvedDate": "2026-08-14"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "f4882b252c3250fd5bcb678b6617d05e9a9b4a61",
+        "sha256": "5bfb94d057d287f9ae454801afeec3e0c7e8f0b59f467fef9893e6d5d572e8a3"
+      },
+      "category": "artifact-icon",
+      "semanticRole": "artifact.identity.shell_heart",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": "openai-imagegen:exec-e5423cb1-dd55-466e-b152-4c47dbd65d60",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-14"
+      }
+    },
+    {
+      "logicalId": "ui_refresh_artifacts_little_parade",
+      "path": "assets/images/ui-refresh/artifacts/little_parade.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "artifact-choice",
+          "pause",
+          "dex",
+          "result",
+          "journey-log"
+        ],
+        "states": [
+          "candidate",
+          "owned",
+          "collection",
+          "summary"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260814-ui-consistency-1"
+      },
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "minDisplay": {
+        "width": 26,
+        "height": 26,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "ai-generated-production-art",
+        "source": "OpenAI image generation via Codex imagegen, independently generated from approved Moguria key-visual direction",
+        "approvedDate": "2026-08-14"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "4b38182c6d113fdc8d056b362db7434926e59beb",
+        "sha256": "aa6e5743181b67be871ee4f8178fe6f913669a1762260941540f3de1cafdc79c"
+      },
+      "category": "artifact-icon",
+      "semanticRole": "artifact.identity.little_parade",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": "openai-imagegen:exec-3bad48b0-e97f-4cc5-8fed-7f095fff2839",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-14"
+      }
+    },
+    {
+      "logicalId": "ui_refresh_artifacts_star_orbit",
+      "path": "assets/images/ui-refresh/artifacts/star_orbit.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "artifact-choice",
+          "pause",
+          "dex",
+          "result",
+          "journey-log"
+        ],
+        "states": [
+          "candidate",
+          "owned",
+          "collection",
+          "summary"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260814-ui-consistency-1"
+      },
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "minDisplay": {
+        "width": 26,
+        "height": 26,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "ai-generated-production-art",
+        "source": "OpenAI image generation via Codex imagegen, independently generated from approved Moguria key-visual direction",
+        "approvedDate": "2026-08-14"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "1897c373f99e66a05eeded7a81542cbbcdcfbfac",
+        "sha256": "45c09e5418052b8374d62ce9040147fbfa56601cfa9778d734cf53ef563d6a35"
+      },
+      "category": "artifact-icon",
+      "semanticRole": "artifact.identity.star_orbit",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": "openai-imagegen:exec-575c19a6-fde1-45fc-8ca1-a4f4d59c39e5",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-14"
+      }
+    },
+    {
+      "logicalId": "ui_refresh_artifacts_field_core",
+      "path": "assets/images/ui-refresh/artifacts/field_core.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "artifact-choice",
+          "pause",
+          "dex",
+          "result",
+          "journey-log"
+        ],
+        "states": [
+          "candidate",
+          "owned",
+          "collection",
+          "summary"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260814-ui-consistency-1"
+      },
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "minDisplay": {
+        "width": 26,
+        "height": 26,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "ai-generated-production-art",
+        "source": "OpenAI image generation via Codex imagegen, independently generated from approved Moguria key-visual direction",
+        "approvedDate": "2026-08-14"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "48777135992add188be85411468c26c48e4ad8a0",
+        "sha256": "0b971121439502f9be25aa340725fe82cf26c31ad20b9501a0f23bc20897915c"
+      },
+      "category": "artifact-icon",
+      "semanticRole": "artifact.identity.field_core",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": "openai-imagegen:exec-6b77c73e-e0f2-4daf-b526-9e83dc29c25f",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-14"
+      }
+    },
+    {
+      "logicalId": "ui_refresh_artifacts_split_lens",
+      "path": "assets/images/ui-refresh/artifacts/split_lens.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "artifact-choice",
+          "pause",
+          "dex",
+          "result",
+          "journey-log"
+        ],
+        "states": [
+          "candidate",
+          "owned",
+          "collection",
+          "summary"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260814-ui-consistency-1"
+      },
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "minDisplay": {
+        "width": 26,
+        "height": 26,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "ai-generated-production-art",
+        "source": "OpenAI image generation via Codex imagegen, independently generated from approved Moguria key-visual direction",
+        "approvedDate": "2026-08-14"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "b9956c938240e1421623359e123b9494654f7636",
+        "sha256": "51cb5a1ff6c88ee27969ded2e47ce7e4b581d7b3e89876ec5755489019270cfe"
+      },
+      "category": "artifact-icon",
+      "semanticRole": "artifact.identity.split_lens",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": "openai-imagegen:exec-192fe4d5-b3b9-40c1-81c5-9926e2f0d349",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-14"
+      }
+    },
+    {
+      "logicalId": "ui_refresh_artifacts_pierce_needle",
+      "path": "assets/images/ui-refresh/artifacts/pierce_needle.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "artifact-choice",
+          "pause",
+          "dex",
+          "result",
+          "journey-log"
+        ],
+        "states": [
+          "candidate",
+          "owned",
+          "collection",
+          "summary"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260814-ui-consistency-1"
+      },
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "minDisplay": {
+        "width": 26,
+        "height": 26,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "ai-generated-production-art",
+        "source": "OpenAI image generation via Codex imagegen, independently generated from approved Moguria key-visual direction",
+        "approvedDate": "2026-08-14"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "b77d92a88dfa09be4de6c7e12a2967eb1cbc967f",
+        "sha256": "80a1d99feff0edde6e5d52678b3f10c15b58c77066f50d3b1e210a9efb7c776e"
+      },
+      "category": "artifact-icon",
+      "semanticRole": "artifact.identity.pierce_needle",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": "openai-imagegen:exec-da818f2c-4928-4f58-95de-18874d22e54b",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-14"
+      }
+    },
+    {
+      "logicalId": "ui_refresh_artifacts_fan_shell",
+      "path": "assets/images/ui-refresh/artifacts/fan_shell.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "artifact-choice",
+          "pause",
+          "dex",
+          "result",
+          "journey-log"
+        ],
+        "states": [
+          "candidate",
+          "owned",
+          "collection",
+          "summary"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260814-ui-consistency-1"
+      },
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "minDisplay": {
+        "width": 26,
+        "height": 26,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "ai-generated-production-art",
+        "source": "OpenAI image generation via Codex imagegen, independently generated from approved Moguria key-visual direction",
+        "approvedDate": "2026-08-14"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "55b2decde4a4d07d5d11cc6b6ccb0570b0572df1",
+        "sha256": "c75ac5aab1af72709c1ba3dfdf9eb41e9410de08592546dd7d96fc8bb6755554"
+      },
+      "category": "artifact-icon",
+      "semanticRole": "artifact.identity.fan_shell",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": "openai-imagegen:exec-76794800-9148-4107-9916-827bbd11862d",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-14"
+      }
+    },
+    {
+      "logicalId": "ui_refresh_artifacts_hungry_moon",
+      "path": "assets/images/ui-refresh/artifacts/hungry_moon.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "artifact-choice",
+          "pause",
+          "dex",
+          "result",
+          "journey-log"
+        ],
+        "states": [
+          "candidate",
+          "owned",
+          "collection",
+          "summary"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260814-ui-consistency-1"
+      },
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "minDisplay": {
+        "width": 26,
+        "height": 26,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "ai-generated-production-art",
+        "source": "OpenAI image generation via Codex imagegen, independently generated from approved Moguria key-visual direction",
+        "approvedDate": "2026-08-14"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "f4439a05d79c768cad1f067ef31c4f0dc49c535f",
+        "sha256": "cb94498ad88227f132a08b8041351041694216c3fca8d018facad26913359e75"
+      },
+      "category": "artifact-icon",
+      "semanticRole": "artifact.identity.hungry_moon",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": "openai-imagegen:exec-ed9a5b69-2a1f-47a2-8317-24abb4a36b51",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-14"
+      }
+    },
+    {
+      "logicalId": "ui_refresh_artifacts_magnet_bell",
+      "path": "assets/images/ui-refresh/artifacts/magnet_bell.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "artifact-choice",
+          "pause",
+          "dex",
+          "result",
+          "journey-log"
+        ],
+        "states": [
+          "candidate",
+          "owned",
+          "collection",
+          "summary"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260814-ui-consistency-1"
+      },
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "minDisplay": {
+        "width": 26,
+        "height": 26,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "ai-generated-production-art",
+        "source": "OpenAI image generation via Codex imagegen, independently generated from approved Moguria key-visual direction",
+        "approvedDate": "2026-08-14"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "87698afc1664dc529f2566b159dbbd9cfb02e880",
+        "sha256": "2a8514ee79a3c535529cd0c1c8fe79a9752b15f23a3f65fd8a6e0f1cd6d50cf7"
+      },
+      "category": "artifact-icon",
+      "semanticRole": "artifact.identity.magnet_bell",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": "openai-imagegen:exec-0292aa33-2ce9-4722-9403-d5134a12f48c",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-14"
+      }
+    },
+    {
+      "logicalId": "ui_refresh_artifacts_reroll_spoon",
+      "path": "assets/images/ui-refresh/artifacts/reroll_spoon.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "artifact-choice",
+          "pause",
+          "dex",
+          "result",
+          "journey-log"
+        ],
+        "states": [
+          "candidate",
+          "owned",
+          "collection",
+          "summary"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260814-ui-consistency-1"
+      },
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "minDisplay": {
+        "width": 26,
+        "height": 26,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "ai-generated-production-art",
+        "source": "OpenAI image generation via Codex imagegen, independently generated from approved Moguria key-visual direction",
+        "approvedDate": "2026-08-14"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "0feb86366a81c7b495f1ccec07d1c835dc17674a",
+        "sha256": "22325dd4d0262f3981f2edb03895b33cea37221f3e0b8f4ea16b942f5203bb29"
+      },
+      "category": "artifact-icon",
+      "semanticRole": "artifact.identity.reroll_spoon",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": "openai-imagegen:exec-7aa8ef0f-4041-4012-b57f-63c4a4006484",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-14"
+      }
+    },
+    {
+      "logicalId": "ui_refresh_artifacts_late_bloomer",
+      "path": "assets/images/ui-refresh/artifacts/late_bloomer.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "artifact-choice",
+          "pause",
+          "dex",
+          "result",
+          "journey-log"
+        ],
+        "states": [
+          "candidate",
+          "owned",
+          "collection",
+          "summary"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260814-ui-consistency-1"
+      },
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "minDisplay": {
+        "width": 26,
+        "height": 26,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "ai-generated-production-art",
+        "source": "OpenAI image generation via Codex imagegen, independently generated from approved Moguria key-visual direction",
+        "approvedDate": "2026-08-14"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "a0e4bc1d0a5eb669278ae764ee67537992a905ec",
+        "sha256": "2a7fc6b80cb60ab461c163d83b0cbc765c2ec9478e148bf615daf5d0c30d7036"
+      },
+      "category": "artifact-icon",
+      "semanticRole": "artifact.identity.late_bloomer",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": "openai-imagegen:exec-769d097b-d142-4f36-8d28-c9ea9760b08b",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-14"
+      }
+    },
+    {
+      "logicalId": "ui_refresh_artifacts_boss_cookie",
+      "path": "assets/images/ui-refresh/artifacts/boss_cookie.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "artifact-choice",
+          "pause",
+          "dex",
+          "result",
+          "journey-log"
+        ],
+        "states": [
+          "candidate",
+          "owned",
+          "collection",
+          "summary"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260814-ui-consistency-1"
+      },
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "minDisplay": {
+        "width": 26,
+        "height": 26,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "ai-generated-production-art",
+        "source": "OpenAI image generation via Codex imagegen, independently generated from approved Moguria key-visual direction",
+        "approvedDate": "2026-08-14"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "f8f234772ae2012f4e77db64b05490d6ea4f89b2",
+        "sha256": "abd4ecec74a74dacf4ff4ba3ccf2a98084bd37bb06784006420373df7ccacd39"
+      },
+      "category": "artifact-icon",
+      "semanticRole": "artifact.identity.boss_cookie",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": "openai-imagegen:exec-3e0d04f1-badb-431a-bd20-ad5700406bce",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-14"
+      }
+    },
+    {
+      "logicalId": "ui_refresh_artifacts_calm_blanket",
+      "path": "assets/images/ui-refresh/artifacts/calm_blanket.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "artifact-choice",
+          "pause",
+          "dex",
+          "result",
+          "journey-log"
+        ],
+        "states": [
+          "candidate",
+          "owned",
+          "collection",
+          "summary"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260814-ui-consistency-1"
+      },
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "minDisplay": {
+        "width": 26,
+        "height": 26,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "ai-generated-production-art",
+        "source": "OpenAI image generation via Codex imagegen, independently generated from approved Moguria key-visual direction",
+        "approvedDate": "2026-08-14"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "189eb1ff82e12b463633fcb38c17cd7452858551",
+        "sha256": "a389a5588965eb864c6a985d3a47c9971d852ea9bfb7d37ce299902975806f21"
+      },
+      "category": "artifact-icon",
+      "semanticRole": "artifact.identity.calm_blanket",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": "openai-imagegen:exec-506d8c2c-b93c-4386-938e-796a0fc8111b",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-14"
+      }
+    },
+    {
+      "logicalId": "ui_refresh_artifacts_double_bite",
+      "path": "assets/images/ui-refresh/artifacts/double_bite.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "artifact-choice",
+          "pause",
+          "dex",
+          "result",
+          "journey-log"
+        ],
+        "states": [
+          "candidate",
+          "owned",
+          "collection",
+          "summary"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260814-ui-consistency-1"
+      },
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "minDisplay": {
+        "width": 26,
+        "height": 26,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "ai-generated-production-art",
+        "source": "OpenAI image generation via Codex imagegen, independently generated from approved Moguria key-visual direction",
+        "approvedDate": "2026-08-14"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "4d374a662599adfe1bd6889f90e0d9996131af73",
+        "sha256": "966481c93e2ed1afe46ca1e5f06ecba0cbf3677d74397d4f12540d4ade07f6f6"
+      },
+      "category": "artifact-icon",
+      "semanticRole": "artifact.identity.double_bite",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": "openai-imagegen:exec-0b32873f-c28e-4146-a8d4-7a78aa1e5ca7",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-14"
+      }
+    },
+    {
+      "logicalId": "ui_refresh_artifacts_glass_cannon",
+      "path": "assets/images/ui-refresh/artifacts/glass_cannon.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "artifact-choice",
+          "pause",
+          "dex",
+          "result",
+          "journey-log"
+        ],
+        "states": [
+          "candidate",
+          "owned",
+          "collection",
+          "summary"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260814-ui-consistency-1"
+      },
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "minDisplay": {
+        "width": 26,
+        "height": 26,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "ai-generated-production-art",
+        "source": "OpenAI image generation via Codex imagegen, independently generated from approved Moguria key-visual direction",
+        "approvedDate": "2026-08-14"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "e67c966c5ea212d37ad21876a967da2e253d2435",
+        "sha256": "6fefecd3bda3855eb6b1165110aae932e207e7b19dad250ca3bdfff6bf70e255"
+      },
+      "category": "artifact-icon",
+      "semanticRole": "artifact.identity.glass_cannon",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": "openai-imagegen:exec-adceb182-40c3-4948-8118-28c8b15c3e53",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-14"
+      }
+    },
+    {
+      "logicalId": "ui_refresh_artifacts_safe_pouch",
+      "path": "assets/images/ui-refresh/artifacts/safe_pouch.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "artifact-choice",
+          "pause",
+          "dex",
+          "result",
+          "journey-log"
+        ],
+        "states": [
+          "candidate",
+          "owned",
+          "collection",
+          "summary"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260814-ui-consistency-1"
+      },
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "minDisplay": {
+        "width": 26,
+        "height": 26,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "ai-generated-production-art",
+        "source": "OpenAI image generation via Codex imagegen, independently generated from approved Moguria key-visual direction",
+        "approvedDate": "2026-08-14"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "80e7ac326f24fe1b951870d89294638aff56c625",
+        "sha256": "33076f50bd5237e498c710c41d4af3940106e35655a844de4236e90ab1af5983"
+      },
+      "category": "artifact-icon",
+      "semanticRole": "artifact.identity.safe_pouch",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": "openai-imagegen:exec-9e3aaf37-e9e0-4074-9893-0fd2bfe7273e",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-14"
+      }
+    },
+    {
+      "logicalId": "ui_refresh_artifacts_mystery_pot",
+      "path": "assets/images/ui-refresh/artifacts/mystery_pot.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "artifact-choice",
+          "pause",
+          "dex",
+          "result",
+          "journey-log"
+        ],
+        "states": [
+          "candidate",
+          "owned",
+          "collection",
+          "summary"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260814-ui-consistency-1"
+      },
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "minDisplay": {
+        "width": 26,
+        "height": 26,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "ai-generated-production-art",
+        "source": "OpenAI image generation via Codex imagegen, independently generated from approved Moguria key-visual direction",
+        "approvedDate": "2026-08-14"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "914569850c24c90a7950ad07f8cb7ea991f10a97",
+        "sha256": "b31e040334cee8b9ea82b00904643f209b4e54961beb8ab3c2d11b3b0bcca98e"
+      },
+      "category": "artifact-icon",
+      "semanticRole": "artifact.identity.mystery_pot",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": "openai-imagegen:exec-b44f4f01-49a7-4056-b9ea-1e5a4b58ada9",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-14"
+      }
+    },
+    {
+      "logicalId": "ui_refresh_artifacts_thunder_totem",
+      "path": "assets/images/ui-refresh/artifacts/thunder_totem.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "artifact-choice",
+          "pause",
+          "dex",
+          "result",
+          "journey-log"
+        ],
+        "states": [
+          "candidate",
+          "owned",
+          "collection",
+          "summary"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260814-ui-consistency-1"
+      },
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "minDisplay": {
+        "width": 26,
+        "height": 26,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "ai-generated-production-art",
+        "source": "OpenAI image generation via Codex imagegen, independently generated from approved Moguria key-visual direction",
+        "approvedDate": "2026-08-14"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "9d050ab296dc41e48a427bcfb52e58215a44dc04",
+        "sha256": "ef96533f735187feb6764cde8e9da093ec707865f8408b0cd9070f2836a8ab31"
+      },
+      "category": "artifact-icon",
+      "semanticRole": "artifact.identity.thunder_totem",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": "openai-imagegen:exec-ca373af0-9ad8-49d0-a5c5-22bb3bf917ba",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-14"
+      }
+    },
+    {
+      "logicalId": "ui_refresh_artifacts_moon_ring",
+      "path": "assets/images/ui-refresh/artifacts/moon_ring.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "artifact-choice",
+          "pause",
+          "dex",
+          "result",
+          "journey-log"
+        ],
+        "states": [
+          "candidate",
+          "owned",
+          "collection",
+          "summary"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260814-ui-consistency-1"
+      },
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "minDisplay": {
+        "width": 26,
+        "height": 26,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "ai-generated-production-art",
+        "source": "OpenAI image generation via Codex imagegen, independently generated from approved Moguria key-visual direction",
+        "approvedDate": "2026-08-14"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "733f9d1bffd5a4e593ef2c79a1c67d3061fcc60b",
+        "sha256": "e7680b7edcb877f63f3dab9ceecb687cdf758d7eb079ac0536266bf2737590d3"
+      },
+      "category": "artifact-icon",
+      "semanticRole": "artifact.identity.moon_ring",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": "openai-imagegen:exec-c8363713-d4d2-4396-9cfa-dc31d6a03b25",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-14"
+      }
+    },
+    {
+      "logicalId": "ui_refresh_artifacts_trap_lunchbox",
+      "path": "assets/images/ui-refresh/artifacts/trap_lunchbox.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "artifact-choice",
+          "pause",
+          "dex",
+          "result",
+          "journey-log"
+        ],
+        "states": [
+          "candidate",
+          "owned",
+          "collection",
+          "summary"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260814-ui-consistency-1"
+      },
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "minDisplay": {
+        "width": 26,
+        "height": 26,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "ai-generated-production-art",
+        "source": "OpenAI image generation via Codex imagegen, independently generated from approved Moguria key-visual direction",
+        "approvedDate": "2026-08-14"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "b5cbfab4b5716b91b27d59e5bc516d3172b63985",
+        "sha256": "6299143275f89bd035ec9d7ade47dbe3297a357c8b6798f4a1197399e44720e2"
+      },
+      "category": "artifact-icon",
+      "semanticRole": "artifact.identity.trap_lunchbox",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": "openai-imagegen:exec-d11dc73b-a1c3-4a97-b298-3859c84b9515",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-14"
+      }
+    },
+    {
+      "logicalId": "ui_refresh_artifacts_cold_mirror",
+      "path": "assets/images/ui-refresh/artifacts/cold_mirror.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "artifact-choice",
+          "pause",
+          "dex",
+          "result",
+          "journey-log"
+        ],
+        "states": [
+          "candidate",
+          "owned",
+          "collection",
+          "summary"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260814-ui-consistency-1"
+      },
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "minDisplay": {
+        "width": 26,
+        "height": 26,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "ai-generated-production-art",
+        "source": "OpenAI image generation via Codex imagegen, independently generated from approved Moguria key-visual direction",
+        "approvedDate": "2026-08-14"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "226ed40955675ed3cad3c57ecb565ac9f65745bd",
+        "sha256": "49e3e0408a8c10dfbb2ac9070b346b3eca46f16eeba1f2bdd62911d1258eda51"
+      },
+      "category": "artifact-icon",
+      "semanticRole": "artifact.identity.cold_mirror",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": "openai-imagegen:exec-ca9bdfc2-bdde-4152-aaee-6167585a94e4",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-14"
+      }
+    },
+    {
+      "logicalId": "ui_refresh_artifacts_life_jam",
+      "path": "assets/images/ui-refresh/artifacts/life_jam.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "artifact-choice",
+          "pause",
+          "dex",
+          "result",
+          "journey-log"
+        ],
+        "states": [
+          "candidate",
+          "owned",
+          "collection",
+          "summary"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260814-ui-consistency-1"
+      },
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "minDisplay": {
+        "width": 26,
+        "height": 26,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "ai-generated-production-art",
+        "source": "OpenAI image generation via Codex imagegen, independently generated from approved Moguria key-visual direction",
+        "approvedDate": "2026-08-14"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "93ee26af376e66e65c5313b21f1b64b002025ff2",
+        "sha256": "00021449207900b9ff8392b033d34ecf9cfa1cee0440af6da4a8c03ff33560a4"
+      },
+      "category": "artifact-icon",
+      "semanticRole": "artifact.identity.life_jam",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": "openai-imagegen:exec-7d6945a8-feb4-4c75-a255-d7f9d8349004",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-14"
+      }
+    },
+    {
+      "logicalId": "ui_refresh_artifacts_study_notebook",
+      "path": "assets/images/ui-refresh/artifacts/study_notebook.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "artifact-choice",
+          "pause",
+          "dex",
+          "result",
+          "journey-log"
+        ],
+        "states": [
+          "candidate",
+          "owned",
+          "collection",
+          "summary"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260814-ui-consistency-1"
+      },
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "minDisplay": {
+        "width": 26,
+        "height": 26,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "ai-generated-production-art",
+        "source": "OpenAI image generation via Codex imagegen, independently generated from approved Moguria key-visual direction",
+        "approvedDate": "2026-08-14"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "810a0eef2177a0d95ef47ba2330f6274d2449fa2",
+        "sha256": "f12fa3653605f1a6e6842a635d6e372ba0ff504125217212e99f48b3b7ee6d76"
+      },
+      "category": "artifact-icon",
+      "semanticRole": "artifact.identity.study_notebook",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": "openai-imagegen:exec-11ae1a8e-7ac3-4fff-9777-f177591fe46e",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-14"
+      }
+    },
+    {
+      "logicalId": "ui_refresh_equipment_hat_leaf",
+      "path": "assets/images/ui-refresh/equipment/hat_leaf.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "gacha",
+          "equipment"
+        ],
+        "states": [
+          "pool",
+          "reveal",
+          "inventory",
+          "equipped"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260814-ui-consistency-1"
+      },
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "minDisplay": {
+        "width": 31,
+        "height": 31,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "ai-generated-production-art",
+        "source": "OpenAI image generation via Codex imagegen, independently generated from approved Moguria key-visual direction",
+        "approvedDate": "2026-08-14"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "0a1ff80a52713b361cb93779a3f33144c0228d6c",
+        "sha256": "4bf21c622f4f9bc31d4f3d333054bbb4957c493f5cc1926016f71d6bac4d7e02"
+      },
+      "category": "equipment-icon",
+      "semanticRole": "equipment.identity.hat_leaf",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": "openai-imagegen:exec-d3c7b86a-ee0d-4011-9be5-867e48eddc6a",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-14"
+      }
+    },
+    {
+      "logicalId": "ui_refresh_equipment_hat_spore",
+      "path": "assets/images/ui-refresh/equipment/hat_spore.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "gacha",
+          "equipment"
+        ],
+        "states": [
+          "pool",
+          "reveal",
+          "inventory",
+          "equipped"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260814-ui-consistency-1"
+      },
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "minDisplay": {
+        "width": 31,
+        "height": 31,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "ai-generated-production-art",
+        "source": "OpenAI image generation via Codex imagegen, independently generated from approved Moguria key-visual direction",
+        "approvedDate": "2026-08-14"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "c9b4f70f3c9505c46c6632a966eca59d89f8555b",
+        "sha256": "6c495a61397ed34a85470069c75d9e4a3488719a42a209f7987243a5a12a3486"
+      },
+      "category": "equipment-icon",
+      "semanticRole": "equipment.identity.hat_spore",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": "openai-imagegen:exec-b96e7e5c-3786-48ee-a5cd-40bfdc9b2a02",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-14"
+      }
+    },
+    {
+      "logicalId": "ui_refresh_equipment_hat_star",
+      "path": "assets/images/ui-refresh/equipment/hat_star.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "gacha",
+          "equipment"
+        ],
+        "states": [
+          "pool",
+          "reveal",
+          "inventory",
+          "equipped"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260814-ui-consistency-1"
+      },
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "minDisplay": {
+        "width": 31,
+        "height": 31,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "ai-generated-production-art",
+        "source": "OpenAI image generation via Codex imagegen, independently generated from approved Moguria key-visual direction",
+        "approvedDate": "2026-08-14"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "6ce84584cf76c4334ddf90a6b471510abaa07d16",
+        "sha256": "5981b7638712eaf4157c92cb782bef02f71730ad2896bd6b1d572161f8fb58bd"
+      },
+      "category": "equipment-icon",
+      "semanticRole": "equipment.identity.hat_star",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": "openai-imagegen:exec-5256d3de-0c15-4baf-b216-aa3f3a3b3bbd",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-14"
+      }
+    },
+    {
+      "logicalId": "ui_refresh_equipment_body_cotton",
+      "path": "assets/images/ui-refresh/equipment/body_cotton.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "gacha",
+          "equipment"
+        ],
+        "states": [
+          "pool",
+          "reveal",
+          "inventory",
+          "equipped"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260814-ui-consistency-1"
+      },
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "minDisplay": {
+        "width": 31,
+        "height": 31,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "ai-generated-production-art",
+        "source": "OpenAI image generation via Codex imagegen, independently generated from approved Moguria key-visual direction",
+        "approvedDate": "2026-08-14"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "38a81f2e3ae28fad493e7a11e05b338eba3e752f",
+        "sha256": "0556129b7b67fae1c893f43165df1b1fb1ce5db7c1efb8cdbbef78c55a3f9201"
+      },
+      "category": "equipment-icon",
+      "semanticRole": "equipment.identity.body_cotton",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": "openai-imagegen:exec-dae085f0-027b-4062-b843-de10256d57db",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-14"
+      }
+    },
+    {
+      "logicalId": "ui_refresh_equipment_body_shell",
+      "path": "assets/images/ui-refresh/equipment/body_shell.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "gacha",
+          "equipment"
+        ],
+        "states": [
+          "pool",
+          "reveal",
+          "inventory",
+          "equipped"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260814-ui-consistency-1"
+      },
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "minDisplay": {
+        "width": 31,
+        "height": 31,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "ai-generated-production-art",
+        "source": "OpenAI image generation via Codex imagegen, independently generated from approved Moguria key-visual direction",
+        "approvedDate": "2026-08-14"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "756e2c319b0ce18a2a58e38675faef8de50424ad",
+        "sha256": "eba53ac5e4f10f769ec774057fd32d2171ab6dd7553834fead549d8b4ce9eb1f"
+      },
+      "category": "equipment-icon",
+      "semanticRole": "equipment.identity.body_shell",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": "openai-imagegen:exec-7f9271ab-8d48-4a0a-a256-44c55703eca9",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-14"
+      }
+    },
+    {
+      "logicalId": "ui_refresh_equipment_body_moon",
+      "path": "assets/images/ui-refresh/equipment/body_moon.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "gacha",
+          "equipment"
+        ],
+        "states": [
+          "pool",
+          "reveal",
+          "inventory",
+          "equipped"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260814-ui-consistency-1"
+      },
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "minDisplay": {
+        "width": 31,
+        "height": 31,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "ai-generated-production-art",
+        "source": "OpenAI image generation via Codex imagegen, independently generated from approved Moguria key-visual direction",
+        "approvedDate": "2026-08-14"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "9f044eb168e57c492f5e44dbe4c68d33ce3c596d",
+        "sha256": "ded650dfd651a338dc01a52ecd26e1df3ca4dc69ae5a195625d6ef1473ae1617"
+      },
+      "category": "equipment-icon",
+      "semanticRole": "equipment.identity.body_moon",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": "openai-imagegen:exec-ff6ba2de-a408-4875-8891-e5835e387a51",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-14"
+      }
+    },
+    {
+      "logicalId": "ui_refresh_equipment_hand_seed",
+      "path": "assets/images/ui-refresh/equipment/hand_seed.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "gacha",
+          "equipment"
+        ],
+        "states": [
+          "pool",
+          "reveal",
+          "inventory",
+          "equipped"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260814-ui-consistency-1"
+      },
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "minDisplay": {
+        "width": 31,
+        "height": 31,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "ai-generated-production-art",
+        "source": "OpenAI image generation via Codex imagegen, independently generated from approved Moguria key-visual direction",
+        "approvedDate": "2026-08-14"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "2a1907a45e0e03105fc9b319ddf2967ff4cc6ccc",
+        "sha256": "62544a3bbead714fc3be23229543e9b154b4b197538f678b8be0feef3614d51d"
+      },
+      "category": "equipment-icon",
+      "semanticRole": "equipment.identity.hand_seed",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": "openai-imagegen:exec-c642a4b4-25f9-4aa1-af57-9a277e957ce1",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-14"
+      }
+    },
+    {
+      "logicalId": "ui_refresh_equipment_hand_spark",
+      "path": "assets/images/ui-refresh/equipment/hand_spark.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "gacha",
+          "equipment"
+        ],
+        "states": [
+          "pool",
+          "reveal",
+          "inventory",
+          "equipped"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260814-ui-consistency-1"
+      },
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "minDisplay": {
+        "width": 31,
+        "height": 31,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "ai-generated-production-art",
+        "source": "OpenAI image generation via Codex imagegen, independently generated from approved Moguria key-visual direction",
+        "approvedDate": "2026-08-14"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "79a985f2a22bf3239c939c6e05e9a95dd34a68e9",
+        "sha256": "3c524a7d3769474d1979dbd4c36b98a5d3b0b67bb030c4211e1073fa5cb4e0cb"
+      },
+      "category": "equipment-icon",
+      "semanticRole": "equipment.identity.hand_spark",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": "openai-imagegen:exec-d1d28014-bff1-4038-8e41-0cf0ad9764c6",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-14"
+      }
+    },
+    {
+      "logicalId": "ui_refresh_equipment_hand_comet",
+      "path": "assets/images/ui-refresh/equipment/hand_comet.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "gacha",
+          "equipment"
+        ],
+        "states": [
+          "pool",
+          "reveal",
+          "inventory",
+          "equipped"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260814-ui-consistency-1"
+      },
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "minDisplay": {
+        "width": 31,
+        "height": 31,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "ai-generated-production-art",
+        "source": "OpenAI image generation via Codex imagegen, independently generated from approved Moguria key-visual direction",
+        "approvedDate": "2026-08-14"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "c68d7cc4b56775a1ac12d54defa4a7937354eafc",
+        "sha256": "f639c50d341bafe4a65bfba7f3956fe7a670c3deb8993cf6f11f360f4e2bf598"
+      },
+      "category": "equipment-icon",
+      "semanticRole": "equipment.identity.hand_comet",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": "openai-imagegen:exec-5c6759c3-b930-4e60-9196-7a4da274cbb7",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-14"
+      }
+    },
+    {
+      "logicalId": "ui_refresh_equipment_foot_clover",
+      "path": "assets/images/ui-refresh/equipment/foot_clover.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "gacha",
+          "equipment"
+        ],
+        "states": [
+          "pool",
+          "reveal",
+          "inventory",
+          "equipped"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260814-ui-consistency-1"
+      },
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "minDisplay": {
+        "width": 31,
+        "height": 31,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "ai-generated-production-art",
+        "source": "OpenAI image generation via Codex imagegen, independently generated from approved Moguria key-visual direction",
+        "approvedDate": "2026-08-14"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "d58cbb49f7cd9c8f4bb12ec7f299f581de1253d4",
+        "sha256": "3670e0f74944c4652ded66f387a883fedb329cc50f494e13a0aa8e92f0a3f991"
+      },
+      "category": "equipment-icon",
+      "semanticRole": "equipment.identity.foot_clover",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": "openai-imagegen:exec-18f075ea-307f-4109-b72c-508abcff9614",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-14"
+      }
+    },
+    {
+      "logicalId": "ui_refresh_equipment_foot_breeze",
+      "path": "assets/images/ui-refresh/equipment/foot_breeze.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "gacha",
+          "equipment"
+        ],
+        "states": [
+          "pool",
+          "reveal",
+          "inventory",
+          "equipped"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260814-ui-consistency-1"
+      },
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "minDisplay": {
+        "width": 31,
+        "height": 31,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "ai-generated-production-art",
+        "source": "OpenAI image generation via Codex imagegen, independently generated from approved Moguria key-visual direction",
+        "approvedDate": "2026-08-14"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "2139a05c1111f26d827332192356e67a4c8f317f",
+        "sha256": "38e43bf9ea27f8a559fb7735e7871e1f44ee4f8822a8a1b9c0fddebadae6c475"
+      },
+      "category": "equipment-icon",
+      "semanticRole": "equipment.identity.foot_breeze",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": "openai-imagegen:exec-ff9cadba-20e1-443e-8c46-d09d1e31e8c0",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-14"
+      }
+    },
+    {
+      "logicalId": "ui_refresh_equipment_foot_shadow",
+      "path": "assets/images/ui-refresh/equipment/foot_shadow.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "gacha",
+          "equipment"
+        ],
+        "states": [
+          "pool",
+          "reveal",
+          "inventory",
+          "equipped"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260814-ui-consistency-1"
+      },
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "minDisplay": {
+        "width": 31,
+        "height": 31,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "ai-generated-production-art",
+        "source": "OpenAI image generation via Codex imagegen, independently generated from approved Moguria key-visual direction",
+        "approvedDate": "2026-08-14"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "19a53601629cecba5467bd6dbdd76d4a46644361",
+        "sha256": "7a08ea6eb41a4a4e68977e601a3e8cd408353b910f1a32d57bb9de11ae700360"
+      },
+      "category": "equipment-icon",
+      "semanticRole": "equipment.identity.foot_shadow",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": "openai-imagegen:exec-3af35a3d-33eb-45f7-8e40-4887821ff495",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-14"
+      }
+    },
+    {
+      "logicalId": "ui_refresh_equipment_charm_cookie",
+      "path": "assets/images/ui-refresh/equipment/charm_cookie.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "gacha",
+          "equipment"
+        ],
+        "states": [
+          "pool",
+          "reveal",
+          "inventory",
+          "equipped"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260814-ui-consistency-1"
+      },
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "minDisplay": {
+        "width": 31,
+        "height": 31,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "ai-generated-production-art",
+        "source": "OpenAI image generation via Codex imagegen, independently generated from approved Moguria key-visual direction",
+        "approvedDate": "2026-08-14"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "96020d04f5bc8cbb7e14e2cf9b800e3f5e591c0b",
+        "sha256": "738ffa61ace07297ddc4fdb1159b101ecdb966881ad092e617807049d62a466f"
+      },
+      "category": "equipment-icon",
+      "semanticRole": "equipment.identity.charm_cookie",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": "openai-imagegen:exec-036c3dde-24d2-4b5c-ada3-6876e92aedda",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-14"
+      }
+    },
+    {
+      "logicalId": "ui_refresh_equipment_charm_bomb",
+      "path": "assets/images/ui-refresh/equipment/charm_bomb.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "gacha",
+          "equipment"
+        ],
+        "states": [
+          "pool",
+          "reveal",
+          "inventory",
+          "equipped"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260814-ui-consistency-1"
+      },
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "minDisplay": {
+        "width": 31,
+        "height": 31,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "ai-generated-production-art",
+        "source": "OpenAI image generation via Codex imagegen, independently generated from approved Moguria key-visual direction",
+        "approvedDate": "2026-08-14"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "6781ae5138bf3e68d8b9dc304eda48d128b0d177",
+        "sha256": "434a5a8915da9d4dae7849ca10fc836c31eed583aecf854d83baff9a4eb27785"
+      },
+      "category": "equipment-icon",
+      "semanticRole": "equipment.identity.charm_bomb",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": "openai-imagegen:exec-e962f13d-0457-4668-b381-9f3b31a3f47a",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-14"
+      }
+    },
+    {
+      "logicalId": "ui_refresh_equipment_charm_mogu",
+      "path": "assets/images/ui-refresh/equipment/charm_mogu.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "gacha",
+          "equipment"
+        ],
+        "states": [
+          "pool",
+          "reveal",
+          "inventory",
+          "equipped"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260814-ui-consistency-1"
+      },
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "minDisplay": {
+        "width": 31,
+        "height": 31,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "ai-generated-production-art",
+        "source": "OpenAI image generation via Codex imagegen, independently generated from approved Moguria key-visual direction",
+        "approvedDate": "2026-08-14"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "8126fe7a9043062d826e6c8f779a03aca5b34646",
+        "sha256": "f4e829e3e0c8325571a2c6fea6aa7d4a2d2595dd6c94b8c03a600356471bd8ac"
+      },
+      "category": "equipment-icon",
+      "semanticRole": "equipment.identity.charm_mogu",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": "openai-imagegen:exec-b4947b13-ae4d-4641-b687-bbc72dbc69d2",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-14"
+      }
+    },
+    {
+      "logicalId": "ui_refresh_outings_daily_mutation",
+      "path": "assets/images/ui-refresh/outings/daily_mutation.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "outing"
+        ],
+        "states": [
+          "coming-soon"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260814-ui-consistency-1"
+      },
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "minDisplay": {
+        "width": 54,
+        "height": 54,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "ai-generated-production-art",
+        "source": "OpenAI image generation via Codex imagegen, independently generated from approved Moguria key-visual direction",
+        "approvedDate": "2026-08-14"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "9c8fadb997583f6fe810af34007128510c235f3a",
+        "sha256": "1196224ec28df7d6cda7b09514a4259b09c9b4efc9c7363fe18f0e0b0234267b"
+      },
+      "category": "outing-icon",
+      "semanticRole": "outing.destination.daily_mutation",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": "openai-imagegen:exec-b78c6ee5-2546-423b-b7eb-c455e23697d0",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-14"
+      }
+    },
+    {
+      "logicalId": "ui_refresh_outings_abyss_trial",
+      "path": "assets/images/ui-refresh/outings/abyss_trial.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "outing"
+        ],
+        "states": [
+          "coming-soon"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260814-ui-consistency-1"
+      },
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "minDisplay": {
+        "width": 54,
+        "height": 54,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "ai-generated-production-art",
+        "source": "OpenAI image generation via Codex imagegen, independently generated from approved Moguria key-visual direction",
+        "approvedDate": "2026-08-14"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "73c095515192ffa3383e4226b5cec8cc97887c7a",
+        "sha256": "3924022da008fe744e2f3e068dbe0a7dddc578e3f953e28ffe9f2ea19f4493d5"
+      },
+      "category": "outing-icon",
+      "semanticRole": "outing.destination.abyss_trial",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": "openai-imagegen:exec-17a80a5a-55e8-4d1a-b09d-d716f86e46e0",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-14"
+      }
+    },
+    {
+      "logicalId": "ui_refresh_outings_snack_walk",
+      "path": "assets/images/ui-refresh/outings/snack_walk.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "outing"
+        ],
+        "states": [
+          "coming-soon"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260814-ui-consistency-1"
+      },
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "minDisplay": {
+        "width": 54,
+        "height": 54,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "ai-generated-production-art",
+        "source": "OpenAI image generation via Codex imagegen, independently generated from approved Moguria key-visual direction",
+        "approvedDate": "2026-08-14"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "49c2296e27b0fec46c9dbc4d1a27f975fe71cd36",
+        "sha256": "d9957663f4123ca9829c45502ffd0d57d72e9985feda0010b97da9034aee8b6d"
+      },
+      "category": "outing-icon",
+      "semanticRole": "outing.destination.snack_walk",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": "openai-imagegen:exec-94912b14-ccdf-4ffe-8b68-6e1f556c1780",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-14"
+      }
+    },
+    {
+      "logicalId": "ui_refresh_slots_hat",
+      "path": "assets/images/ui-refresh/slots/hat.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "equipment"
+        ],
+        "states": [
+          "empty"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260814-ui-consistency-1"
+      },
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "minDisplay": {
+        "width": 31,
+        "height": 31,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "ai-generated-production-art",
+        "source": "OpenAI image generation via Codex imagegen, independently generated from approved Moguria key-visual direction",
+        "approvedDate": "2026-08-14"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "cd962588b7377b9901a312e3b484fd8a4539e1d7",
+        "sha256": "f848a004eabfbd5b1278eac6b0557bd91b569c038e592111c1d3909aa2b214ac"
+      },
+      "category": "equipment-slot-icon",
+      "semanticRole": "equipment.slot.hat.empty",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": "openai-imagegen:exec-62891f3f-f4e4-43e4-87ee-5c28618f1e3e",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-14"
+      }
+    },
+    {
+      "logicalId": "ui_refresh_slots_body",
+      "path": "assets/images/ui-refresh/slots/body.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "equipment"
+        ],
+        "states": [
+          "empty"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260814-ui-consistency-1"
+      },
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "minDisplay": {
+        "width": 31,
+        "height": 31,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "ai-generated-production-art",
+        "source": "OpenAI image generation via Codex imagegen, independently generated from approved Moguria key-visual direction",
+        "approvedDate": "2026-08-14"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "1559ff9bdb01ecaefb155e1530f604d10f7ccbb0",
+        "sha256": "a6f32058f005d1a517b7541cd0113ba66e18918c67b6631501a03c5c859dafdb"
+      },
+      "category": "equipment-slot-icon",
+      "semanticRole": "equipment.slot.body.empty",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": "openai-imagegen:exec-fa3d46e4-95f1-419e-a798-7591c1ca95f4",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-14"
+      }
+    },
+    {
+      "logicalId": "ui_refresh_slots_hand",
+      "path": "assets/images/ui-refresh/slots/hand.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "equipment"
+        ],
+        "states": [
+          "empty"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260814-ui-consistency-1"
+      },
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "minDisplay": {
+        "width": 31,
+        "height": 31,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "ai-generated-production-art",
+        "source": "OpenAI image generation via Codex imagegen, independently generated from approved Moguria key-visual direction",
+        "approvedDate": "2026-08-14"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "c7865d4091e98383ba54f4201b88988d6cf184b3",
+        "sha256": "3468d0847dd99c7830be7ca76133ff3b2008c54781008c9c984fe58288b7b3d8"
+      },
+      "category": "equipment-slot-icon",
+      "semanticRole": "equipment.slot.hand.empty",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": "openai-imagegen:exec-584c6124-e12b-4096-a95a-573df0b394df",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-14"
+      }
+    },
+    {
+      "logicalId": "ui_refresh_slots_foot",
+      "path": "assets/images/ui-refresh/slots/foot.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "equipment"
+        ],
+        "states": [
+          "empty"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260814-ui-consistency-1"
+      },
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "minDisplay": {
+        "width": 31,
+        "height": 31,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "ai-generated-production-art",
+        "source": "OpenAI image generation via Codex imagegen, independently generated from approved Moguria key-visual direction",
+        "approvedDate": "2026-08-14"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "fec2021b99a8e958a157974cdfa7a3664736af1d",
+        "sha256": "085583c6ac29bef7e8971df39d58186cf3184ae60ddb901a6b30bff93aa56766"
+      },
+      "category": "equipment-slot-icon",
+      "semanticRole": "equipment.slot.foot.empty",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": "openai-imagegen:exec-1319b5f3-16b9-48eb-bb17-e04639b9ba00",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-14"
+      }
+    },
+    {
+      "logicalId": "ui_refresh_slots_charm",
+      "path": "assets/images/ui-refresh/slots/charm.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "equipment"
+        ],
+        "states": [
+          "empty"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260814-ui-consistency-1"
+      },
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "minDisplay": {
+        "width": 31,
+        "height": 31,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "ai-generated-production-art",
+        "source": "OpenAI image generation via Codex imagegen, independently generated from approved Moguria key-visual direction",
+        "approvedDate": "2026-08-14"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "59c0e653a8a943555f17504b5fe0ab6c7e8004dc",
+        "sha256": "9164e405356cc6a4536dc3ba7bb442ac97a2109f27f6dec6ac547628bb22c4ba"
+      },
+      "category": "equipment-slot-icon",
+      "semanticRole": "equipment.slot.charm.empty",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": "openai-imagegen:exec-a945fd30-ff17-48fa-a5da-9440109a7281",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-14"
       }
     }
   ]

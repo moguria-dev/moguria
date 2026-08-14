@@ -1,7 +1,7 @@
 # Local dependencies and generated reports
 node_modules/
 coverage/
-artifacts/
+/artifacts/
 playwright-report/
 test-results/
 browser-qa-output/

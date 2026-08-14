@@ -22,6 +22,9 @@
   const BOSS_RADIUS_SCALE = 5.15;
   const ENEMY_FACING_HOLD_SECONDS = 0.12;
   const ENEMY_FACING_DEAD_ZONE = 12;
+  const VISIBLE_LAYOUT_STABLE_FRAMES = 2;
+  const VISIBLE_LAYOUT_MAX_FRAMES = 4;
+  const VISIBLE_LAYOUT_FRAME_TIMEOUT_MS = 120;
 
   const DEFAULT_ASSETS = Object.freeze({
     manifest: Object.freeze({ key: 'moguria-v3-atlas-manifest', src: `assets/images/battle-v3/atlas.json?v=${ASSET_VERSION}` }),
@@ -121,6 +124,7 @@
   let coreStepping = false;
   let lastCoreStepError = null;
   let maxDeltaSeconds = 1 / 30;
+  let startGeneration = 0;
   const legacyDisplay = new Map();
 
   function clonePlain(value) {
@@ -407,11 +411,13 @@
     if (resizeTimer) return;
     resizeTimer = global.setTimeout(() => {
       resizeTimer = 0;
-      if (!phaserGame) return;
-      const { width, height } = layoutSize(hostEl?.parentElement);
-      phaserGame.scale?.resize?.(width, height);
-      sceneRef?.handleResize?.(width, height);
-      configureCanvas();
+      if (!phaserGame || !running) return;
+      try {
+        const size = refreshVisibleLayout();
+        if (size) configureCanvas();
+      } catch (error) {
+        global.console?.error?.('[MoguriaBattleV3] visible resize failed', error);
+      }
     }, 16);
   }
 
@@ -426,6 +432,112 @@
     const width = Math.max(1, Math.round(Number(parentRect?.width) || Number(parent?.clientWidth) || Number(appRect?.width) || Number(app?.clientWidth) || Number(global.innerWidth) || 390));
     const height = Math.max(1, Math.round(Number(parentRect?.height) || Number(parent?.clientHeight) || Number(appRect?.height) || Number(app?.clientHeight) || Number(global.innerHeight) || 844));
     return { width, height };
+  }
+
+  function visibleLayoutSize() {
+    const hostRect = hostEl?.getBoundingClientRect?.();
+    const parentRect = hostEl?.parentElement?.getBoundingClientRect?.();
+    const width = Math.round(Number(hostRect?.width) || Number(parentRect?.width) || 0);
+    const height = Math.round(Number(hostRect?.height) || Number(parentRect?.height) || 0);
+    return width > 0 && height > 0 ? { width, height } : null;
+  }
+
+  function battleCanvas() {
+    return phaserGame?.canvas || hostEl?.querySelector?.('canvas') || null;
+  }
+
+  function refreshVisibleLayout() {
+    const size = visibleLayoutSize();
+    if (!size) return null;
+    const scale = phaserGame?.scale;
+    // ScaleManager.resize() is not valid recovery for RESIZE mode: refresh()
+    // immediately reapplies the parentSize cached while this host was hidden.
+    // Re-read the now-visible DOM parent through Phaser's public API first.
+    if (typeof scale?.getParentBounds === 'function' && typeof scale?.refresh === 'function') {
+      scale.getParentBounds();
+      scale.refresh();
+    } else if (typeof scale?.setParentSize === 'function') {
+      scale.setParentSize(size.width, size.height);
+    } else {
+      throw new Error('Moguria Battle V3 requires a parent-aware Phaser ScaleManager.');
+    }
+
+    const width = Math.round(Number(scale?.width) || 0);
+    const height = Math.round(Number(scale?.height) || 0);
+    sceneRef?.handleResize?.(width, height);
+    return size;
+  }
+
+  function nextVisibleLayoutFrame() {
+    return new Promise(resolve => {
+      let settled = false;
+      let timeoutId = 0;
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        if (timeoutId) global.clearTimeout?.(timeoutId);
+        resolve();
+      };
+      timeoutId = global.setTimeout?.(finish, VISIBLE_LAYOUT_FRAME_TIMEOUT_MS) || 0;
+      if (typeof global.requestAnimationFrame === 'function') global.requestAnimationFrame(finish);
+      else if (!timeoutId) finish();
+    });
+  }
+
+  function hasVisibleBackingStore(size) {
+    const canvas = battleCanvas();
+    const scale = phaserGame?.scale;
+    if (!size) return false;
+    return Math.round(Number(canvas?.width) || 0) === size.width
+      && Math.round(Number(canvas?.height) || 0) === size.height
+      && Math.round(Number(scale?.width) || 0) === size.width
+      && Math.round(Number(scale?.height) || 0) === size.height;
+  }
+
+  function startCancelledError() {
+    const error = new Error('Moguria Battle V3 start was cancelled.');
+    error.code = 'MOGURIA_BATTLE_START_CANCELLED';
+    return error;
+  }
+
+  function assertCurrentStart(generation) {
+    if (!running || generation !== startGeneration) throw startCancelledError();
+  }
+
+  function visibleLayoutError(message) {
+    const size = visibleLayoutSize() || { width: 0, height: 0 };
+    const canvas = battleCanvas();
+    const scale = phaserGame?.scale;
+    return new Error(`${message} (host ${size.width}x${size.height}; canvas ${Math.round(Number(canvas?.width) || 0)}x${Math.round(Number(canvas?.height) || 0)}; scale ${Math.round(Number(scale?.width) || 0)}x${Math.round(Number(scale?.height) || 0)}).`);
+  }
+
+  async function prepareVisibleLayout(generation) {
+    for (let frame = 0; frame < VISIBLE_LAYOUT_MAX_FRAMES; frame++) {
+      await nextVisibleLayoutFrame();
+      assertCurrentStart(generation);
+      const size = refreshVisibleLayout();
+      if (size && hasVisibleBackingStore(size)) return size;
+    }
+    throw visibleLayoutError('Moguria Battle V3 canvas did not become visible');
+  }
+
+  async function stabilizeVisibleLayout(generation) {
+    let stableFrames = 0;
+    for (let frame = 0; frame < VISIBLE_LAYOUT_MAX_FRAMES; frame++) {
+      await nextVisibleLayoutFrame();
+      assertCurrentStart(generation);
+      const size = visibleLayoutSize();
+      if (hasVisibleBackingStore(size)) {
+        stableFrames += 1;
+        if (stableFrames >= VISIBLE_LAYOUT_STABLE_FRAMES) return size;
+        continue;
+      }
+      stableFrames = 0;
+      if (frame + 1 >= VISIBLE_LAYOUT_MAX_FRAMES) break;
+      const refreshed = refreshVisibleLayout();
+      if (refreshed) configureCanvas();
+    }
+    throw visibleLayoutError('Moguria Battle V3 canvas did not stabilize');
   }
 
   function normalizeActorState(value) {
@@ -1899,6 +2011,7 @@
   }
 
   function start(state, options = {}) {
+    const generation = ++startGeneration;
     if (state) pendingState = state;
     if (typeof options.step === 'function') coreStep = options.step;
     if (Number.isFinite(Number(options.maxDeltaSeconds))) {
@@ -1907,25 +2020,37 @@
     running = true;
     if (hostEl) hostEl.style.display = 'block';
     suppressLegacyLayers();
-    const begin = () => {
+    const begin = async () => {
+      assertCurrentStart(generation);
+      if (hostEl) hostEl.style.display = 'block';
+      await prepareVisibleLayout(generation);
+      assertCurrentStart(generation);
       phaserGame?.loop?.wake?.();
       sceneRef?.scene?.setVisible?.(true);
       sceneRef?.scene?.resume?.();
       if (pendingState) sceneRef?.syncState?.(pendingState);
       configureCanvas();
+      await stabilizeVisibleLayout(generation);
+      assertCurrentStart(generation);
       return global.MoguriaBattleV3;
     };
-    if (ready) return Promise.resolve(begin());
-    return boot({ ...options, autoStart: true }).then(begin).catch(error => {
-      running = false;
-      coreStep = null;
-      if (hostEl) hostEl.style.display = 'none';
-      restoreLegacyLayers();
+    const starting = ready ? begin() : boot({ ...options, autoStart: true }).then(begin);
+    return starting.catch(error => {
+      if (generation === startGeneration) {
+        running = false;
+        coreStep = null;
+        sceneRef?.scene?.pause?.();
+        sceneRef?.scene?.setVisible?.(false);
+        phaserGame?.loop?.sleep?.();
+        if (hostEl) hostEl.style.display = 'none';
+        restoreLegacyLayers();
+      }
       throw error;
     });
   }
 
   function stop(options = {}) {
+    startGeneration += 1;
     running = false;
     coreStep = null;
     coreStepping = false;

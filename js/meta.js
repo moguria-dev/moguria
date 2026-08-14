@@ -1,32 +1,46 @@
 window.MoguriaMeta = (() => {
   const SLOT_LABELS = { hat: 'ぼうし', body: 'ふく', hand: 'て', foot: 'あし', charm: 'おまもり' };
-  const RARITY_LABELS = { common: 'C', rare: 'R', epic: 'E' };
+  const RARITY_LABELS = { common: 'コモン', rare: 'レア', epic: 'エピック' };
   const RARITY_WEIGHT = { common: 78, rare: 19, epic: 3 };
   const GACHA_COST = 30;
 
   const EQUIPMENT = [
-    { id: 'hat_leaf', name: '木の葉ぼうし', slot: 'hat', rarity: 'common', icon: '🍃', stat: { hp: 3 }, desc: 'HPがほんの少し増える' },
-    { id: 'hat_spore', name: 'きのこベレー', slot: 'hat', rarity: 'rare', icon: '🍄', stat: { poison: 1 }, desc: '毒系の力と少し相性が良い' },
-    { id: 'hat_star', name: '星くずフード', slot: 'hat', rarity: 'epic', icon: '🌟', stat: { crit: 1 }, desc: '会心の気配が少し増える' },
-    { id: 'body_cotton', name: 'ふわふわ服', slot: 'body', rarity: 'common', icon: '🧶', stat: { hp: 5 }, desc: 'HPが少し増える' },
-    { id: 'body_shell', name: 'まもり貝の服', slot: 'body', rarity: 'rare', icon: '🐚', stat: { guard: 1 }, desc: '防御系の力と少し相性が良い' },
-    { id: 'body_moon', name: '月あかりケープ', slot: 'body', rarity: 'epic', icon: '🌙', stat: { aura: 1 }, desc: '領域系の力と相性が良い' },
-    { id: 'hand_seed', name: 'どんぐりグローブ', slot: 'hand', rarity: 'common', icon: '🌰', stat: { atk: 1 }, desc: '攻撃が少し強くなる' },
-    { id: 'hand_spark', name: 'びりびり手袋', slot: 'hand', rarity: 'rare', icon: '⚡', stat: { lightning: 1 }, desc: '雷連鎖と相性が良い' },
-    { id: 'hand_comet', name: 'ほしふる手袋', slot: 'hand', rarity: 'epic', icon: '☄️', stat: { auto: 1 }, desc: '自動攻撃と相性が良い' },
-    { id: 'foot_clover', name: 'クローバー靴', slot: 'foot', rarity: 'common', icon: '☘️', stat: { speed: 1 }, desc: '移動がほんの少し軽くなる' },
-    { id: 'foot_breeze', name: 'そよ風ブーツ', slot: 'foot', rarity: 'rare', icon: '🍃', stat: { dodge: 1 }, desc: '回避系の力と相性が良い' },
-    { id: 'foot_shadow', name: 'かげふみ靴', slot: 'foot', rarity: 'epic', icon: '🌑', stat: { speed: 2 }, desc: '逃げながら戦うビルド向き' },
-    { id: 'charm_cookie', name: 'おやつチャーム', slot: 'charm', rarity: 'common', icon: '🍪', stat: { belly: 1 }, desc: 'おなか周りの育成用' },
-    { id: 'charm_bomb', name: 'ぽふぽふおまもり', slot: 'charm', rarity: 'rare', icon: '💣', stat: { boom: 1 }, desc: '爆発系の力と相性が良い' },
-    { id: 'charm_mogu', name: 'こもぐのおまもり', slot: 'charm', rarity: 'epic', icon: '🐾', stat: { summon: 1 }, desc: '召喚系の力と相性が良い' }
+    { id: 'hat_leaf', name: '木の葉ぼうし', slot: 'hat', rarity: 'common', stat: { hp: 3 }, desc: 'HPがほんの少し増える' },
+    { id: 'hat_spore', name: 'きのこベレー', slot: 'hat', rarity: 'rare', stat: { poison: 1 }, desc: '毒系の力と少し相性が良い' },
+    { id: 'hat_star', name: '星くずフード', slot: 'hat', rarity: 'epic', stat: { crit: 1 }, desc: '会心の気配が少し増える' },
+    { id: 'body_cotton', name: 'ふわふわ服', slot: 'body', rarity: 'common', stat: { hp: 5 }, desc: 'HPが少し増える' },
+    { id: 'body_shell', name: 'まもり貝の服', slot: 'body', rarity: 'rare', stat: { guard: 1 }, desc: '防御系の力と少し相性が良い' },
+    { id: 'body_moon', name: '月あかりケープ', slot: 'body', rarity: 'epic', stat: { aura: 1 }, desc: '領域系の力と相性が良い' },
+    { id: 'hand_seed', name: 'どんぐりグローブ', slot: 'hand', rarity: 'common', stat: { atk: 1 }, desc: '攻撃が少し強くなる' },
+    { id: 'hand_spark', name: 'びりびり手袋', slot: 'hand', rarity: 'rare', stat: { lightning: 1 }, desc: '雷連鎖と相性が良い' },
+    { id: 'hand_comet', name: 'ほしふる手袋', slot: 'hand', rarity: 'epic', stat: { auto: 1 }, desc: '自動攻撃と相性が良い' },
+    { id: 'foot_clover', name: 'クローバー靴', slot: 'foot', rarity: 'common', stat: { speed: 1 }, desc: '移動がほんの少し軽くなる' },
+    { id: 'foot_breeze', name: 'そよ風ブーツ', slot: 'foot', rarity: 'rare', stat: { dodge: 1 }, desc: '回避系の力と相性が良い' },
+    { id: 'foot_shadow', name: 'かげふみ靴', slot: 'foot', rarity: 'epic', stat: { speed: 2 }, desc: '逃げながら戦うビルド向き' },
+    { id: 'charm_cookie', name: 'おやつチャーム', slot: 'charm', rarity: 'common', stat: { belly: 1 }, desc: 'おなか周りの育成用' },
+    { id: 'charm_bomb', name: 'ぽふぽふおまもり', slot: 'charm', rarity: 'rare', stat: { boom: 1 }, desc: '爆発系の力と相性が良い' },
+    { id: 'charm_mogu', name: 'こもぐのおまもり', slot: 'charm', rarity: 'epic', stat: { summon: 1 }, desc: '召喚系の力と相性が良い' }
   ];
 
   const CHALLENGES = [
-    { id: 'daily_mutation', name: '今日の変異ダンジョン', icon: '🌀', type: 'daily', reward: 80, desc: '日替わりルールで腕試しする入口です。' },
-    { id: 'abyss_trial', name: '深淵チャレンジ', icon: '🕳️', type: 'once', reward: 300, desc: '高難易度の一度きり報酬に挑戦します。' },
-    { id: 'snack_walk', name: 'おやつ遠征', icon: '🍪', type: 'idle', reward: 40, desc: 'Moguを休ませながら小さな報酬を得ます。' }
+    { id: 'daily_mutation', name: '今日の変異ダンジョン', type: 'daily', reward: 80, desc: '日替わりルールで腕試しする入口です。' },
+    { id: 'abyss_trial', name: '深淵チャレンジ', type: 'once', reward: 300, desc: '高難易度の一度きり報酬に挑戦します。' },
+    { id: 'snack_walk', name: 'おやつ遠征', type: 'idle', reward: 40, desc: 'Moguを休ませながら小さな報酬を得ます。' }
   ];
+
+  function iconVisualForEquipment(itemOrId){
+    const id=typeof itemOrId==='string'?itemOrId:itemOrId?.id;
+    return window.MoguriaUIAssets?.get?.('equipment',id)||null;
+  }
+
+  function iconVisualForOuting(challengeOrId){
+    const id=typeof challengeOrId==='string'?challengeOrId:challengeOrId?.id;
+    return window.MoguriaUIAssets?.get?.('outings',id)||null;
+  }
+
+  function iconVisualForSlot(slot){
+    return window.MoguriaUIAssets?.get?.('slots',slot)||null;
+  }
 
   function metaFresh(){
     return {
@@ -70,8 +84,9 @@ window.MoguriaMeta = (() => {
   function addCoins(amount, reason = ''){
     const s = load();
     s.meta.coins = Math.max(0, Math.floor((s.meta.coins || 0) + Number(amount || 0)));
-    save(s);
-    return { coins: s.meta.coins, amount, reason };
+    const saved=save(s);
+    if(!saved.ok) return { ok:false, reason:'save-failed', message:'MoguCoinを保存できませんでした。空き容量を確認して、もう一度ためしてください。' };
+    return { ok:true, coins: s.meta.coins, amount, reason };
   }
 
   function runReward(run){
@@ -99,24 +114,26 @@ window.MoguriaMeta = (() => {
 
   function pull(){
     const s = load();
-    if ((s.meta.coins || 0) < GACHA_COST) return { ok: false, message: 'MoguCoinが足りません。冒険やおでかけで少しずつ集めよう。' };
+    if ((s.meta.coins || 0) < GACHA_COST) return { ok: false, message: 'MoguCoinが足りません。冒険で少しずつ集めよう。' };
     const rarity = pickRarity();
     const pool = EQUIPMENT.filter(e => e.rarity === rarity);
     const base = pool[Math.floor(Math.random() * pool.length)] || EQUIPMENT[0];
     const item = { ...base, uid: 'eq_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 7), level: 1, obtainedAt: Date.now() };
     s.meta.coins -= GACHA_COST;
     s.meta.inventory.unshift(item);
-    save(s);
+    const saved=save(s);
+    if(!saved.ok) return { ok:false, reason:'save-failed', message:'ガチャの結果を保存できませんでした。MoguCoinは消費されていません。' };
     return { ok: true, item, coins: s.meta.coins };
   }
 
   function equip(uid){
     const s = load();
     const item = s.meta.inventory.find(x => x.uid === uid);
-    if (!item) return null;
+    if (!item) return { ok:false, message:'装備が見つかりませんでした。' };
     s.meta.equipped[item.slot] = uid;
-    save(s);
-    return item;
+    const saved=save(s);
+    if(!saved.ok) return { ok:false, reason:'save-failed', message:'装備の変更を保存できませんでした。空き容量を確認して、もう一度ためしてください。' };
+    return { ok:true, item };
   }
 
   function upgradePreview(uid){
@@ -166,7 +183,8 @@ window.MoguriaMeta = (() => {
     if (s.meta.claimedChallenges[claimKey]) return { ok: false, message: 'この報酬は受け取り済みです' };
     s.meta.claimedChallenges[claimKey] = Date.now();
     s.meta.coins = (s.meta.coins || 0) + c.reward;
-    save(s);
+    const saved=save(s);
+    if(!saved.ok) return { ok:false, reason:'save-failed', message:'報酬を保存できませんでした。受け取り状態とMoguCoinは変更されていません。' };
     return { ok: true, challenge: c, amount: c.reward, coins: s.meta.coins };
   }
 
@@ -247,9 +265,14 @@ window.MoguriaMeta = (() => {
       }
 
       p.equipmentVisual = p.equipmentVisual || {};
-      p.equipmentVisual[item.slot] = item.icon;
+      p.equipmentVisual[item.slot] = item.id;
     }
   }
 
-  return { EQUIPMENT, CHALLENGES, SLOT_LABELS, RARITY_LABELS, GACHA_COST, normalize, load, save, addCoins, runReward, awardFromRun, pull, equip, upgradePreview, upgrade, claimChallenge, equipmentSummary, applyEquipmentToPlayer };
+  return {
+    EQUIPMENT, CHALLENGES, SLOT_LABELS, RARITY_LABELS, GACHA_COST,
+    iconVisualForEquipment, iconVisualForOuting, iconVisualForSlot,
+    normalize, load, save, addCoins, runReward, awardFromRun, pull, equip,
+    upgradePreview, upgrade, claimChallenge, equipmentSummary, applyEquipmentToPlayer
+  };
 })();
