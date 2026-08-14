@@ -341,14 +341,15 @@ function createHomeHarness(options = {}) {
   const elements = Object.fromEntries([
     'startBtn', 'snackBtn', 'bellyText', 'bellyBar', 'coinText', 'homeLine', 'homeNotice', 'homeMogu',
     'adventureLoading', 'adventureLoadingTitle', 'adventureLoadingCost', 'adventureLoadingStatus',
-    'adventureLoadingActions', 'adventureRetryBtn', 'adventureHomeBtn'
+    'adventureLoadingHint', 'adventureLoadingProgress', 'adventureLoadingProgressFill',
+    'adventureLoadingProgressPercent', 'adventureLoadingActions', 'adventureRetryBtn', 'adventureHomeBtn'
   ].map(id => [id, createElement(id)]));
   elements.adventureLoadingActions.hidden = true;
   const events = [];
   const initialRun = options.activeRun ? clone(options.activeRun) : null;
   let durableSave = v2Save({ belly: options.belly ?? 2, activeRun: initialRun });
   let directSaveCalls = 0;
-  const loading = { visible: false, showCalls: 0, hideCalls: 0, messages: [], restoreFocus: null, focusTarget: '' };
+  const loading = { visible: false, showCalls: 0, hideCalls: 0, messages: [], progress: [], restoreFocus: null, focusTarget: '' };
 
   const context = {
     console: { log() {}, warn() {}, error() {} },
@@ -389,16 +390,33 @@ function createHomeHarness(options = {}) {
     }
   };
   context.MoguriaBattleV3Loader = {
-    async prepare() {
+    async prepare(loaderOptions = {}) {
       events.push('prepare');
-      if (options.prepareGate) return options.prepareGate;
+      loaderOptions.onProgress?.({ percent:0, phase:'scripts' });
+      loaderOptions.onProgress?.({ percent:50, phase:'assets' });
+      if (options.prepareGate) {
+        const result = await options.prepareGate;
+        loaderOptions.onProgress?.({ percent:100, phase:'ready' });
+        return result;
+      }
+      loaderOptions.onProgress?.({ percent:100, phase:'ready' });
       return options.prepareFailure ? { ok: false, reason: 'battle-load-failed' } : { ok: true };
     }
   };
   context.MoguriaUI = {
     show(id) { events.push(`show:${id}`); },
-    showAdventureLoading() { loading.visible = true; loading.showCalls += 1; },
-    updateAdventureLoading(message) { loading.messages.push(message); },
+    showAdventureLoading(settings = {}) {
+      loading.visible = true;
+      loading.showCalls += 1;
+      if (settings.percent != null) loading.progress.push(Number(settings.percent));
+    },
+    updateAdventureLoading(messageOrOptions, percent) {
+      const settings = messageOrOptions && typeof messageOrOptions === 'object'
+        ? messageOrOptions
+        : { message:messageOrOptions, percent };
+      if (settings.message != null) loading.messages.push(String(settings.message));
+      if (settings.percent != null) loading.progress.push(Number(settings.percent));
+    },
     hideAdventureLoading(settings = {}) {
       loading.visible = false;
       loading.hideCalls += 1;
@@ -479,7 +497,7 @@ test('home does not consume belly or enter game when preparation or save fails',
     assert.equal(harness.loading.visible, true);
     assert.equal(harness.loading.hideCalls, 0);
     assert.equal(harness.elements.adventureLoading.dataset.state, 'error');
-    assert.equal(harness.elements.adventureLoading.attributes['aria-busy'], 'false');
+    assert.equal(harness.elements.adventureLoadingProgress.attributes['aria-busy'], 'false');
     assert.equal(harness.elements.adventureLoadingActions.hidden, false);
     assert.match(harness.elements.adventureLoadingStatus.textContent, /準備に失敗/);
     assert.equal(harness.elements.startBtn.disabled, false);
@@ -538,6 +556,8 @@ test('home keeps a blocking loading surface through prepare and renderer start a
   assert.equal(harness.loading.hideCalls, 1);
   assert.equal(harness.loading.restoreFocus, false);
   assert.equal(harness.elements.startBtn.disabled, false);
+  assert.deepEqual(harness.loading.progress, [2, 2, 2, 44, 86, 86, 86, 90, 95, 100]);
+  assert.equal(harness.loading.progress.every((value, index, values) => index === 0 || value >= values[index - 1]), true);
   assert.equal(harness.events.filter(event => event === 'prepare').length, 1);
   assert.equal(harness.events.filter(event => event === 'startRun').length, 1);
   assert.equal(harness.events.filter(event => event === 'game.start').length, 1);

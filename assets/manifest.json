@@ -1,5 +1,5 @@
 {
-  "version": "3.3.0-ui-consistency",
+  "version": "3.3.1-loading",
   "policy": {
     "criticalBudgetMB": 4,
     "initialAudio": "metadata-only",
@@ -16,6 +16,11 @@
       "id": "home_v2_mogu",
       "type": "image",
       "src": "assets/images/home-v2/mogu_home_idle.png"
+    },
+    {
+      "id": "home_v2_expedition_mogu",
+      "type": "image",
+      "src": "assets/images/home-v2/expedition_mogu.png"
     },
     {
       "id": "home_v2_star_companion",
@@ -137,7 +142,7 @@
         {
           "id": "battle_v3_atlas_manifest",
           "type": "json",
-          "src": "assets/images/battle-v3/atlas.json?v=20260812-battle-motion-2"
+          "src": "assets/images/battle-v3/atlas.json?v=20260814-motion-rig2-1"
         }
       ]
     },

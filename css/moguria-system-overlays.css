@@ -76,59 +76,37 @@
   padding-top: 13px;
 }
 
-.system-loading__orb {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 88px;
-  height: 88px;
-  margin: 0 auto 12px;
-  border: 1px solid rgba(255, 227, 150, .38);
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(255, 223, 125, .22), rgba(146, 101, 225, .13) 47%, transparent 70%);
-  box-shadow: 0 0 34px rgba(255, 218, 119, .2), inset 0 0 22px rgba(179, 137, 255, .13);
+.system-loading__mogu {
+  width: 142px;
+  height: 126px;
+  margin-bottom: 4px;
 }
 
-.system-loading__orb::before,
-.system-loading__orb::after,
-.system-loading__orb i {
-  content: "";
-  position: absolute;
-  border-radius: 50%;
+.system-loading__mogu .loading-mogu__image {
+  width: 108px;
+  height: 108px;
 }
 
-.system-loading__orb::before {
-  inset: 6px;
-  border: 1px solid rgba(205, 182, 255, .38);
-  border-top-color: #ffe9a6;
-  animation: systemOrbit 1.4s linear infinite;
+.system-loading__mogu .loading-mogu__shadow {
+  bottom: 7px;
+  width: 76px;
 }
 
-.system-loading__orb::after {
-  width: 6px;
-  height: 6px;
-  top: 8px;
-  left: 39px;
-  background: #fff0a8;
-  box-shadow: 0 0 12px 3px rgba(255, 226, 139, .48);
+.system-loading__mogu .loading-mogu__bubble {
+  top: 0;
+  right: -24px;
 }
 
-.system-loading__orb i {
-  inset: 16px;
-  border: 1px dashed rgba(184, 151, 244, .46);
-  animation: systemOrbit 2.8s linear infinite reverse;
-}
-
-.system-loading__orb span {
-  color: #fff0a4;
-  font-size: 33px;
-  text-shadow: 0 0 17px rgba(255, 229, 151, .82);
-  animation: systemStarPulse 1.6s ease-in-out infinite;
+.system-loading[data-state="error"] .loading-mogu__image,
+.system-loading[data-state="error"] .loading-mogu__shadow,
+.system-loading[data-state="error"] .loading-mogu__sparkles::before,
+.system-loading[data-state="error"] .loading-mogu__sparkles::after {
+  animation: none;
 }
 
 .system-loading__status {
-  min-height: 42px;
-  margin: 8px 0 2px;
+  min-height: 22px;
+  margin: 7px 0 2px;
   color: #f0e2d0;
   font-size: 13px;
   font-weight: 800;
@@ -148,6 +126,37 @@
   font-size: 10px;
   font-weight: 900;
   letter-spacing: .035em;
+}
+
+.system-loading__progress {
+  position: relative;
+  width: 100%;
+  height: 12px;
+  margin-top: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 226, 154, .44);
+  border-radius: 999px;
+  background: rgba(5, 6, 24, .82);
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, .48);
+}
+
+.system-loading__progress i {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #9ddfff, #d7b7ff 48%, #ffe28f);
+  box-shadow: 0 0 12px rgba(204, 191, 255, .62);
+  transition: width .18s ease-out;
+}
+
+.system-loading__percent {
+  display: block;
+  margin-top: 7px;
+  color: #ffe5a6;
+  font-size: 15px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
 }
 
 .system-loading__hint {
@@ -233,28 +242,23 @@
   outline-offset: 3px;
 }
 
-@keyframes systemOrbit {
-  to { transform: rotate(360deg); }
-}
-
-@keyframes systemStarPulse {
-  0%, 100% { opacity: .72; transform: scale(.92); }
-  50% { opacity: 1; transform: scale(1.08); }
-}
-
 @media (max-height: 620px) {
   .system-dialog { padding-top: 11px; padding-bottom: 11px; }
-  .system-loading__orb { width: 70px; height: 70px; margin-bottom: 8px; }
-  .system-loading__orb::before { inset: 5px; }
-  .system-loading__orb::after { top: 7px; left: 31px; }
-  .system-loading__orb i { inset: 13px; }
-  .system-loading__status { margin-top: 9px; }
+  .system-loading__mogu { width: 128px; height: 104px; margin-bottom: 1px; }
+  .system-loading__mogu .loading-mogu__image { width: 92px; height: 92px; }
+  .system-loading__mogu .loading-mogu__shadow { bottom: 5px; width: 68px; }
+  .system-loading__mogu .loading-mogu__bubble { right: -20px; font-size: 11px; }
+  .system-loading__cost { margin-top: 7px; }
+  .system-loading__progress { margin-top: 8px; }
+  .system-loading__status { margin-top: 5px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .system-loading__orb::before,
-  .system-loading__orb i,
-  .system-loading__orb span {
+  .system-loading .loading-mogu__image,
+  .system-loading .loading-mogu__shadow,
+  .system-loading .loading-mogu__sparkles::before,
+  .system-loading .loading-mogu__sparkles::after {
     animation: none;
   }
+  .system-loading__progress i { transition: none; }
 }

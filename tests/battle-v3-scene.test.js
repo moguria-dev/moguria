@@ -358,6 +358,63 @@ test('hidden preload falls back to the constrained app size', () => {
   harness.context.MoguriaBattleV3.stop({ destroy: true, restoreLegacy: true });
 });
 
+test('Phaser loader progress, file completion, and completion bridge to boot progress monotonically', () => {
+  const progress = [];
+  const harness = createHarness();
+  harness.context.MoguriaBattleV3.boot({
+    parent:harness.parent,
+    onProgress:value => progress.push({ ...value })
+  });
+  const scene = harness.makeScene();
+  const listeners = new Map();
+  const queued = [];
+  scene.load = {
+    on(type, listener) {
+      if(!listeners.has(type)) listeners.set(type, []);
+      listeners.get(type).push(listener);
+    },
+    json(key, src) { queued.push({ type:'json', key, src }); },
+    image(key, src) { queued.push({ type:'image', key, src }); },
+    spritesheet(key, src, frame) { queued.push({ type:'spritesheet', key, src, frame }); }
+  };
+  scene.preload();
+  assert.equal(queued.length, 9);
+  assert.match(queued.find(item => item.type === 'json').src, /atlas\.json\?v=20260814-motion-rig2-1$/);
+
+  const emit = (type, ...args) => {
+    for(const listener of listeners.get(type) || []) listener(...args);
+  };
+  emit('progress', .4);
+  emit('filecomplete', 'moguria-v3-bg-far', 'image');
+  emit('progress', .2);
+  emit('filecomplete', 'moguria-v3-bg-mid', 'image');
+  emit('complete');
+
+  assert.ok(progress.length >= 5);
+  assert.ok(progress.every(value => value.phase === 'assets'));
+  assert.ok(progress.every((value, index) => index === 0 || value.progress >= progress[index - 1].progress));
+  assert.equal(progress.at(-1).progress, 1);
+  assert.equal(progress.at(-1).completed, 9);
+  assert.equal(progress.at(-1).total, 9);
+  assert.ok(progress.some(value => value.assetKey === 'moguria-v3-bg-far' && value.status === 'loaded'));
+
+  harness.context.MoguriaBattleV3.stop({ destroy: true, restoreLegacy: true });
+});
+
+test('a prepared but not started renderer hides its scene and sleeps the Phaser loop', async () => {
+  const harness = createHarness();
+  const booted = harness.context.MoguriaBattleV3.boot({ parent:harness.parent });
+  harness.completeBoot();
+  await booted;
+
+  assert.equal(harness.parent.firstChild.style.display, 'none');
+  assert.ok(harness.lifecycleCalls.includes('scene.visible:false'));
+  assert.ok(harness.lifecycleCalls.includes('scene.pause'));
+  assert.ok(harness.lifecycleCalls.includes('loop.sleep'));
+
+  harness.context.MoguriaBattleV3.stop({ destroy: true, restoreLegacy: true });
+});
+
 test('visible battle uses the same PC and mobile dimensions as its DOM HUD', () => {
   for (const dimensions of [
     { parentWidth: 1363, parentHeight: 936, appWidth: 820, appHeight: 936 },

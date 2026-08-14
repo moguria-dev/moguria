@@ -86,6 +86,24 @@
       { "state": "hurt", "composition": ["recover", "idle"] }
     ]
   },
+  "uiAnimations": {
+    "loadingMoguWait": {
+      "assetId": "home_v2_expedition_mogu",
+      "implementation": "css-keyframes",
+      "surfaces": [
+        "startup-loading",
+        "adventure-loading"
+      ],
+      "duration": "2.2s",
+      "easing": "cubic-bezier(.45,0,.34,1)",
+      "iterationCount": "infinite",
+      "transformOrigin": "50% 82%",
+      "reducedMotion": {
+        "animation": "none",
+        "preserveProgressFeedback": true
+      }
+    }
+  },
   "atlases": {
     "mogu": {
       "animationId": "battle-v3.mogu",

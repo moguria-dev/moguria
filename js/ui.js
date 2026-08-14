@@ -4,6 +4,8 @@ window.MoguriaUI = (() => {
   let noticeTimer = 0;
   let confirmRequest = null;
   let loadingFocused = null;
+  let loadingProgress = 0;
+  let loadingWaitTimers = [];
   let blockedAppState = null;
 
   const ENTITY = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
@@ -93,6 +95,54 @@ window.MoguriaUI = (() => {
     if (element) element.textContent = String(value ?? '');
   }
 
+  function clearAdventureWaitTimers(){
+    for (const timer of loadingWaitTimers) window.clearTimeout?.(timer);
+    loadingWaitTimers = [];
+  }
+
+  function adventureLoadingIsWaiting(){
+    const loading = document.getElementById('adventureLoading');
+    return Boolean(loading
+      && !loading.classList.contains('hidden')
+      && loading.dataset.state !== 'error'
+      && loadingProgress < 100);
+  }
+
+  function scheduleAdventureWaitHints(){
+    clearAdventureWaitTimers();
+    loadingWaitTimers = [
+      window.setTimeout?.(() => {
+        if (!adventureLoadingIsWaiting()) return;
+        setDialogText('adventureLoadingStatus', '少し時間がかかっているよ。準備は続いています…');
+      }, 8000),
+      window.setTimeout?.(() => {
+        if (!adventureLoadingIsWaiting()) return;
+        setDialogText('adventureLoadingHint', '通信がゆっくりなときは、もう少しだけ待ってね');
+      }, 12000)
+    ].filter(timer => timer != null);
+  }
+
+  function setAdventureLoadingProgress(value, { reset = false, busy } = {}){
+    const numeric = Number(value);
+    if (Number.isFinite(numeric)) {
+      const bounded = Math.max(0, Math.min(100, numeric));
+      loadingProgress = reset ? bounded : Math.max(loadingProgress, bounded);
+    } else if (reset) loadingProgress = 0;
+
+    const rounded = Math.round(loadingProgress);
+    const progress = document.getElementById('adventureLoadingProgress');
+    const fill = document.getElementById('adventureLoadingProgressFill');
+    const percent = document.getElementById('adventureLoadingProgressPercent');
+    if (fill) fill.style.width = `${loadingProgress}%`;
+    if (percent) percent.textContent = `${rounded}%`;
+    if (progress) {
+      progress.setAttribute('aria-valuenow', String(rounded));
+      progress.setAttribute('aria-valuetext', `${rounded}% 準備完了`);
+      if (busy != null) progress.setAttribute('aria-busy', busy ? 'true' : 'false');
+    }
+    return loadingProgress;
+  }
+
   function closeConfirmDialog(accepted){
     const request = confirmRequest;
     if (!request) return;
@@ -134,26 +184,40 @@ window.MoguriaUI = (() => {
     const card = document.getElementById('adventureLoadingCard');
     if (!loading) return;
     if (loading.classList.contains('hidden')) loadingFocused = rememberFocusedElement();
+    delete loading.dataset.state;
     setDialogText('adventureLoadingTitle', options.title || (options.resume ? '冒険を再開中' : '冒険の準備中'));
     setDialogText('adventureLoadingCost', options.resume ? '続きから再開・おなか消費なし' : '新しい冒険・おなか 1消費');
     setDialogText('adventureLoadingStatus', options.message || (options.resume
       ? '続きの冒険を読み込んでいます…'
       : '戦闘データを読み込んでいます…'));
-    loading.setAttribute('aria-busy', 'true');
+    setDialogText('adventureLoadingHint', options.hint || 'そのまま少し待ってね');
+    setAdventureLoadingProgress(options.percent ?? 2, { reset:true, busy:true });
     loading.classList.remove('hidden');
     blockApplication();
+    scheduleAdventureWaitHints();
     requestAnimationFrame(() => card?.focus?.());
   }
 
-  function updateAdventureLoading(message){
-    setDialogText('adventureLoadingStatus', message);
+  function updateAdventureLoading(messageOrOptions, percent){
+    const options = messageOrOptions && typeof messageOrOptions === 'object'
+      ? messageOrOptions
+      : { message:messageOrOptions, percent };
+    if (options.message != null) setDialogText('adventureLoadingStatus', options.message);
+    if (options.hint != null) setDialogText('adventureLoadingHint', options.hint);
+    const nextPercent = options.percent ?? options.progress;
+    if (nextPercent != null || options.busy != null) {
+      setAdventureLoadingProgress(nextPercent, { busy:options.busy });
+    }
+    if (options.stopWaiting || options.busy === false || loadingProgress >= 100) clearAdventureWaitTimers();
+    return loadingProgress;
   }
 
   function hideAdventureLoading(options = {}){
     const loading = document.getElementById('adventureLoading');
+    clearAdventureWaitTimers();
+    setAdventureLoadingProgress(loadingProgress, { busy:false });
     if (loading) {
       loading.classList.add('hidden');
-      loading.setAttribute('aria-busy', 'false');
     }
     releaseApplicationIfClear();
     const restore = loadingFocused;

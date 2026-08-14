@@ -54,17 +54,19 @@ test('runner contract covers both mobile viewports and every approved screen', a
     [[390, 844, 3], [375, 667, 2]]
   );
   assert.deepStrictEqual(runner.SCREEN_IDS, [
-    'home', 'dex', 'logs', 'equipment', 'gacha', 'outing',
+    'startup-loading', 'home', 'dex', 'logs', 'equipment', 'gacha', 'outing', 'adventure-loading',
     'battle-hud', 'battle-vfx-lv1', 'battle-vfx-lv3', 'battle-vfx-lv5', 'battle-vfx-lv5-reduced', 'battle-vfx-lv5-low',
     'skill-choice', 'artifact-choice', 'pause', 'result'
   ]);
   assert.deepStrictEqual(runner.VISUAL_SCROLL_ROOTS, {
+    'startup-loading': [],
     home: [],
     dex: ['#overlayBody'],
     logs: ['#overlayBody'],
     equipment: ['#overlayBody'],
     gacha: ['#overlayBody'],
     outing: ['#overlayBody'],
+    'adventure-loading': [],
     'battle-hud': [],
     'battle-vfx-lv1': [],
     'battle-vfx-lv3': [],
@@ -78,7 +80,7 @@ test('runner contract covers both mobile viewports and every approved screen', a
   });
   assert.deepStrictEqual(runner.GLOBAL_VISUAL_SCROLL_ROOTS, ['html', 'body', '#app', '#overlay']);
   assert.deepStrictEqual(runner.VIEWPORT_SURFACE_SCREENS, [
-    'home', 'dex', 'logs', 'equipment', 'gacha', 'outing',
+    'startup-loading', 'home', 'dex', 'logs', 'equipment', 'gacha', 'outing', 'adventure-loading',
     'battle-hud', 'battle-vfx-lv1', 'battle-vfx-lv3', 'battle-vfx-lv5', 'battle-vfx-lv5-reduced', 'battle-vfx-lv5-low', 'result'
   ]);
   assert.deepStrictEqual(runner.TRANSIENT_ABSENCE, {
@@ -99,10 +101,49 @@ test('runner contract covers both mobile viewports and every approved screen', a
     minStandardDeviation: 8,
     minColorBuckets: 80
   });
+  const runtime = json('assets/manifest.json');
+  const battlePackUrls = runtime.packs.find((pack) => pack.id === 'battle-v3').assets.map((asset) => asset.src);
+  assert.deepStrictEqual(runner.SPECULATIVE_BATTLE_PACK_URLS, battlePackUrls);
+  const baseUrl = 'http://127.0.0.1:4173/';
+  for (const url of battlePackUrls) {
+    assert.equal(runner.isExpectedSpeculativeWarmAbort({
+      method: 'GET',
+      resourceType: 'fetch',
+      isNavigationRequest: false,
+      headers: { 'x-moguria-purpose': 'warm-pack:battle-v3' },
+      url: new URL(url, baseUrl).href,
+      errorText: 'net::ERR_ABORTED'
+    }, baseUrl), true, `expected warm abort must be ignored for ${url}`);
+  }
+  const exactWarmAbort = {
+    method: 'GET',
+    resourceType: 'fetch',
+    isNavigationRequest: false,
+    headers: { 'x-moguria-purpose': 'warm-pack:battle-v3' },
+    url: new URL(battlePackUrls[0], baseUrl).href,
+    errorText: 'net::ERR_ABORTED'
+  };
+  for (const [label, failure] of [
+    ['real network failure', { ...exactWarmAbort, errorText: 'net::ERR_CONNECTION_RESET' }],
+    ['foreground image request', { ...exactWarmAbort, resourceType: 'image' }],
+    ['unmarked fetch', { ...exactWarmAbort, headers: {} }],
+    ['different warm purpose', { ...exactWarmAbort, headers: { 'x-moguria-purpose': 'warm-pack:other' } }],
+    ['non-GET request', { ...exactWarmAbort, method: 'POST' }],
+    ['navigation', { ...exactWarmAbort, isNavigationRequest: true }],
+    ['wrong cache token', { ...exactWarmAbort, url: exactWarmAbort.url.replace(/v=[^&]+/, 'v=stale') }],
+    ['non-pack URL', { ...exactWarmAbort, url: new URL('assets/images/home-v2/expedition_mogu.png', baseUrl).href }],
+    ['different origin', { ...exactWarmAbort, url: new URL(battlePackUrls[0], 'https://example.invalid/').href }],
+    ['invalid URL', { ...exactWarmAbort, url: 'not a URL' }]
+  ]) {
+    assert.equal(runner.isExpectedSpeculativeWarmAbort(failure, baseUrl), false, `${label} must remain a QA failure`);
+  }
   const source = read('scripts/run-browser-qa.mjs');
   for (const contract of [
     'ja-JP', 'Asia/Tokyo', 'hasTouch: true', 'isMobile: true',
     'consoleErrors', 'pageErrors', 'requestFailures', 'responseErrors',
+    'ignoredDiagnostics', 'speculativeWarmAborts', 'isExpectedSpeculativeWarmAbort(failure, baseUrl)',
+    "failure.resourceType !== 'fetch'", "failure.errorText !== 'net::ERR_ABORTED'",
+    "failure.headers?.['x-moguria-purpose'] !== 'warm-pack:battle-v3'",
     'naturalWidth', 'rootOverflow', '43.5', 'nearBlank', 'qa-summary.json', 'qa-summary.md',
     'visual scroll roots did not return to origin', 'full-viewport surface is displaced',
     'required content overflows its control', 'webglcontextlost',
@@ -112,7 +153,32 @@ test('runner contract covers both mobile viewports and every approved screen', a
     "Mode: ${summary.headed ? 'headed' : 'headless'}",
     'preProbeRenderer: await battleRendererDiagnostics(page)',
     'result.passed = result.backingStoreReady',
-    'battle renderer canvas backing store is'
+    'battle renderer canvas backing store is',
+    "prepareLoadingFixture(page, 'startup', 50)",
+    "prepareLoadingFixture(page, 'adventure', 47)",
+    '/assets/images/home-v2/expedition_mogu.png',
+    'loading Mogu is not decoded',
+    'loading Mogu is not visible',
+    'loading Mogu decorative semantics differ',
+    'loading bubble copy is missing',
+    'loading phase status is empty',
+    'loading progress semantics differ',
+    'loading live-region semantics differ',
+    'loading normal-motion contract differs',
+    'loading motion keyframes do not change transform',
+    'loading reduced-motion contract differs',
+    "await page.emulateMedia({ reducedMotion:'no-preference' })",
+    "await page.emulateMedia({ reducedMotion:'reduce' })",
+    "item.animationName === 'loadingMoguWait'",
+    "image.style.setProperty('animation-duration', '2.2s', 'important')",
+    'animation.currentTime = 0',
+    'animation.currentTime = 1100',
+    "animationIterationCount !== 'infinite'",
+    'Math.abs(origin[0] - 50) > 1',
+    'Math.abs(origin[1] - 82) > 1',
+    "matchMedia('(prefers-reduced-motion: reduce)').matches",
+    'insideBusyProgress: statusParentProgress',
+    'insideBusyRegion: statusBusyAncestor'
   ]) assert.ok(source.includes(contract), `runner must preserve ${contract}`);
   for (const fixture of [
     "['poison_seed', 'spark_pop', 'thunder_gum', 'mogu_field']",
@@ -121,6 +187,7 @@ test('runner contract covers both mobile viewports and every approved screen', a
     "sampleFrameTimings", "averageDeltaMs", "state.mode = 'pause'"
   ]) assert.ok(source.includes(fixture), `runner must preserve skill VFX evidence fixture ${fixture}`);
   assert.match(source, /fit: \['\[data-dex-tab\]'\]/);
+  assert.match(source, /'cache-control': 'no-store'/);
   const probeSource = source.slice(
     source.indexOf('async function verifyBattleCanvas'),
     source.indexOf('async function auditDom')
