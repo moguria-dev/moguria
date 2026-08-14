@@ -15,6 +15,26 @@ export const SCREEN_IDS = Object.freeze([
   'home', 'dex', 'logs', 'equipment', 'gacha', 'outing',
   'battle-hud', 'skill-choice', 'artifact-choice', 'pause', 'result'
 ]);
+export const VISUAL_SCROLL_ROOTS = Object.freeze({
+  home: Object.freeze([]),
+  dex: Object.freeze(['#overlayBody']),
+  logs: Object.freeze(['#overlayBody']),
+  equipment: Object.freeze(['#overlayBody']),
+  gacha: Object.freeze(['#overlayBody']),
+  outing: Object.freeze(['#overlayBody']),
+  'battle-hud': Object.freeze([]),
+  'skill-choice': Object.freeze(['#levelOwnedSkills', '#skillChoices']),
+  'artifact-choice': Object.freeze(['#artifactOwnedSkills', '#artifactChoices']),
+  pause: Object.freeze(['#pauseModal .pause-power-panels']),
+  result: Object.freeze(['#result'])
+});
+export const GLOBAL_VISUAL_SCROLL_ROOTS = Object.freeze(['html', 'body', '#app']);
+export const VIEWPORT_SURFACE_SCREENS = Object.freeze([
+  'home', 'dex', 'logs', 'equipment', 'gacha', 'outing', 'battle-hud', 'result'
+]);
+export const TRANSIENT_ABSENCE = Object.freeze({
+  'battle-hud': Object.freeze(['#game.active > .big-cue', '#game.active > .wave-toast'])
+});
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DEFAULT_OUTPUT = path.join(ROOT, 'browser-qa-output');
@@ -458,10 +478,24 @@ const SCREEN_CONTRACTS = Object.freeze({
   }
 });
 
-async function settleVisuals(page, surfaceSelector) {
-  await page.evaluate(async (selector) => {
+async function waitForTransientAbsence(page, selectors = []) {
+  if (!selectors.length) return;
+  await page.waitForFunction((targets) => (
+    targets.every((selector) => !document.querySelector(selector))
+  ), selectors, { timeout: 7000 });
+}
+
+async function settleVisuals(page, surfaceSelector, scrollRootSelectors = []) {
+  const scrollState = await page.evaluate(async ({ selector, rootSelectors, globalRootSelectors }) => {
     if (document.fonts?.ready) await document.fonts.ready;
     const surface = document.querySelector(selector);
+    if (!surface) throw new Error(`visual surface is missing: ${selector}`);
+    const allRootSelectors = [...globalRootSelectors, ...rootSelectors];
+    const scrollRoots = allRootSelectors.map((rootSelector) => {
+      const root = document.querySelector(rootSelector);
+      if (!root) throw new Error(`visual scroll root is missing: ${rootSelector}`);
+      return { root, selector: rootSelector };
+    });
     const surfaceImages = surface ? [...surface.querySelectorAll('img')] : [];
     for (const image of surfaceImages) {
       if (!image.getClientRects().length) continue;
@@ -476,16 +510,43 @@ async function settleVisuals(page, surfaceSelector) {
         await image.decode().catch(() => {});
       }
     }
-    document.getElementById('overlayBody')?.scrollTo?.({ top: 0, behavior: 'auto' });
-    document.querySelectorAll('.modal-card, .meta-shell__body').forEach((element) => { element.scrollTop = 0; });
-    window.scrollTo(0, 0);
+
+    const resetScroll = () => {
+      for (const { root } of scrollRoots) {
+        root.scrollTop = 0;
+        root.scrollLeft = 0;
+      }
+      const documentRoot = document.scrollingElement;
+      if (documentRoot) {
+        documentRoot.scrollTop = 0;
+        documentRoot.scrollLeft = 0;
+      }
+      window.scrollTo(0, 0);
+    };
+    resetScroll();
     await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-  }, surfaceSelector);
+    resetScroll();
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    return scrollRoots.map(({ root, selector: rootSelector }) => ({
+      selector: rootSelector,
+      top: Number(root.scrollTop.toFixed(1)),
+      left: Number(root.scrollLeft.toFixed(1)),
+      scrollHeight: root.scrollHeight,
+      clientHeight: root.clientHeight
+    }));
+  }, {
+    selector: surfaceSelector,
+    rootSelectors: scrollRootSelectors,
+    globalRootSelectors: GLOBAL_VISUAL_SCROLL_ROOTS
+  });
+  const unrestored = scrollState.filter(({ top, left }) => Math.abs(top) > 1 || Math.abs(left) > 1);
+  if (unrestored.length) throw new Error(`visual scroll roots did not return to origin: ${JSON.stringify(unrestored)}`);
   await page.waitForTimeout(100);
+  return scrollState;
 }
 
-async function auditDom(page, contract, viewport) {
-  return page.evaluate(({ surfaceSelector, touchSelectors, width, height }) => {
+async function auditDom(page, contract, viewport, screenId) {
+  return page.evaluate(({ surfaceSelector, touchSelectors, width, height, viewportSurfaceExpected }) => {
     const visible = (element) => {
       if (!element) return false;
       const rect = element.getBoundingClientRect();
@@ -499,6 +560,17 @@ async function auditDom(page, contract, viewport) {
     const surfaceRect = surface?.getBoundingClientRect();
     if (surfaceRect && (surfaceRect.left < -1 || surfaceRect.right > width + 1)) {
       failures.push(`active surface overflows horizontally: ${surfaceRect.left.toFixed(1)}..${surfaceRect.right.toFixed(1)}`);
+    }
+    if (surfaceRect && viewportSurfaceExpected) {
+      const viewportDelta = Math.max(
+        Math.abs(surfaceRect.x), Math.abs(surfaceRect.y),
+        Math.abs(surfaceRect.width - width), Math.abs(surfaceRect.height - height)
+      );
+      if (viewportDelta > 1) {
+        failures.push(`full-viewport surface is displaced by ${viewportDelta.toFixed(1)}px: `
+          + `${surfaceRect.x.toFixed(1)},${surfaceRect.y.toFixed(1)} `
+          + `${surfaceRect.width.toFixed(1)}x${surfaceRect.height.toFixed(1)}`);
+      }
     }
     const rootOverflow = Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - document.documentElement.clientWidth;
     if (rootOverflow > 1) failures.push(`document horizontal overflow is ${rootOverflow}px`);
@@ -578,7 +650,8 @@ async function auditDom(page, contract, viewport) {
     surfaceSelector: contract.surface,
     touchSelectors: contract.touch,
     width: viewport.width,
-    height: viewport.height
+    height: viewport.height,
+    viewportSurfaceExpected: VIEWPORT_SURFACE_SCREENS.includes(screenId)
   });
 }
 
@@ -636,8 +709,9 @@ async function runScreen(browser, baseUrl, browserName, viewport, screenId, outp
     await page.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 45000 });
     await waitForStablePage(page);
     await contract.setup(page);
-    await settleVisuals(page, contract.surface);
-    record.dom = await auditDom(page, contract, viewport);
+    await waitForTransientAbsence(page, TRANSIENT_ABSENCE[screenId]);
+    record.scrollRoots = await settleVisuals(page, contract.surface, VISUAL_SCROLL_ROOTS[screenId]);
+    record.dom = await auditDom(page, contract, viewport, screenId);
     const screenshot = await page.screenshot({ path: screenshotPath, fullPage: false, animations: 'disabled' });
     record.visual = pngVisualStats(screenshot);
     if (['logs', 'equipment', 'gacha', 'outing'].includes(screenId)) {

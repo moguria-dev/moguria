@@ -56,11 +56,32 @@ test('runner contract covers both mobile viewports and every approved screen', a
     'home', 'dex', 'logs', 'equipment', 'gacha', 'outing',
     'battle-hud', 'skill-choice', 'artifact-choice', 'pause', 'result'
   ]);
+  assert.deepStrictEqual(runner.VISUAL_SCROLL_ROOTS, {
+    home: [],
+    dex: ['#overlayBody'],
+    logs: ['#overlayBody'],
+    equipment: ['#overlayBody'],
+    gacha: ['#overlayBody'],
+    outing: ['#overlayBody'],
+    'battle-hud': [],
+    'skill-choice': ['#levelOwnedSkills', '#skillChoices'],
+    'artifact-choice': ['#artifactOwnedSkills', '#artifactChoices'],
+    pause: ['#pauseModal .pause-power-panels'],
+    result: ['#result']
+  });
+  assert.deepStrictEqual(runner.GLOBAL_VISUAL_SCROLL_ROOTS, ['html', 'body', '#app']);
+  assert.deepStrictEqual(runner.VIEWPORT_SURFACE_SCREENS, [
+    'home', 'dex', 'logs', 'equipment', 'gacha', 'outing', 'battle-hud', 'result'
+  ]);
+  assert.deepStrictEqual(runner.TRANSIENT_ABSENCE, {
+    'battle-hud': ['#game.active > .big-cue', '#game.active > .wave-toast']
+  });
   const source = read('scripts/run-browser-qa.mjs');
   for (const contract of [
     'ja-JP', 'Asia/Tokyo', 'hasTouch: true', 'isMobile: true',
     'consoleErrors', 'pageErrors', 'requestFailures', 'responseErrors',
-    'naturalWidth', 'rootOverflow', '43.5', 'nearBlank', 'qa-summary.json', 'qa-summary.md'
+    'naturalWidth', 'rootOverflow', '43.5', 'nearBlank', 'qa-summary.json', 'qa-summary.md',
+    'visual scroll roots did not return to origin', 'full-viewport surface is displaced'
   ]) assert.ok(source.includes(contract), `runner must preserve ${contract}`);
 });
 
