@@ -11,9 +11,10 @@ const LOADER_SOURCE = fs.readFileSync(path.join(ROOT, 'js/battle-v3-loader.js'),
 const HTML_SOURCE = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 const ENGINE_SRC = 'vendor/phaser/phaser-arcade-physics-4.2.1.min.js';
 const MOTION_VERSION = '20260814-motion-rig2-1';
+const VFX_VERSION = '20260814-skill-vfx-1';
 const RIG_SRC = `js/mogu-rig.js?v=${MOTION_VERSION}`;
-const SCENE_SRC = `js/battle-v3-scene.js?v=${MOTION_VERSION}`;
-const LOADER_SRC = `js/battle-v3-loader.js?v=${MOTION_VERSION}`;
+const SCENE_SRC = `js/battle-v3-scene.js?v=${VFX_VERSION}`;
+const LOADER_SRC = `js/battle-v3-loader.js?v=${VFX_VERSION}`;
 
 function createHarness(overrides = {}) {
   let nextTimerId = 0;
@@ -154,8 +155,9 @@ async function flushMicrotasks() {
   for (let index = 0; index < 8; index += 1) await Promise.resolve();
 }
 
-test('entrypoint, rig, and scene share the Motion Rig 2 cache version', () => {
+test('entrypoint keeps the Motion Rig 2 atlas token while VFX scripts share their cache version', () => {
   assert.ok(HTML_SOURCE.includes(`src="${LOADER_SRC}"`));
+  assert.ok(HTML_SOURCE.includes(`src="js/game.js?v=${VFX_VERSION}"`));
   assert.ok(LOADER_SOURCE.includes(`const RIG_SRC = '${RIG_SRC}'`));
   assert.ok(LOADER_SOURCE.includes(`const SCENE_SRC = '${SCENE_SRC}'`));
 });

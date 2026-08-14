@@ -13,7 +13,8 @@ export const VIEWPORTS = Object.freeze([
 ]);
 export const SCREEN_IDS = Object.freeze([
   'home', 'dex', 'logs', 'equipment', 'gacha', 'outing',
-  'battle-hud', 'skill-choice', 'artifact-choice', 'pause', 'result'
+  'battle-hud', 'battle-vfx-lv1', 'battle-vfx-lv3', 'battle-vfx-lv5', 'battle-vfx-lv5-reduced', 'battle-vfx-lv5-low',
+  'skill-choice', 'artifact-choice', 'pause', 'result'
 ]);
 export const VISUAL_SCROLL_ROOTS = Object.freeze({
   home: Object.freeze([]),
@@ -23,6 +24,11 @@ export const VISUAL_SCROLL_ROOTS = Object.freeze({
   gacha: Object.freeze(['#overlayBody']),
   outing: Object.freeze(['#overlayBody']),
   'battle-hud': Object.freeze([]),
+  'battle-vfx-lv1': Object.freeze([]),
+  'battle-vfx-lv3': Object.freeze([]),
+  'battle-vfx-lv5': Object.freeze([]),
+  'battle-vfx-lv5-reduced': Object.freeze([]),
+  'battle-vfx-lv5-low': Object.freeze([]),
   'skill-choice': Object.freeze(['#levelOwnedSkills', '#skillChoices']),
   'artifact-choice': Object.freeze(['#artifactOwnedSkills', '#artifactChoices']),
   pause: Object.freeze(['#pauseModal .pause-power-panels']),
@@ -30,10 +36,16 @@ export const VISUAL_SCROLL_ROOTS = Object.freeze({
 });
 export const GLOBAL_VISUAL_SCROLL_ROOTS = Object.freeze(['html', 'body', '#app', '#overlay']);
 export const VIEWPORT_SURFACE_SCREENS = Object.freeze([
-  'home', 'dex', 'logs', 'equipment', 'gacha', 'outing', 'battle-hud', 'result'
+  'home', 'dex', 'logs', 'equipment', 'gacha', 'outing',
+  'battle-hud', 'battle-vfx-lv1', 'battle-vfx-lv3', 'battle-vfx-lv5', 'battle-vfx-lv5-reduced', 'battle-vfx-lv5-low', 'result'
 ]);
 export const TRANSIENT_ABSENCE = Object.freeze({
-  'battle-hud': Object.freeze(['#game.active > .big-cue', '#game.active > .wave-toast'])
+  'battle-hud': Object.freeze(['#game.active > .big-cue', '#game.active > .wave-toast']),
+  'battle-vfx-lv1': Object.freeze(['#game.active > .big-cue', '#game.active > .wave-toast']),
+  'battle-vfx-lv3': Object.freeze(['#game.active > .big-cue', '#game.active > .wave-toast']),
+  'battle-vfx-lv5': Object.freeze(['#game.active > .big-cue', '#game.active > .wave-toast']),
+  'battle-vfx-lv5-reduced': Object.freeze(['#game.active > .big-cue', '#game.active > .wave-toast']),
+  'battle-vfx-lv5-low': Object.freeze(['#game.active > .big-cue', '#game.active > .wave-toast'])
 });
 export const BATTLE_CANVAS_PROBE = Object.freeze({
   xRatio: 0.1,
@@ -370,6 +382,131 @@ async function prepareBattle(page, kind) {
   return health;
 }
 
+async function prepareSkillVfx(page, level, { reducedMotion = false, quality = 'high' } = {}) {
+  await page.emulateMedia({ reducedMotion:reducedMotion ? 'reduce' : 'no-preference' });
+  const health = await prepareBattle(page, `battle-vfx-lv${level}`);
+  if (health.mode !== 'run') throw new Error(`skill VFX fixture started in ${health.mode}`);
+  const fixture = await page.evaluate(async ({ skillLevel, forcedQuality, motionPreference }) => {
+    const state = window.MoguriaGame.getState();
+    const renderer = window.MoguriaBattleV3;
+    const ids = ['poison_seed', 'spark_pop', 'thunder_gum', 'mogu_field'];
+    state.p.skillLevels = { ...state.p.skillLevels, ...Object.fromEntries(ids.map(id => [id, skillLevel])) };
+    state.p.auraDamage = 5 * skillLevel;
+    state.p.x = 0;
+    state.p.y = 0;
+    state.enemies = [];
+    state.bullets = [];
+    state.enemyBullets = [];
+    state.drops = [];
+    state.particles = [];
+    state.shake = 0;
+    state.hitStop = 0;
+    const linkCount = skillLevel + 2;
+    const points = Array.from({ length:linkCount + 1 }, (_, index) => ({
+      x:-120 + index * 240 / linkCount,
+      y:102 + (index % 2 ? -20 : 10)
+    }));
+    const fx = [
+      { id:`qa-poison-${skillLevel}`, type:'poisonProc', x:-88, y:-94, r:30, life:.48, maxLife:.64, targetId:'qa-poison-target', skillId:'poison_seed', skillLevel, essential:true },
+      { id:`qa-spark-${skillLevel}`, type:'boom', x:88, y:-94, r:54, life:.27, maxLife:.38, chainDepth:0, skillId:'spark_pop', skillLevel, essential:true },
+      { id:`qa-field-${skillLevel}`, type:'auraPulse', x:0, y:0, r:68, life:.2, maxLife:.26, skillId:'mogu_field', skillLevel, essential:true },
+      ...Array.from({ length:linkCount }, (_, index) => ({
+        id:`qa-thunder-${skillLevel}-${index}`,
+        type:'lightning',
+        x:points[index].x,
+        y:points[index].y,
+        tx:points[index + 1].x,
+        ty:points[index + 1].y,
+        life:.2,
+        maxLife:.26,
+        chainIndex:index,
+        sourceId:index ? `qa-enemy-${index - 1}` : 'player',
+        targetId:`qa-enemy-${index}`,
+        skillId:'thunder_gum',
+        skillLevel,
+        essential:true
+      }))
+    ];
+    state.mode = 'pause';
+    window.MoguriaPerformance = {
+      ...window.MoguriaPerformance,
+      getQuality: () => forcedQuality,
+      shouldReduceEffects: () => forcedQuality !== 'high',
+      stats: () => ({ fps:60, quality:forcedQuality, reduceEffects:forcedQuality !== 'high' })
+    };
+
+    const sampleFrameTimings = async (count = 48) => {
+      const timestamps = [];
+      await new Promise(resolve => {
+        const sample = timestamp => {
+          timestamps.push(timestamp);
+          if (timestamps.length >= count + 1) resolve();
+          else requestAnimationFrame(sample);
+        };
+        requestAnimationFrame(sample);
+      });
+      const frames = timestamps.slice(1).map((timestamp, index) => timestamp - timestamps[index]);
+      const ordered = frames.slice().sort((a, b) => a - b);
+      const percentile = value => ordered[Math.min(ordered.length - 1, Math.floor((ordered.length - 1) * value))];
+      const averageMs = frames.reduce((sum, value) => sum + value, 0) / frames.length;
+      return {
+        frames:frames.length,
+        averageMs:Number(averageMs.toFixed(3)),
+        averageFps:Number((1000 / averageMs).toFixed(2)),
+        p50Ms:Number(percentile(.5).toFixed(3)),
+        p95Ms:Number(percentile(.95).toFixed(3)),
+        p99Ms:Number(percentile(.99).toFixed(3)),
+        over33ms:frames.filter(value => value > 33.3).length,
+        over50ms:frames.filter(value => value > 50).length
+      };
+    };
+
+    state.p.auraRadius = 0;
+    state.fx = [];
+    renderer.sync(state);
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    const baselineTiming = await sampleFrameTimings();
+    state.p.auraRadius = 68;
+    state.fx = fx;
+    renderer.sync(state);
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    const vfxTiming = await sampleFrameTimings();
+    return {
+      effectCount:state.fx.length,
+      expectedEffectCount:linkCount + 3,
+      level:skillLevel,
+      mode:state.mode,
+      levels:Object.fromEntries(ids.map(id => [id, state.p.skillLevels[id]])),
+      radius:state.p.auraRadius,
+      quality:window.MoguriaPerformance.getQuality(),
+      motionPreference,
+      performance:{
+        baseline:baselineTiming,
+        vfx:vfxTiming,
+        averageDeltaMs:Number((vfxTiming.averageMs - baselineTiming.averageMs).toFixed(3)),
+        p95DeltaMs:Number((vfxTiming.p95Ms - baselineTiming.p95Ms).toFixed(3))
+      },
+      errors:renderer.getLoadErrors?.() || [],
+      fallbacks:renderer.getFallbackAssets?.() || [],
+      coreError:renderer.getLastCoreStepError?.()
+        ? String(renderer.getLastCoreStepError().message || renderer.getLastCoreStepError())
+        : null
+    };
+  }, { skillLevel:level, forcedQuality:quality, motionPreference:reducedMotion ? 'reduce' : 'no-preference' });
+  if (fixture.effectCount !== fixture.expectedEffectCount
+    || fixture.mode !== 'pause'
+    || fixture.radius !== 68
+    || fixture.quality !== quality
+    || fixture.motionPreference !== (reducedMotion ? 'reduce' : 'no-preference')
+    || Object.values(fixture.levels).some(value => value !== level)
+    || fixture.errors.length
+    || fixture.fallbacks.length
+    || fixture.coreError) {
+    throw new Error(`skill VFX fixture failed: ${JSON.stringify(fixture)}`);
+  }
+  return fixture;
+}
+
 const SCREEN_CONTRACTS = Object.freeze({
   home: {
     surface: '#home.active',
@@ -429,6 +566,31 @@ const SCREEN_CONTRACTS = Object.freeze({
       const health = await prepareBattle(page, 'battle-hud');
       if (health.mode !== 'run') throw new Error(`battle HUD mode is ${health.mode}`);
     }
+  },
+  'battle-vfx-lv1': {
+    surface: '#game.active',
+    touch: ['#pauseBtn'],
+    setup: async (page) => prepareSkillVfx(page, 1)
+  },
+  'battle-vfx-lv3': {
+    surface: '#game.active',
+    touch: ['#pauseBtn'],
+    setup: async (page) => prepareSkillVfx(page, 3)
+  },
+  'battle-vfx-lv5': {
+    surface: '#game.active',
+    touch: ['#pauseBtn'],
+    setup: async (page) => prepareSkillVfx(page, 5)
+  },
+  'battle-vfx-lv5-reduced': {
+    surface: '#game.active',
+    touch: ['#pauseBtn'],
+    setup: async (page) => prepareSkillVfx(page, 5, { reducedMotion:true })
+  },
+  'battle-vfx-lv5-low': {
+    surface: '#game.active',
+    touch: ['#pauseBtn'],
+    setup: async (page) => prepareSkillVfx(page, 5, { quality:'low' })
   },
   'skill-choice': {
     surface: '#levelModal:not(.hidden) .modal-card',
@@ -882,7 +1044,8 @@ async function runScreen(browser, baseUrl, browserName, viewport, screenId, outp
   try {
     await page.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 45000 });
     await waitForStablePage(page);
-    await contract.setup(page);
+    const fixture = await contract.setup(page);
+    if (fixture != null) record.fixture = fixture;
     await waitForTransientAbsence(page, TRANSIENT_ABSENCE[screenId]);
     record.scrollRoots = await settleVisuals(page, contract.surface, VISUAL_SCROLL_ROOTS[screenId]);
     record.dom = await auditDom(page, contract, viewport, screenId);

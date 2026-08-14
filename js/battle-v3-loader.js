@@ -3,7 +3,7 @@
 
   const ENGINE_SRC = 'vendor/phaser/phaser-arcade-physics-4.2.1.min.js';
   const RIG_SRC = 'js/mogu-rig.js?v=20260814-motion-rig2-1';
-  const SCENE_SRC = 'js/battle-v3-scene.js?v=20260814-motion-rig2-1';
+  const SCENE_SRC = 'js/battle-v3-scene.js?v=20260814-skill-vfx-1';
   const SCRIPT_TIMEOUT_MS = 15000;
   const BOOT_TIMEOUT_MS = 30000;
   let preparation = null;

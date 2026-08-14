@@ -109,7 +109,7 @@ function createGameHarness(checkpoint = null, options = {}) {
   context.window = context;
   context.MoguriaAudio = { play() {} };
   context.MoguriaPerformance = {
-    start() {}, stop() {}, recordFrame() {}, getQuality: () => 'high', shouldReduceEffects: () => false
+    start() {}, stop() {}, recordFrame() {}, getQuality: () => options.quality || 'high', shouldReduceEffects: () => Boolean(options.reduceEffects)
   };
   context.MoguriaBattleV3 = { stop() {}, start: () => Promise.resolve(), sync() {} };
   context.MoguriaDungeon = { create: seed => ({ seed, rooms: [] }), colorForTime: () => ({ ground: '#000' }) };
@@ -265,6 +265,151 @@ function defeatEnemy(harness, kind = 'normal', id = 100, options = {}) {
   assert.ok(enemy.hp <= 0);
   return state;
 }
+
+function stationaryEnemy(id, x, hp = 1000) {
+  return {
+    id, name: 'ぷに虫', x, y: 0, r: 13, hp, maxHp: hp,
+    speed: 0, dmg: 0, exp: 4, behavior: 'chase', kind: 'normal', attackCd: 999,
+    poison: 0, poisonTick: 0, slow: 0, hitFlash: 0
+  };
+}
+
+test('approved skill VFX metadata follows real poison, spark, thunder, and field activations', () => {
+  {
+    const harness = createGameHarness(null, { random: () => 0 });
+    const state = prepareDropCombat(harness);
+    for (let level = 0; level < 3; level++) harness.game.devAddSkill('poison_seed');
+    assert.ok(Math.abs(state.p.poisonChance - .42) < 1e-12);
+    const enemy = stationaryEnemy(301, 90);
+    state.enemies.push(enemy);
+    state.bullets.push({ x:enemy.x, y:enemy.y, vx:0, vy:0, r:6, dmg:1, life:1, summon:false, pierce:0, split:false, splitDepth:0, hitIds:[] });
+    harness.game.devStep(.016);
+    const effect = state.fx.find(fx => fx.type === 'poisonProc');
+    assert.equal(enemy.poison > 0, true);
+    assert.equal(effect.skillId, 'poison_seed');
+    assert.equal(effect.skillLevel, 3);
+    assert.equal(effect.targetId, 301);
+    assert.equal(effect.maxLife, .64);
+    assert.equal(effect.essential, true);
+  }
+
+  {
+    const harness = createGameHarness(null, { random: () => 0, quality:'low', reduceEffects:true });
+    for (let level = 0; level < 5; level++) harness.game.devAddSkill('spark_pop');
+    const state = defeatEnemy(harness, 'normal', 302);
+    assert.ok(Math.abs(state.p.killExplodeChance - .9) < 1e-12);
+    const effect = state.fx.find(fx => fx.type === 'boom');
+    assert.equal(effect.skillId, 'spark_pop');
+    assert.equal(effect.skillLevel, 5);
+    assert.equal(effect.r, 54);
+    assert.equal(effect.maxLife, .38);
+    assert.equal(effect.essential, true, 'semantic spark must survive reduce-effects random dropping');
+  }
+
+  {
+    const harness = createGameHarness(null, { random: () => .5 });
+    const state = prepareDropCombat(harness);
+    for (let level = 0; level < 5; level++) harness.game.devAddSkill('thunder_gum');
+    assert.equal(state.p.lightningJumps, 7);
+    assert.equal(state.p.lightningRate, 2.6);
+    state.p.lightningCd = 0;
+    state.enemies.push(...Array.from({ length:7 }, (_, index) => stationaryEnemy(310 + index, 70 + index * 42)));
+    harness.game.devStep(.016);
+    const effects = state.fx.filter(fx => fx.type === 'lightning');
+    assert.equal(effects.length, 7);
+    assert.deepEqual(Array.from(effects, fx => fx.chainIndex), [0,1,2,3,4,5,6]);
+    assert.ok(effects.every(fx => fx.skillId === 'thunder_gum' && fx.skillLevel === 5 && fx.essential));
+  }
+
+  {
+    const harness = createGameHarness(null, { random: () => .5 });
+    const state = prepareDropCombat(harness);
+    for (let level = 0; level < 3; level++) harness.game.devAddSkill('mogu_field');
+    assert.equal(state.p.auraDamage, 15);
+    assert.equal(state.p.auraRadius, 68);
+    state.p.auraTick = 0;
+    const enemy = stationaryEnemy(320, 50);
+    state.enemies.push(enemy);
+    harness.game.devStep(.016);
+    const effect = state.fx.find(fx => fx.type === 'auraPulse');
+    assert.equal(enemy.hp, 985);
+    assert.equal(effect.r, 68);
+    assert.equal(effect.skillId, 'mogu_field');
+    assert.equal(effect.skillLevel, 3);
+    assert.equal(effect.maxLife, .26);
+    assert.equal(effect.essential, true);
+  }
+});
+
+test('skill VFX levels clamp at five and generic effects remain untagged', () => {
+  const harness = createGameHarness(null, { random: () => 0 });
+  const state = prepareDropCombat(harness);
+  state.p.skillLevels.poison_seed = 99;
+  state.p.poisonChance = 1;
+  const enemy = stationaryEnemy(330, 80);
+  state.enemies.push(enemy);
+  state.bullets.push({ x:enemy.x, y:enemy.y, vx:0, vy:0, r:6, dmg:1, life:1, summon:false, pierce:0, split:false, splitDepth:0, hitIds:[] });
+  harness.game.devStep(.016);
+  assert.equal(state.fx.find(fx => fx.type === 'poisonProc').skillLevel, 5);
+  assert.equal(state.fx.filter(fx => fx.type !== 'poisonProc').some(fx => fx.skillId), false);
+});
+
+test('skill VFX tags appear only after their real proc and never decorate unrelated explosions', () => {
+  {
+    const harness = createGameHarness(null, { random: () => .99 });
+    const state = prepareDropCombat(harness);
+    harness.game.devAddSkill('poison_seed');
+    const enemy = stationaryEnemy(340, 80);
+    state.enemies.push(enemy);
+    state.bullets.push({ x:enemy.x, y:enemy.y, vx:0, vy:0, r:6, dmg:1, life:1, summon:false, pierce:0, split:false, splitDepth:0, hitIds:[] });
+    harness.game.devStep(.016);
+    assert.equal(state.fx.some(fx => fx.type === 'poisonProc'), false);
+  }
+
+  {
+    const harness = createGameHarness(null, { random: () => 0 });
+    const state = prepareDropCombat(harness);
+    state.p.dodge = 1;
+    state.p.dodgeBomb = true;
+    state.enemies.push(stationaryEnemy(341, 0));
+    harness.game.devStep(.016);
+    const effect = state.fx.find(fx => fx.type === 'boom');
+    assert.ok(effect);
+    assert.equal(effect.skillId, undefined);
+    assert.equal(effect.essential, undefined);
+  }
+});
+
+test('FX capacity keeps boss danger and essential skill events ahead of disposable decoration', () => {
+  const harness = createGameHarness(null, { random: () => 0 });
+  const state = prepareDropCombat(harness);
+  harness.game.devAddSkill('poison_seed');
+  const limit = harness.context.MoguriaConfig.performance.maxFx;
+  state.fx = [
+    { id:'danger', type:'bossTelegraph', life:1, maxLife:1 },
+    ...Array.from({ length:limit - 1 }, (_, index) => ({ id:`decorative-${index}`, type:'waveClear', life:1, maxLife:1 }))
+  ];
+  const enemy = stationaryEnemy(350, 80);
+  state.enemies.push(enemy);
+  state.bullets.push({ x:enemy.x, y:enemy.y, vx:0, vy:0, r:6, dmg:1, life:1, summon:false, pierce:0, split:false, splitDepth:0, hitIds:[] });
+  harness.game.devStep(.016);
+  assert.equal(state.fx.length, limit);
+  assert.equal(state.fx.some(fx => fx.id === 'danger'), true);
+  assert.equal(state.fx.some(fx => fx.type === 'poisonProc' && fx.essential), true);
+  assert.equal(state.fx.some(fx => fx.id === 'decorative-0'), false);
+
+  state.fx = [
+    { id:'danger', type:'bossTelegraph', life:1, maxLife:1 },
+    ...Array.from({ length:limit - 1 }, (_, index) => ({ id:`essential-${index}`, type:'boom', life:1, maxLife:1, essential:true }))
+  ];
+  const secondEnemy = stationaryEnemy(351, 100);
+  state.enemies.push(secondEnemy);
+  state.bullets.push({ x:secondEnemy.x, y:secondEnemy.y, vx:0, vy:0, r:6, dmg:1, life:1, summon:false, pierce:0, split:false, splitDepth:0, hitIds:[] });
+  harness.game.devStep(.016);
+  assert.equal(state.fx.length, limit);
+  assert.equal(state.fx.some(fx => fx.id === 'danger'), true, 'boss danger is the last FX allowed to be evicted');
+  assert.equal(state.fx.some(fx => fx.id === 'essential-0'), false);
+});
 
 function openArtifactChoice(harness) {
   const state = harness.state;
