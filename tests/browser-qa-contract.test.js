@@ -33,6 +33,8 @@ test('browser QA workflow is isolated, least-privilege, pinned, bounded and uplo
   assert.match(workflow, /run: npm ci --ignore-scripts/);
   assert.match(workflow, /npx playwright install --with-deps "\$\{\{ matrix\.browser \}\}"/);
   assert.match(workflow, /npm run qa:browser -- --browser="\$\{\{ matrix\.browser \}\}"/);
+  assert.match(workflow, /PLAYWRIGHT_BROWSERS_PATH: \$\{\{ github\.workspace \}\}\/\.playwright-browsers/);
+  assert.doesNotMatch(workflow, /jobs:[\s\S]*?env:[\s\S]*?runner\.temp/);
   assert.match(workflow, /actions\/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4\.6\.2/);
   assert.match(workflow, /if: always\(\)/);
   assert.match(workflow, /if-no-files-found: error/);
