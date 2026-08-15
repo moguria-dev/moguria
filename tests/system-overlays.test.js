@@ -204,7 +204,10 @@ test('adventure loading blocks the app, announces status, ignores Escape, and cl
 test('system overlay markup and styling expose accessible central blocking surfaces', () => {
   const html = read('index.html');
   const css = read('css/moguria-system-overlays.css');
-  const loading = html.match(/<section id="adventureLoading"[\s\S]*?<\/section>/)?.[0] || '';
+  const loading = html.slice(
+    html.indexOf('<section id="adventureLoading"'),
+    html.indexOf('<section id="settlementError"')
+  );
   const loadingOpening = loading.match(/<section id="adventureLoading"[^>]*>/)?.[0] || '';
   const progressOpening = loading.match(/<div id="adventureLoadingProgress"[^>]*>/)?.[0] || '';
   assert.match(html, /id="confirmDialog"[^>]*role="alertdialog"[^>]*aria-modal="true"[^>]*aria-labelledby="confirmDialogTitle"[^>]*aria-describedby="confirmDialogMessage"/);
@@ -212,9 +215,16 @@ test('system overlay markup and styling expose accessible central blocking surfa
   assert.doesNotMatch(loadingOpening, /aria-busy=/);
   assert.match(progressOpening, /role="progressbar"[^>]*aria-valuemin="0"[^>]*aria-valuemax="100"[^>]*aria-valuenow="0"[^>]*aria-valuetext="0% 準備完了"[^>]*aria-busy="true"/);
   assert.match(html, /id="adventureLoadingStatus"[^>]*role="status"[^>]*aria-live="polite"/);
-  assert.ok(loading.indexOf('id="adventureLoadingStatus"') > loading.indexOf('id="adventureLoadingProgress"'));
-  assert.match(loading, /id="adventureLoadingMogu"[^>]*src="assets\/images\/home-v2\/expedition_mogu\.png"[^>]*alt=""[^>]*aria-hidden="true"/);
-  assert.match(loading, /id="adventureLoadingBubble"[^>]*>ちょっと待っててね</);
+  assert.ok(loading.indexOf('id="adventureLoadingStatus"') < loading.indexOf('id="adventureLoadingProgress"'));
+  assert.match(loading, /id="adventureLoadingMogu"[^>]*data-loading-child/);
+  assert.match(loading, /data-loading-child-image/);
+  assert.match(loading, /data-loading-frontier/);
+  assert.match(loading, /data-loading-carried-light/);
+  assert.match(loading, /data-loading-gate/);
+  assert.match(loading, /data-loading-tips/);
+  assert.match(loading, /data-loading-tip-button/);
+  assert.doesNotMatch(loading, /\b[1-5]\s*\/\s*5\b|loading-tip-dot/);
+  assert.match(read('style.css'), /assets\/images\/loading\/child-mogu-flight\.webp/);
   assert.match(css, /\.system-overlay\s*\{[^}]*position:\s*fixed;[^}]*inset:\s*0;[^}]*display:\s*grid;[^}]*place-items:\s*center;/s);
   assert.match(css, /@media\s*\(prefers-reduced-motion:\s*reduce\)/);
 });

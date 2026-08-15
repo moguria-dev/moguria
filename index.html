@@ -5,33 +5,46 @@
  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
  <meta name="theme-color" content="#171025" />
  <title>Moguria v3.3.0</title>
- <link rel="stylesheet" href="style.css?v=20260814-loading-experience-1" />
+ <link rel="stylesheet" href="style.css?v=20260815-loading-child-tips-1" />
  <link rel="stylesheet" href="css/moguria-kv-visual-refresh.css?v=20260613-asset-rich" />
  <link rel="stylesheet" href="css/moguria-final-ui.css?v=20260803-home-layout-2" />
  <link rel="stylesheet" href="css/moguria-play-ui.css?v=20260812-battle-v3-2" />
  <link rel="stylesheet" href="css/moguria-battle-world.css?v=20260812-battle-v3-2" />
  <link rel="stylesheet" href="css/moguria-meta-ui.css?v=20260814-ui-consistency-1" />
  <link rel="stylesheet" href="css/moguria-battle-refinement.css?v=20260814-ui-consistency-1" />
- <link rel="stylesheet" href="css/moguria-system-overlays.css?v=20260814-loading-experience-1" />
+ <link rel="stylesheet" href="css/moguria-system-overlays.css?v=20260815-loading-child-tips-1" />
  <link rel="stylesheet" href="css/moguria-ui-consistency.css?v=20260814-ui-consistency-1" />
 </head>
 <body class="moguria-booting">
- <section id="startupLoader" class="startup-loader" aria-labelledby="startupLoaderTitle" aria-describedby="startupProgressText">
+ <section id="startupLoader" class="startup-loader loading-experience" data-loading-surface="startup" data-state="loading" aria-labelledby="startupLoaderTitle" aria-describedby="startupProgressText">
  <div class="startup-loader__card">
- <div class="loading-mogu startup-loader__mogu">
- <span class="loading-mogu__sparkles" aria-hidden="true"></span>
- <img id="startupLoadingMogu" class="loading-mogu__image" src="assets/images/home-v2/expedition_mogu.png" alt="" aria-hidden="true" />
- <span class="loading-mogu__shadow" aria-hidden="true"></span>
- <span id="startupLoadingBubble" class="loading-mogu__bubble">ちょっと待っててね</span>
- </div>
  <p class="startup-loader__eyebrow">MOGURIA</p>
- <h1 id="startupLoaderTitle">冒険の準備中</h1>
- <div id="startupProgressBar" class="startup-loader__progress" role="progressbar" aria-label="ホーム画面の準備状況" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="0% 準備完了" aria-busy="true">
- <i id="startupProgressFill"></i>
+ <h1 id="startupLoaderTitle" data-loading-title>ホームを準備中</h1>
+ <p id="startupProgressText" class="startup-loader__status" data-loading-phase role="status" aria-live="polite" aria-atomic="true">データを確認しています</p>
+ <section class="loading-tips" data-loading-tips data-visible="false" aria-label="星あかりの小話" aria-hidden="true" inert>
+ <button class="loading-tips__button" data-loading-tip-button type="button" disabled>
+ <span class="loading-tips__kicker">星あかりの小話</span>
+ <span class="loading-tips__text" data-loading-tip-text>子もぐは、歩くより飛ぶほうが得意。</span>
+ <span class="loading-tips__cue">タップで次のヒント</span>
+ </button>
+ <button class="loading-tips__auto" data-loading-tip-auto-toggle type="button" aria-label="ヒントの自動切替" aria-pressed="false" disabled>自動切替を停止</button>
+ </section>
+ <div id="startupProgressBar" class="loading-journey startup-loader__progress" data-loading-progress role="progressbar" aria-label="ホーム画面の準備状況" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="0% 準備完了" aria-busy="true">
+ <div class="loading-journey__lane" aria-hidden="true">
+ <div class="loading-journey__route">
+ <i id="startupProgressFill" class="loading-journey__fill" data-loading-fill></i>
+ <span class="loading-journey__frontier" data-loading-frontier>
+ <span id="startupLoadingMogu" class="loading-journey__child" data-loading-child><span class="loading-journey__child-image" data-loading-child-image></span></span>
+ <span class="loading-journey__light" data-loading-carried-light></span>
+ </span>
+ <span class="loading-journey__gate" data-loading-gate></span>
  </div>
- <b id="startupProgressPercent" class="startup-loader__percent" aria-hidden="true">0%</b>
- <p id="startupProgressText" class="startup-loader__status" role="status" aria-live="polite">データを確認しています</p>
+ <div class="loading-journey__labels"><span>HOME</span><span>READY</span></div>
+ </div>
+ </div>
+ <b id="startupProgressPercent" class="startup-loader__percent" data-loading-percent aria-hidden="true">0%</b>
  <button id="startupRetryBtn" class="startup-loader__retry" type="button" hidden>もう一度ためす</button>
+ <span class="loading-experience__sr-only" data-loading-tip-announcement role="status" aria-live="polite" aria-atomic="true"></span>
  </div>
  </section>
  <div id="app" inert aria-hidden="true">
@@ -217,27 +230,40 @@
  </div>
  </section>
  </div>
- <section id="adventureLoading" class="system-overlay system-loading hidden" role="dialog" aria-modal="true" aria-labelledby="adventureLoadingTitle" aria-describedby="adventureLoadingStatus adventureLoadingHint">
+ <section id="adventureLoading" class="system-overlay system-loading loading-experience hidden" data-loading-surface="adventure" data-state="loading" role="dialog" aria-modal="true" aria-labelledby="adventureLoadingTitle" aria-describedby="adventureLoadingStatus adventureLoadingHint">
  <div id="adventureLoadingCard" class="system-dialog system-loading__card" tabindex="-1">
- <div class="loading-mogu system-loading__mogu">
- <span class="loading-mogu__sparkles" aria-hidden="true"></span>
- <img id="adventureLoadingMogu" class="loading-mogu__image" src="assets/images/home-v2/expedition_mogu.png" alt="" aria-hidden="true" />
- <span class="loading-mogu__shadow" aria-hidden="true"></span>
- <span id="adventureLoadingBubble" class="loading-mogu__bubble">ちょっと待っててね</span>
- </div>
  <p class="system-dialog__eyebrow">STARLIGHT GATE</p>
- <h2 id="adventureLoadingTitle">冒険の準備中</h2>
+ <h2 id="adventureLoadingTitle" data-loading-title>冒険の準備中</h2>
  <p id="adventureLoadingCost" class="system-loading__cost">おなか 1消費</p>
- <div id="adventureLoadingProgress" class="system-loading__progress" role="progressbar" aria-label="冒険の準備状況" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="0% 準備完了" aria-busy="true">
- <i id="adventureLoadingProgressFill"></i>
+ <p id="adventureLoadingStatus" class="system-loading__status" data-loading-phase role="status" aria-live="polite" aria-atomic="true">戦闘データを読み込んでいます…</p>
+ <section class="loading-tips system-loading__tips" data-loading-tips data-visible="false" aria-label="星あかりの小話" aria-hidden="true" inert>
+ <button class="loading-tips__button" data-loading-tip-button type="button" disabled>
+ <span class="loading-tips__kicker">星あかりの小話</span>
+ <span class="loading-tips__text" data-loading-tip-text>子もぐは、歩くより飛ぶほうが得意。</span>
+ <span class="loading-tips__cue">タップで次のヒント</span>
+ </button>
+ <button class="loading-tips__auto" data-loading-tip-auto-toggle type="button" aria-label="ヒントの自動切替" aria-pressed="false" disabled>自動切替を停止</button>
+ </section>
+ <div id="adventureLoadingProgress" class="loading-journey system-loading__progress" data-loading-progress role="progressbar" aria-label="冒険の準備状況" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="0% 準備完了" aria-busy="true">
+ <div class="loading-journey__lane" aria-hidden="true">
+ <div class="loading-journey__route">
+ <i id="adventureLoadingProgressFill" class="loading-journey__fill" data-loading-fill></i>
+ <span class="loading-journey__frontier" data-loading-frontier>
+ <span id="adventureLoadingMogu" class="loading-journey__child" data-loading-child><span class="loading-journey__child-image" data-loading-child-image></span></span>
+ <span class="loading-journey__light" data-loading-carried-light></span>
+ </span>
+ <span class="loading-journey__gate" data-loading-gate></span>
  </div>
- <b id="adventureLoadingProgressPercent" class="system-loading__percent" aria-hidden="true">0%</b>
- <p id="adventureLoadingStatus" class="system-loading__status" role="status" aria-live="polite">戦闘データを読み込んでいます…</p>
+ <div class="loading-journey__labels"><span>HOME</span><span>ADVENTURE GATE</span></div>
+ </div>
+ </div>
+ <b id="adventureLoadingProgressPercent" class="system-loading__percent" data-loading-percent aria-hidden="true">0%</b>
  <span id="adventureLoadingHint" class="system-loading__hint">そのまま少し待ってね</span>
- <div id="adventureLoadingActions" class="system-loading__actions" hidden>
+ <div id="adventureLoadingActions" class="system-loading__actions" data-loading-actions hidden>
  <button id="adventureRetryBtn" class="system-confirm__accept" type="button">もう一度ためす</button>
  <button id="adventureHomeBtn" class="system-confirm__cancel" type="button">ホームへ戻る</button>
  </div>
+ <span class="loading-experience__sr-only" data-loading-tip-announcement role="status" aria-live="polite" aria-atomic="true"></span>
  </div>
  </section>
  <section id="settlementError" class="system-overlay system-settlement hidden" role="alertdialog" aria-modal="true" aria-labelledby="settlementErrorTitle" aria-describedby="settlementErrorMessage">
@@ -280,11 +306,12 @@
  <script src="js/player.js"></script>
  <script src="js/dungeon.js"></script>
  <script src="js/result.js"></script>
- <script src="js/home.js?v=20260814-loading-experience-1"></script>
+ <script src="js/loading-experience.js?v=20260815-loading-child-tips-1"></script>
+ <script src="js/home.js?v=20260815-loading-child-tips-1"></script>
  <script src="js/audio.js"></script>
  <script src="js/battle-v3-loader.js?v=20260814-loading-experience-1"></script>
  <script src="js/game.js?v=20260814-skill-vfx-1"></script>
- <script src="js/ui.js?v=20260814-loading-experience-1"></script>
+ <script src="js/ui.js?v=20260815-loading-child-tips-1"></script>
  <script src="js/assetManager.js?v=20260814-loading-experience-1"></script>
  <script src="js/performance.js"></script>
  <script src="js/network.js"></script>
@@ -293,7 +320,7 @@
  <script src="js/cheatMenu.js"></script>
  <script src="js/platform.js"></script>
  <script src="js/security.js"></script>
- <script src="js/main.js?v=20260814-loading-experience-1"></script>
+ <script src="js/main.js?v=20260815-loading-child-tips-1"></script>
  <script src="js/moguria-kv-visual-refresh.js?v=20260812-startup-loader-1"></script>
  <script src="js/moguria-final-ui.js?v=20260803-home-v2"></script>
 </body>

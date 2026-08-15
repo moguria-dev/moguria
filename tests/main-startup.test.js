@@ -134,14 +134,14 @@ test('Home stays inert until every critical asset succeeds and decoded progress 
   assert.equal(harness.events.includes('home.init'), false);
   assert.equal(harness.events.includes('ui.show:home'), false);
 
-  attempt.onProgress({ total:16, completed:7, loaded:7, failed:0 });
-  assert.equal(harness.elements.startupProgressBar.attributes['aria-valuenow'], '44');
-  assert.equal(harness.elements.startupProgressBar.attributes['aria-valuetext'], '44% 準備完了');
-  assert.equal(harness.elements.startupProgressFill.style.width, `${7 / 16 * 100}%`);
-  assert.equal(harness.elements.startupProgressPercent.textContent, '44%');
+  attempt.onProgress({ total:17, completed:7, loaded:7, failed:0 });
+  assert.equal(harness.elements.startupProgressBar.attributes['aria-valuenow'], '41');
+  assert.equal(harness.elements.startupProgressBar.attributes['aria-valuetext'], '41% 準備完了');
+  assert.equal(harness.elements.startupProgressFill.style.width, `${7 / 17 * 100}%`);
+  assert.equal(harness.elements.startupProgressPercent.textContent, '41%');
   assert.equal(harness.elements.startupProgressText.textContent, 'ホームの景色を読み込んでいます');
 
-  attempt.resolve({ ok:true, total:16, completed:16, loaded:16, failed:[] });
+  attempt.resolve({ ok:true, total:17, completed:17, loaded:17, failed:[] });
   await flushMicrotasks();
 
   assert.equal(harness.events.filter(event => event === 'ui.init').length, 1);
@@ -166,9 +166,9 @@ test('failure leaves the accessible loader visible and retry cannot duplicate in
   failedAttempt.resolve({
     ok:false,
     reason:'critical-asset-load-failed',
-    total:16,
-    completed:16,
-    loaded:15,
+    total:17,
+    completed:17,
+    loaded:16,
     failed:['home_v2_logo']
   });
   await flushMicrotasks();
@@ -178,7 +178,7 @@ test('failure leaves the accessible loader visible and retry cannot duplicate in
   assert.equal(harness.elements.startupProgressBar.attributes['aria-busy'], 'false');
   assert.equal(harness.elements.startupRetryBtn.hidden, false);
   assert.equal(harness.elements.startupRetryBtn.disabled, false);
-  assert.match(harness.elements.startupProgressText.textContent, /15 \/ 16/);
+  assert.match(harness.elements.startupProgressText.textContent, /16 \/ 17/);
   assert.equal(harness.elements.startupRetryBtn.focused, true);
   assert.equal(harness.events.includes('home.init'), false);
   assert.equal(harness.context.MoguriaStartup.isReady(), false);
@@ -188,8 +188,8 @@ test('failure leaves the accessible loader visible and retry cannot duplicate in
   assert.equal(harness.preloadCalls, 2);
   assert.equal(harness.elements.startupRetryBtn.disabled, true);
 
-  retryAttempt.onProgress({ total:16, completed:16, loaded:16, failed:0 });
-  retryAttempt.resolve({ ok:true, total:16, completed:16, loaded:16, failed:[] });
+  retryAttempt.onProgress({ total:17, completed:17, loaded:17, failed:0 });
+  retryAttempt.resolve({ ok:true, total:17, completed:17, loaded:17, failed:[] });
   await flushMicrotasks();
 
   assert.equal(harness.events.filter(event => event === 'ui.init').length, 1);
@@ -204,16 +204,24 @@ test('failure leaves the accessible loader visible and retry cannot duplicate in
   assert.equal(harness.events.filter(event => event === 'home.init').length, 1);
 });
 
-test('startup markup uses the active waiting Mogu, determinate percent, and an unblocked live phase', () => {
+test('startup markup uses the progress-bound child Mogu, five-tip session hooks, and an unblocked live phase', () => {
   const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
-  const loader = html.match(/<section id="startupLoader"[\s\S]*?<\/section>/)?.[0] || '';
+  const loader = html.slice(html.indexOf('<section id="startupLoader"'), html.indexOf('<div id="app"'));
   const loaderOpening = loader.match(/<section id="startupLoader"[^>]*>/)?.[0] || '';
   const progressOpening = loader.match(/<div id="startupProgressBar"[^>]*>/)?.[0] || '';
   const homeOpening = html.match(/<section id="home"[^>]*>/)?.[0] || '';
 
   assert.ok(loader);
-  assert.match(loader, /id="startupLoadingMogu"[^>]*src="assets\/images\/home-v2\/expedition_mogu\.png"[^>]*alt=""[^>]*aria-hidden="true"/);
-  assert.match(loader, /id="startupLoadingBubble"[^>]*>ちょっと待っててね</);
+  assert.match(loader, /id="startupLoadingMogu"[^>]*data-loading-child/);
+  assert.match(loader, /data-loading-child-image/);
+  assert.match(loader, /data-loading-frontier/);
+  assert.match(loader, /data-loading-carried-light/);
+  assert.match(loader, /data-loading-gate/);
+  assert.match(loader, /data-loading-tips/);
+  assert.match(loader, /data-loading-tip-button/);
+  assert.match(loader, /星あかりの小話/);
+  assert.match(loader, /タップで次のヒント/);
+  assert.doesNotMatch(loader, /\b[1-5]\s*\/\s*5\b|loading-tip-dot/);
   assert.match(loader, /role="progressbar"/);
   assert.match(loader, /aria-valuemin="0"/);
   assert.match(loader, /aria-valuemax="100"/);
@@ -221,13 +229,15 @@ test('startup markup uses the active waiting Mogu, determinate percent, and an u
   assert.doesNotMatch(loaderOpening, /aria-busy=/);
   assert.match(loader, /role="status"/);
   assert.match(loader, /aria-live="polite"/);
-  assert.ok(loader.indexOf('id="startupProgressText"') > loader.indexOf('id="startupProgressBar"'));
+  assert.ok(loader.indexOf('id="startupProgressText"') < loader.indexOf('id="startupProgressBar"'));
   assert.match(html, /<div id="app" inert aria-hidden="true">/);
   assert.doesNotMatch(homeOpening, /\bactive\b/);
 
   const css = fs.readFileSync(path.join(ROOT, 'style.css'), 'utf8');
-  assert.match(css, /@keyframes loadingMoguWait/);
-  assert.match(css, /animation:loadingMoguWait 2\.2s cubic-bezier\(\.45,0,\.34,1\) infinite/);
-  assert.match(css, /transform-origin:50% 82%/);
+  assert.match(css, /assets\/images\/loading\/child-mogu-flight\.webp/);
+  assert.match(css, /@keyframes loadingChildFlight/);
+  assert.match(css, /animation:loadingChildFlight \.54s ease-in-out infinite/);
+  assert.match(css, /transform-origin:50% 78%/);
+  assert.match(css, /left:var\(--moguria-loading-progress\)/);
   assert.match(css, /@media \(prefers-reduced-motion:reduce\)/);
 });

@@ -19,7 +19,7 @@ index.html
   -> MoguriaGame core steps, Phaser presents state
 ```
 
-`js/main.js` keeps the initial loading surface visible until critical assets are ready and reports determinate progress instead of presenting an unchanging wait state. Failures remain retryable and must not initialize Home twice. Both startup and adventure loading surfaces reuse the existing active production expedition Mogu, a live status, progress-bar semantics, and a delayed wait hint; reduced motion removes decorative movement without hiding progress.
+`js/main.js` keeps the initial loading surface visible until critical assets are ready and reports determinate progress instead of presenting an unchanging wait state. Failures remain retryable and must not initialize Home twice. `js/loading-experience.js` gives startup and adventure one progress frontier: the fill tip, carried starlight, and small flying child Mogu move from the same real value, stop horizontally on plateaus, and complete only in the arrival → contact → complete order. A loading session samples five unique, safe world Tips; one appears at a time after the initial delay and changes automatically or by an explicit tap without impersonating loading progress. Reduced motion removes decorative movement and automatic Tip changes without hiding progress or manual access.
 
 ## Ownership map
 

@@ -1,5 +1,5 @@
 {
-  "version": "3.3.1-loading",
+  "version": "3.3.2-loading-child",
   "policy": {
     "criticalBudgetMB": 4,
     "initialAudio": "metadata-only",
@@ -21,6 +21,11 @@
       "id": "home_v2_expedition_mogu",
       "type": "image",
       "src": "assets/images/home-v2/expedition_mogu.png"
+    },
+    {
+      "id": "loading_child_mogu_flight",
+      "type": "image",
+      "src": "assets/images/loading/child-mogu-flight.webp"
     },
     {
       "id": "home_v2_star_companion",
@@ -424,6 +429,7 @@
     "home_v2_currency_coin": "assets/images/home-v2/currency_coin.png",
     "home_v2_currency_gem": "assets/images/home-v2/currency_gem.png",
     "home_v2_expedition_mogu": "assets/images/home-v2/expedition_mogu.png",
+    "loading_child_mogu_flight": "assets/images/loading/child-mogu-flight.webp",
     "home_v2_frame": "assets/images/home-v2/frame_glass_gold_9slice.png",
     "home_v2_button": "assets/images/home-v2/button_pearl_9slice.png",
     "home_v2_button_gold": "assets/images/home-v2/button_gold_9slice.png",
