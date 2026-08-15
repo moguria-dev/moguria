@@ -646,9 +646,12 @@ async function prepareLoadingFixture(page, kind, percent) {
 
     if (fullTemporal) {
       fixture.tipsBeforeReveal = await inspectLoadingState(page, kind);
-      await page.waitForTimeout(LOADING_QA_CONTRACT.revealMs - 80);
+      // Keep a generous margin from the 1.2 s reveal boundary: headed WebKit
+      // can spend appreciable wall time collecting the preceding geometry.
+      const preRevealMarginMs = 400;
+      await page.waitForTimeout(LOADING_QA_CONTRACT.revealMs - preRevealMarginMs);
       fixture.tipsBeforeBoundary = await inspectLoadingState(page, kind);
-      await page.waitForTimeout(160);
+      await page.waitForTimeout(preRevealMarginMs + 160);
       fixture.tipsAfterReveal = await inspectLoadingState(page, kind);
       fixture.keyboardReachability = await page.evaluate((loadingKind) => {
         const root = document.querySelector(`[data-loading-surface="${loadingKind}"]`);
@@ -679,7 +682,15 @@ async function prepareLoadingFixture(page, kind, percent) {
       ), kind);
       await page.evaluate(() => document.activeElement?.blur?.());
       const autoStartTip = fixture.tipsAfterReveal.tips?.tipId;
-      await page.waitForTimeout(LOADING_QA_CONTRACT.autoMs + LOADING_QA_CONTRACT.tipTransitionMs + 180);
+      await page.waitForFunction(({ loadingKind, previousTip }) => {
+        const tip = document.querySelector(
+          `[data-loading-surface="${loadingKind}"] [data-loading-tip-text]`
+        );
+        return Boolean(tip?.getAttribute('data-tip-id')
+          && tip.getAttribute('data-tip-id') !== previousTip);
+      }, { loadingKind:kind, previousTip:autoStartTip }, {
+        timeout:LOADING_QA_CONTRACT.autoMs + LOADING_QA_CONTRACT.tipTransitionMs + 1800
+      });
       fixture.tipsAfterAuto = await inspectLoadingState(page, kind);
       fixture.autoChangedTip = Boolean(autoStartTip && fixture.tipsAfterAuto.tips?.tipId !== autoStartTip);
       await page.evaluate((loadingKind) => {
@@ -692,10 +703,19 @@ async function prepareLoadingFixture(page, kind, percent) {
       fixture.pausedTipStayed = Boolean(pausedTip && fixture.tipsAfterPausedInterval.tips?.tipId === pausedTip);
       fixture.manualTipIds = [pausedTip];
       for (let index = 1; index < LOADING_QA_CONTRACT.sessionTipCount; index += 1) {
+        const previousTip = fixture.manualTipIds.at(-1);
         await page.evaluate((loadingKind) => {
           document.querySelector(`[data-loading-surface="${loadingKind}"] [data-loading-tip-button]`)?.click();
         }, kind);
-        await page.waitForTimeout(LOADING_QA_CONTRACT.manualDebounceMs + 30);
+        await page.waitForFunction(({ loadingKind, previousTipId }) => {
+          const tip = document.querySelector(
+            `[data-loading-surface="${loadingKind}"] [data-loading-tip-text]`
+          );
+          return Boolean(tip?.getAttribute('data-tip-id')
+            && tip.getAttribute('data-tip-id') !== previousTipId);
+        }, { loadingKind:kind, previousTipId:previousTip }, { timeout:1800 });
+        // Start the next tap only after the 300 ms debounce window has elapsed.
+        await page.waitForTimeout(LOADING_QA_CONTRACT.manualDebounceMs + 50);
         fixture.manualTipIds.push((await inspectLoadingState(page, kind)).tips?.tipId);
       }
       fixture.manualAnnouncement = (await inspectLoadingState(page, kind)).tips?.announcementText || '';
