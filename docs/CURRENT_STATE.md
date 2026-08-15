@@ -36,7 +36,7 @@ Values above must match `config/project-state.json`; the JSON wins for automatio
 ## Current manifest state
 
 - The runtime reads `assets/manifest.json`.
-- The loading-feedback manifest declares 16 Home critical assets, an empty `lazy` group, and a `battle-v3` pack. The existing expedition Mogu is the added critical asset and is shared by Home, startup loading, and adventure loading.
+- The loading-child manifest declares 17 Home critical assets, an empty `lazy` group, and a separate `battle-v3` pack. The existing expedition Mogu remains critical for its Home outing use; startup and adventure loading share the single 22,942-byte `loading_child_mogu_flight` sheet instead. Both loading surfaces bind the child Mogu, carried starlight, and fill tip to one real progress value, preserve the arrival → contact → complete order, and draw five unique session Tips from the canonical safe pool without displaying a counter or dots.
 - The audited critical Home files total approximately 3.35 MiB on disk. The old runtime manifest declares a 4 MiB critical budget; the prior prose performance document stated 2 MB. The replacement single budget source is `config/project-state.json.performanceBudgets`.
 - Battle atlas metadata currently lives in `assets/images/battle-v3/atlas.json`.
 - Canonical inventory/state files are introduced under `config/`; see `docs/SOURCE_OF_TRUTH.md` before editing either side of a manifest pair.

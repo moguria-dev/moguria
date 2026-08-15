@@ -76,7 +76,7 @@
     "display": "3.3.0",
     "application": "3.3.0-ui-consistency",
     "saveSchema": 3,
-    "assetManifest": "3.3.1-loading",
+    "assetManifest": "3.3.2-loading-child",
     "animationManifest": 2
   },
   "performanceBudgets": {

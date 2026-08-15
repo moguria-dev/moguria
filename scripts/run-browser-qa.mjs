@@ -59,6 +59,20 @@ export const BATTLE_CANVAS_PROBE = Object.freeze({
   minStandardDeviation: 8,
   minColorBuckets: 80
 });
+export const LOADING_QA_CONTRACT = Object.freeze({
+  assetPath: '/assets/images/loading/child-mogu-flight.webp',
+  frontierTolerancePx: 2,
+  silhouetteWidthMinPx: 45,
+  silhouetteWidthMaxPx: 52,
+  silhouetteViewportRatioMax: 0.14,
+  tipPoolMinimum: 30,
+  sessionTipCount: 5,
+  revealMs: 1200,
+  autoMs: 6000,
+  tipTransitionMs: 120,
+  manualDebounceMs: 300,
+  progressQuietMs: 700
+});
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DEFAULT_OUTPUT = path.join(ROOT, 'browser-qa-output');
@@ -316,7 +330,7 @@ async function waitForStablePage(page) {
     if (document.fonts?.ready) await document.fonts.ready;
   });
   await installFixture(page);
-  await page.addStyleTag({ content: `
+  const freezeStyle = await page.addStyleTag({ content: `
     html { scroll-behavior: auto !important; }
     *, *::before, *::after {
       animation-delay: 0s !important;
@@ -327,86 +341,22 @@ async function waitForStablePage(page) {
       transition-duration: 0s !important;
     }
   ` });
+  await freezeStyle.evaluate((element) => element.setAttribute('data-moguria-qa-freeze', ''));
 }
 
-async function prepareLoadingFixture(page, kind, percent) {
-  await page.emulateMedia({ reducedMotion:'no-preference' });
-  let fixture;
-  try {
-    fixture = await page.evaluate(async ({ loadingKind, targetPercent }) => {
-    const startup = loadingKind === 'startup';
-    const ids = startup ? {
-      surface: 'startupLoader',
-      image: 'startupLoadingMogu',
-      bubble: 'startupLoadingBubble',
-      progress: 'startupProgressBar',
-      fill: 'startupProgressFill',
-      percent: 'startupProgressPercent',
-      status: 'startupProgressText',
-      hint: null
-    } : {
-      surface: 'adventureLoading',
-      image: 'adventureLoadingMogu',
-      bubble: 'adventureLoadingBubble',
-      progress: 'adventureLoadingProgress',
-      fill: 'adventureLoadingProgressFill',
-      percent: 'adventureLoadingProgressPercent',
-      status: 'adventureLoadingStatus',
-      hint: 'adventureLoadingHint'
-    };
-    if (startup) {
-      const surface = document.getElementById(ids.surface);
-      surface.hidden = false;
-      surface.dataset.state = 'loading';
-      document.body.classList.add('moguria-booting');
-      const progress = document.getElementById(ids.progress);
-      const fill = document.getElementById(ids.fill);
-      const percentText = document.getElementById(ids.percent);
-      const status = document.getElementById(ids.status);
-      progress.setAttribute('aria-busy', 'true');
-      progress.setAttribute('aria-valuemin', '0');
-      progress.setAttribute('aria-valuemax', '100');
-      progress.setAttribute('aria-valuenow', String(targetPercent));
-      progress.setAttribute('aria-valuetext', `${targetPercent}% 完了`);
-      fill.style.width = `${targetPercent}%`;
-      percentText.textContent = `${targetPercent}%`;
-      status.textContent = 'ホームの灯りをともしています';
-    } else {
-      window.MoguriaUI.showAdventureLoading({
-        title: '冒険の準備中',
-        message: '星影洞窟への道を探しています'
-      });
-      window.MoguriaUI.updateAdventureLoading({
-        message: '星影洞窟をひらいています',
-        percent: targetPercent,
-        hint: '少し時間がかかっています。もうちょっと待っててね',
-        busy: true
-      });
-    }
+async function setQaFreeze(page, frozen) {
+  await page.evaluate((enabled) => {
+    const style = document.querySelector('style[data-moguria-qa-freeze]');
+    if (!style?.sheet) throw new Error('browser QA freeze stylesheet is missing');
+    style.sheet.disabled = !enabled;
+  }, frozen);
+}
 
-    const surface = document.getElementById(ids.surface);
-    const image = document.getElementById(ids.image);
-    const bubble = document.getElementById(ids.bubble);
-    const progress = document.getElementById(ids.progress);
-    const fill = document.getElementById(ids.fill);
-    const percentText = document.getElementById(ids.percent);
-    const status = document.getElementById(ids.status);
-    const hint = ids.hint ? document.getElementById(ids.hint) : null;
-    if (image && !image.complete) await new Promise((resolve) => {
-      image.addEventListener('load', resolve, { once: true });
-      image.addEventListener('error', resolve, { once: true });
-      setTimeout(resolve, 5000);
-    });
-    if (image?.complete && image.naturalWidth > 0 && typeof image.decode === 'function') {
-      await image.decode().catch(() => {});
-    }
-    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-    const sourcePath = image ? new URL(image.currentSrc || image.src, location.href).pathname : '';
-    const statusParentProgress = Boolean(progress && status && progress.contains(status));
-    const statusBusyAncestor = Boolean(status?.closest?.('[aria-busy="true"]'));
-    const imageStyle = image ? getComputedStyle(image) : null;
-    const fillStyle = fill ? getComputedStyle(fill) : null;
-    const surfaceRect = surface?.getBoundingClientRect();
+async function inspectLoadingState(page, kind) {
+  return page.evaluate((loadingKind) => {
+    const root = document.querySelector(`[data-loading-surface="${loadingKind}"]`);
+    if (!root) throw new Error(`loading surface is missing: ${loadingKind}`);
+    const query = (selector) => root.querySelector(selector);
     const visible = (element) => {
       if (!element) return false;
       const rect = element.getBoundingClientRect();
@@ -414,165 +364,568 @@ async function prepareLoadingFixture(page, kind, percent) {
       return rect.width > 0 && rect.height > 0 && style.display !== 'none'
         && style.visibility !== 'hidden' && Number(style.opacity) !== 0;
     };
-    let normalMotion = {
-      matches: matchMedia('(prefers-reduced-motion: reduce)').matches,
-      imageAnimationName: imageStyle?.animationName || '',
-      animationDuration: imageStyle?.animationDuration || '',
-      animationIterationCount: imageStyle?.animationIterationCount || '',
-      transformOrigin: imageStyle?.transformOrigin || '',
-      transformOriginPercent: null,
-      animationFound: false,
-      transformAt0: '',
-      transformAt1100: '',
-      error: ''
+    const rect = (element) => {
+      if (!element) return null;
+      const value = element.getBoundingClientRect();
+      return {
+        x: Number(value.x.toFixed(2)), y: Number(value.y.toFixed(2)),
+        left: Number(value.left.toFixed(2)), right: Number(value.right.toFixed(2)),
+        top: Number(value.top.toFixed(2)), bottom: Number(value.bottom.toFixed(2)),
+        width: Number(value.width.toFixed(2)), height: Number(value.height.toFixed(2)),
+        centerX: Number(((value.left + value.right) / 2).toFixed(2)),
+        centerY: Number(((value.top + value.bottom) / 2).toFixed(2))
+      };
     };
-    if (image) {
-      const inlineDuration = image.style.getPropertyValue('animation-duration');
-      const inlineDurationPriority = image.style.getPropertyPriority('animation-duration');
-      try {
-        // waitForStablePage deliberately freezes all animation for screenshots.
-        // Restore only this actor long enough to inspect its production motion
-        // deterministically, then put the page back into reduced motion.
-        image.style.setProperty('animation-duration', '2.2s', 'important');
-        await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-        const motionStyle = getComputedStyle(image);
-        const origin = motionStyle.transformOrigin.split(/\s+/).map(Number.parseFloat);
-        normalMotion = {
-          ...normalMotion,
-          matches: matchMedia('(prefers-reduced-motion: reduce)').matches,
-          imageAnimationName: motionStyle.animationName || '',
-          animationDuration: motionStyle.animationDuration || '',
-          animationIterationCount: motionStyle.animationIterationCount || '',
-          transformOrigin: motionStyle.transformOrigin || '',
-          transformOriginPercent: origin.length >= 2 && image.offsetWidth > 0 && image.offsetHeight > 0
-            ? [
-                Number((origin[0] / image.offsetWidth * 100).toFixed(2)),
-                Number((origin[1] / image.offsetHeight * 100).toFixed(2))
-              ]
-            : null
-        };
-        const animation = image.getAnimations?.().find((item) => item.animationName === 'loadingMoguWait')
-          || image.getAnimations?.()[0];
-        if (animation) {
-          await animation.ready.catch(() => {});
-          animation.pause();
-          animation.currentTime = 0;
-          const transformAt0 = getComputedStyle(image).transform;
-          animation.currentTime = 1100;
-          const transformAt1100 = getComputedStyle(image).transform;
-          normalMotion.animationFound = true;
-          normalMotion.transformAt0 = transformAt0;
-          normalMotion.transformAt1100 = transformAt1100;
-          animation.play();
-        }
-      } catch (error) {
-        normalMotion.error = error?.message || String(error);
-      } finally {
-        if (inlineDuration) image.style.setProperty('animation-duration', inlineDuration, inlineDurationPriority);
-        else image.style.removeProperty('animation-duration');
-      }
-    }
+    const fill = query('[data-loading-fill]');
+    const frontier = query('[data-loading-frontier]');
+    const light = query('[data-loading-carried-light]');
+    const child = query('[data-loading-child]');
+    const childImage = query('[data-loading-child-image]');
+    const gate = query('[data-loading-gate]');
+    const progress = query('[data-loading-progress]');
+    const percentText = query('[data-loading-percent]');
+    const phase = query('[data-loading-phase]');
+    const tips = query('[data-loading-tips]');
+    const tipButton = query('[data-loading-tip-button]');
+    const tipText = query('[data-loading-tip-text]');
+    const autoToggle = query('[data-loading-tip-auto-toggle]');
+    const announcement = query('[data-loading-tip-announcement]');
+    const action = loadingKind === 'startup'
+      ? root.querySelector('#startupRetryBtn')
+      : root.querySelector('[data-loading-actions]');
+    const fillRect = rect(fill);
+    const frontierRect = rect(frontier);
+    const lightRect = rect(light);
+    const childRect = rect(child);
+    const childImageRect = rect(childImage);
+    const gateRect = rect(gate);
+    const surfaceRect = rect(root);
+    const card = root.querySelector('.startup-loader__card, .system-loading__card, .system-dialog');
+    const cardRect = rect(card);
+    const tipStyle = tipText ? getComputedStyle(tipText) : null;
+    const numericLineHeight = Number.parseFloat(tipStyle?.lineHeight || '0');
+    const renderedLines = tipText && numericLineHeight > 0
+      ? Number((tipText.getBoundingClientRect().height / numericLineHeight).toFixed(2))
+      : null;
+    const gateStyle = gate ? getComputedStyle(gate) : null;
+    const frontierStyle = frontier ? getComputedStyle(frontier) : null;
+    const gateAfter = gate ? getComputedStyle(gate, '::after') : null;
+    const topAtGateCenter = gateRect
+      ? document.elementFromPoint(gateRect.centerX, gateRect.centerY)
+      : null;
+    const snapshot = root.moguriaLoadingExperience?.getSnapshot?.() || null;
+    const counterLike = [...(tips?.querySelectorAll('*') || [])].filter(element => {
+      const marker = `${element.getAttribute('data-loading-tip-counter') || ''} ${element.getAttribute('data-loading-tip-dot') || ''}`;
+      return marker.trim() || element.matches?.('.loading-tips__dots, [aria-label*="件中"]');
+    });
     return {
-      kind: loadingKind,
-      targetPercent,
-      sourcePath,
-      imageDecoded: Boolean(image?.complete && image.naturalWidth > 0 && image.naturalHeight > 0),
-      imageVisible: visible(image),
-      naturalSize: image ? [image.naturalWidth, image.naturalHeight] : null,
-      imageAlt: image?.getAttribute('alt'),
-      imageAriaHidden: image?.getAttribute('aria-hidden'),
-      bubble: bubble?.textContent?.trim() || '',
-      bubbleVisible: visible(bubble),
-      status: status?.textContent?.trim() || '',
-      statusVisible: visible(status),
-      hint: hint?.textContent?.trim() || '',
+      state: root.getAttribute('data-state'),
+      mirroredState: root.getAttribute('data-loading-state'),
+      rootProgress: root.getAttribute('data-loading-progress'),
+      snapshot,
+      visible: visible(root),
+      inertAncestor: root.closest('[inert]')?.id || '',
+      ariaHiddenAncestor: root.closest('[aria-hidden="true"]')?.id || '',
+      surfaceRect,
+      cardRect,
+      documentOverflowX: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth)
+        - document.documentElement.clientWidth,
+      cardFitsViewport: Boolean(cardRect && cardRect.left >= -1 && cardRect.right <= innerWidth + 1
+        && cardRect.top >= -1 && cardRect.bottom <= innerHeight + 1),
       progress: progress ? {
         visible: visible(progress),
         role: progress.getAttribute('role'),
+        label: progress.getAttribute('aria-label'),
         busy: progress.getAttribute('aria-busy'),
         min: progress.getAttribute('aria-valuemin'),
         max: progress.getAttribute('aria-valuemax'),
         now: progress.getAttribute('aria-valuenow'),
         valueText: progress.getAttribute('aria-valuetext'),
         percentText: percentText?.textContent?.trim() || '',
-        fillWidth: fillStyle?.width || '',
-        inlineFillWidth: fill?.style?.width || ''
+        fillInlineWidth: fill?.style?.width || ''
       } : null,
-      liveStatus: status ? {
-        role: status.getAttribute('role'),
-        live: status.getAttribute('aria-live'),
-        insideBusyProgress: statusParentProgress,
-        insideBusyRegion: statusBusyAncestor
+      geometry: {
+        fillTipX: fillRect?.right ?? null,
+        frontierX: frontierRect?.left ?? null,
+        lightCenterX: lightRect?.centerX ?? null,
+        childX: childRect?.left ?? null,
+        childRect,
+        childImageRect,
+        gateRect
+      },
+      child: childImage ? {
+        actorCount: root.querySelectorAll('[data-loading-child-image]').length,
+        visible: visible(childImage),
+        backgroundImage: getComputedStyle(childImage).backgroundImage,
+        backgroundSize: getComputedStyle(childImage).backgroundSize,
+        backgroundRepeat: getComputedStyle(childImage).backgroundRepeat,
+        animationName: getComputedStyle(childImage).animationName,
+        animationDuration: getComputedStyle(childImage).animationDuration,
+        animationIterationCount: getComputedStyle(childImage).animationIterationCount,
+        decorativeAncestor: Boolean(childImage.closest('[aria-hidden="true"]'))
       } : null,
-      normalMotion,
-      surface: surfaceRect ? {
-        x: Number(surfaceRect.x.toFixed(1)),
-        y: Number(surfaceRect.y.toFixed(1)),
-        width: Number(surfaceRect.width.toFixed(1)),
-        height: Number(surfaceRect.height.toFixed(1))
-      } : null
+      phase: phase ? {
+        text: phase.textContent?.trim() || '',
+        visible: visible(phase),
+        role: phase.getAttribute('role'),
+        live: phase.getAttribute('aria-live'),
+        atomic: phase.getAttribute('aria-atomic'),
+        insideBusyProgress: Boolean(progress?.contains(phase)),
+        insideBusyRegion: Boolean(phase.closest('[aria-busy="true"]'))
+      } : null,
+      tips: tips ? {
+        visible: visible(tips),
+        dataVisible: tips.getAttribute('data-visible'),
+        quiet: tips.getAttribute('data-quiet'),
+        ariaHidden: tips.getAttribute('aria-hidden'),
+        inert: tips.hasAttribute('inert'),
+        oneTextNode: root.querySelectorAll('[data-loading-tip-text]').length === 1,
+        text: tipText?.textContent?.trim() || '',
+        tipId: tipText?.getAttribute('data-tip-id') || '',
+        renderedLines,
+        buttonDisabled: Boolean(tipButton?.disabled),
+        autoDisabled: Boolean(autoToggle?.disabled),
+        autoPressed: autoToggle?.getAttribute('aria-pressed'),
+        announcementRole: announcement?.getAttribute('role'),
+        announcementLive: announcement?.getAttribute('aria-live'),
+        announcementText: announcement?.textContent?.trim() || '',
+        counterNodeCount: counterLike.length,
+        hasCounterCopy: /(?:^|\s)[1-5]\s*\/\s*5(?:\s|$)|[●•]{2,}/.test(tips.textContent || ''),
+        poolSize: Number(tips.getAttribute('data-tip-pool-size') || root.getAttribute('data-tip-pool-size') || 0),
+        selectionSize: Number(tips.getAttribute('data-tip-selection-size') || root.getAttribute('data-tip-selection-size') || 0)
+      } : null,
+      gate: gate ? {
+        visible: visible(gate),
+        zIndex: Number.parseInt(gateStyle?.zIndex || '0', 10) || 0,
+        frontierZIndex: Number.parseInt(frontierStyle?.zIndex || '0', 10) || 0,
+        centerIsGate: topAtGateCenter === gate || gate.contains(topAtGateCenter),
+        socketContent: gateAfter?.content || '',
+        socketVisible: gateAfter?.display !== 'none' && gateAfter?.visibility !== 'hidden'
+          && Number(gateAfter?.opacity || 1) !== 0
+      } : null,
+      errorActionPresent: Boolean(action),
+      errorActionVisible: visible(action)
     };
-    }, { loadingKind: kind, targetPercent: percent });
-  } finally {
-    // All visual captures remain still and reproducible after the normal-motion
-    // contract has been sampled.
-    await page.emulateMedia({ reducedMotion:'reduce' });
-  }
-  fixture.reducedMotion = await page.evaluate(async (imageId) => {
-    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-    const image = document.getElementById(imageId);
-    const style = image ? getComputedStyle(image) : null;
+  }, kind);
+}
+
+async function inspectLoadingAsset(page, kind) {
+  return page.evaluate(async (loadingKind) => {
+    const root = document.querySelector(`[data-loading-surface="${loadingKind}"]`);
+    const actor = root?.querySelector('[data-loading-child-image]');
+    if (!actor) return { decoded: false, error: 'sprite element missing' };
+    const backgroundImage = getComputedStyle(actor).backgroundImage;
+    const match = backgroundImage.match(/url\(["']?(.*?)["']?\)/);
+    if (!match?.[1]) return { decoded: false, backgroundImage, error: 'background URL missing' };
+    const image = new Image();
+    image.src = match[1];
+    try {
+      await image.decode();
+    } catch (error) {
+      return { decoded: false, backgroundImage, error: error?.message || String(error) };
+    }
+    const canvas = document.createElement('canvas');
+    canvas.width = image.naturalWidth;
+    canvas.height = image.naturalHeight;
+    const context = canvas.getContext('2d', { willReadFrequently: true });
+    context.drawImage(image, 0, 0);
+    const frameWidth = Math.floor(image.naturalWidth / 2);
+    const pixels = context.getImageData(0, 0, frameWidth, image.naturalHeight).data;
+    let minX = frameWidth;
+    let maxX = -1;
+    let minY = image.naturalHeight;
+    let maxY = -1;
+    for (let y = 0; y < image.naturalHeight; y += 1) {
+      for (let x = 0; x < frameWidth; x += 1) {
+        if (pixels[(y * frameWidth + x) * 4 + 3] <= 8) continue;
+        minX = Math.min(minX, x);
+        maxX = Math.max(maxX, x);
+        minY = Math.min(minY, y);
+        maxY = Math.max(maxY, y);
+      }
+    }
+    const alphaWidth = maxX >= minX ? maxX - minX + 1 : 0;
+    const alphaHeight = maxY >= minY ? maxY - minY + 1 : 0;
+    const scale = actor.offsetWidth / Math.max(1, frameWidth);
+    const sourcePath = new URL(image.src, location.href).pathname;
     return {
-      matches: matchMedia('(prefers-reduced-motion: reduce)').matches,
-      imageAnimationName: style?.animationName || ''
+      decoded: image.naturalWidth > 0 && image.naturalHeight > 0,
+      sourcePath,
+      naturalSize: [image.naturalWidth, image.naturalHeight],
+      frameSize: [frameWidth, image.naturalHeight],
+      alphaBounds: [minX, minY, alphaWidth, alphaHeight],
+      displaySilhouette: [
+        Number((alphaWidth * scale).toFixed(2)),
+        Number((alphaHeight * scale).toFixed(2))
+      ],
+      viewportWidthRatio: Number((alphaWidth * scale / innerWidth).toFixed(4)),
+      backgroundImage,
+      backgroundSize: getComputedStyle(actor).backgroundSize,
+      backgroundRepeat: getComputedStyle(actor).backgroundRepeat
     };
-  }, kind === 'startup' ? 'startupLoadingMogu' : 'adventureLoadingMogu');
+  }, kind);
+}
+
+async function inspectLoadingMotion(page, kind) {
+  return page.evaluate(async (loadingKind) => {
+    const root = document.querySelector(`[data-loading-surface="${loadingKind}"]`);
+    const actor = root?.querySelector('[data-loading-child-image]');
+    if (!actor) return { found: false, error: 'child actor missing' };
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    const animation = actor.getAnimations().find(item => item.animationName === 'loadingChildFlight');
+    if (!animation) {
+      return { found: false, animationName: getComputedStyle(actor).animationName };
+    }
+    await animation.ready.catch(() => {});
+    const timing = animation.effect?.getComputedTiming?.() || {};
+    const duration = Number(timing.duration) || 540;
+    const read = () => {
+      const rect = actor.getBoundingClientRect();
+      return {
+        x: Number(((rect.left + rect.right) / 2).toFixed(2)),
+        y: Number(((rect.top + rect.bottom) / 2).toFixed(2)),
+        transform: getComputedStyle(actor).transform
+      };
+    };
+    animation.pause();
+    animation.currentTime = 0;
+    const at0 = read();
+    animation.currentTime = duration / 4;
+    const atQuarter = read();
+    animation.play();
+    return {
+      found: true,
+      duration,
+      animationName: animation.animationName,
+      iterationCount: timing.iterations,
+      at0,
+      atQuarter,
+      xDelta: Number(Math.abs(atQuarter.x - at0.x).toFixed(2)),
+      yDelta: Number(Math.abs(atQuarter.y - at0.y).toFixed(2))
+    };
+  }, kind);
+}
+
+async function prepareLoadingFixture(page, kind, percent) {
+  const fixture = { kind, targetPercent: percent };
   const failures = [];
-  if (!fixture.sourcePath.endsWith('/assets/images/home-v2/expedition_mogu.png')) {
-    failures.push(`loading Mogu is not the existing active production expedition asset: ${fixture.sourcePath || '(missing)'}`);
+  const fullTemporal = await page.evaluate(() => innerWidth === 390 && innerHeight === 844);
+  await page.emulateMedia({ reducedMotion:'no-preference' });
+  await setQaFreeze(page, false);
+  try {
+    fixture.defaults = await page.evaluate(() => ({
+      ...window.MoguriaLoadingExperience?.defaults,
+      poolSize: window.MoguriaLoadingExperience?.TIPS?.length || 0
+    }));
+    await page.evaluate(({ loadingKind, targetPercent }) => {
+      const root = document.querySelector(`[data-loading-surface="${loadingKind}"]`);
+      if (!root) throw new Error(`loading surface is missing: ${loadingKind}`);
+      if (loadingKind === 'startup') {
+        root.hidden = false;
+        document.body.classList.add('moguria-booting');
+        const app = document.getElementById('app');
+        app?.setAttribute('inert', '');
+        app?.setAttribute('aria-hidden', 'true');
+      } else {
+        window.MoguriaUI.showAdventureLoading({
+          title: '冒険の準備中',
+          message: '星影洞窟への道を探しています',
+          percent: targetPercent
+        });
+      }
+      const controller = root.moguriaLoadingExperience;
+      if (!controller?.start || !controller?.advance || !controller?.error || !controller?.getSnapshot) {
+        throw new Error(`${loadingKind} loading controller contract is missing`);
+      }
+      controller.start({
+        progress: targetPercent,
+        title: loadingKind === 'startup' ? 'ホームを準備中' : '冒険の準備中',
+        phase: loadingKind === 'startup' ? 'ホームの灯りをともしています' : '星影洞窟をひらいています'
+      });
+    }, { loadingKind: kind, targetPercent: percent });
+
+    if (fullTemporal) {
+      fixture.tipsBeforeReveal = await inspectLoadingState(page, kind);
+      await page.waitForTimeout(LOADING_QA_CONTRACT.revealMs - 80);
+      fixture.tipsBeforeBoundary = await inspectLoadingState(page, kind);
+      await page.waitForTimeout(160);
+      fixture.tipsAfterReveal = await inspectLoadingState(page, kind);
+      fixture.keyboardReachability = await page.evaluate((loadingKind) => {
+        const root = document.querySelector(`[data-loading-surface="${loadingKind}"]`);
+        const tipButton = root?.querySelector('[data-loading-tip-button]');
+        const card = root?.querySelector('.system-loading__card, .system-dialog');
+        if (loadingKind === 'adventure') card?.focus?.();
+        else tipButton?.focus?.();
+        return {
+          startsOnTip: document.activeElement === tipButton,
+          startsOnCard: document.activeElement === card
+        };
+      }, kind);
+      if (kind === 'adventure') {
+        await page.keyboard.press('Tab');
+        fixture.keyboardReachability.firstTab = await page.evaluate((loadingKind) => (
+          document.activeElement === document.querySelector(`[data-loading-surface="${loadingKind}"] [data-loading-tip-button]`)
+        ), kind);
+      } else {
+        fixture.keyboardReachability.firstTab = fixture.keyboardReachability.startsOnTip;
+      }
+      await page.keyboard.press('Tab');
+      fixture.keyboardReachability.secondTab = await page.evaluate((loadingKind) => (
+        document.activeElement === document.querySelector(`[data-loading-surface="${loadingKind}"] [data-loading-tip-auto-toggle]`)
+      ), kind);
+      await page.keyboard.press('Tab');
+      fixture.keyboardReachability.wrapsToFirst = await page.evaluate((loadingKind) => (
+        document.activeElement === document.querySelector(`[data-loading-surface="${loadingKind}"] [data-loading-tip-button]`)
+      ), kind);
+      await page.evaluate(() => document.activeElement?.blur?.());
+      const autoStartTip = fixture.tipsAfterReveal.tips?.tipId;
+      await page.waitForTimeout(LOADING_QA_CONTRACT.autoMs + LOADING_QA_CONTRACT.tipTransitionMs + 180);
+      fixture.tipsAfterAuto = await inspectLoadingState(page, kind);
+      fixture.autoChangedTip = Boolean(autoStartTip && fixture.tipsAfterAuto.tips?.tipId !== autoStartTip);
+      await page.evaluate((loadingKind) => {
+        document.querySelector(`[data-loading-surface="${loadingKind}"] [data-loading-tip-auto-toggle]`)?.click();
+      }, kind);
+      fixture.tipsPaused = await inspectLoadingState(page, kind);
+      const pausedTip = fixture.tipsPaused.tips?.tipId;
+      await page.waitForTimeout(LOADING_QA_CONTRACT.autoMs + LOADING_QA_CONTRACT.tipTransitionMs + 180);
+      fixture.tipsAfterPausedInterval = await inspectLoadingState(page, kind);
+      fixture.pausedTipStayed = Boolean(pausedTip && fixture.tipsAfterPausedInterval.tips?.tipId === pausedTip);
+      fixture.manualTipIds = [pausedTip];
+      for (let index = 1; index < LOADING_QA_CONTRACT.sessionTipCount; index += 1) {
+        await page.evaluate((loadingKind) => {
+          document.querySelector(`[data-loading-surface="${loadingKind}"] [data-loading-tip-button]`)?.click();
+        }, kind);
+        await page.waitForTimeout(LOADING_QA_CONTRACT.manualDebounceMs + 30);
+        fixture.manualTipIds.push((await inspectLoadingState(page, kind)).tips?.tipId);
+      }
+      fixture.manualAnnouncement = (await inspectLoadingState(page, kind)).tips?.announcementText || '';
+      fixture.manualTipsUnique = new Set(fixture.manualTipIds).size === LOADING_QA_CONTRACT.sessionTipCount;
+    } else {
+      await page.evaluate((loadingKind) => {
+        document.querySelector(`[data-loading-surface="${loadingKind}"]`).moguriaLoadingExperience.start({
+          progress: 47,
+          revealMs: 0,
+          phase: '星灯りを運んでいます'
+        });
+      }, kind);
+      await page.waitForTimeout(30);
+      fixture.tipsAfterReveal = await inspectLoadingState(page, kind);
+    }
+
+    await page.evaluate(({ loadingKind, targetPercent }) => {
+      document.querySelector(`[data-loading-surface="${loadingKind}"]`).moguriaLoadingExperience.start({
+        progress: targetPercent,
+        revealMs: 0,
+        phase: '星灯りを運んでいます'
+      });
+    }, { loadingKind: kind, targetPercent: percent });
+    await page.waitForTimeout(270);
+    fixture.asset = await inspectLoadingAsset(page, kind);
+    fixture.plateau = await inspectLoadingState(page, kind);
+    fixture.normalMotion = await inspectLoadingMotion(page, kind);
+    const advancedPercent = Math.min(90, percent + 20);
+    await page.evaluate(({ loadingKind, targetPercent }) => {
+      document.querySelector(`[data-loading-surface="${loadingKind}"]`).moguriaLoadingExperience.advance(targetPercent, {
+        phase: '星灯りの道をつないでいます'
+      });
+    }, { loadingKind: kind, targetPercent: advancedPercent });
+    await page.waitForTimeout(110);
+    fixture.advanceMidpoint = await inspectLoadingState(page, kind);
+    await page.waitForTimeout(170);
+    fixture.advanceSettled = await inspectLoadingState(page, kind);
+    fixture.advancedPercent = advancedPercent;
+
+    fixture.completion = await page.evaluate(async (loadingKind) => {
+      const root = document.querySelector(`[data-loading-surface="${loadingKind}"]`);
+      const controller = root.moguriaLoadingExperience;
+      const states = [root.getAttribute('data-state')];
+      const observer = new MutationObserver(() => {
+        const next = root.getAttribute('data-state');
+        if (states.at(-1) !== next) states.push(next);
+      });
+      observer.observe(root, { attributes: true, attributeFilter: ['data-state'] });
+      controller.start({ progress: 82, revealMs: 0, phase: '最後の灯りを運んでいます' });
+      if (states.at(-1) !== 'loading') states.push('loading');
+      const completed = await controller.advance(100, {
+        contactPhase: '星灯りが扉へ届きました',
+        completeTitle: '準備できました',
+        completePhase: '冒険の扉がひらきます'
+      });
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      observer.disconnect();
+      return { states, completed };
+    }, kind);
+    fixture.completeState = await inspectLoadingState(page, kind);
+
+    await page.emulateMedia({ reducedMotion:'reduce' });
+    await page.evaluate((loadingKind) => {
+      document.querySelector(`[data-loading-surface="${loadingKind}"]`).moguriaLoadingExperience.start({
+        progress: 47,
+        revealMs: 0,
+        phase: '静かに星灯りを運んでいます'
+      });
+    }, kind);
+    await page.waitForTimeout(30);
+    fixture.reducedBeforeManual = await inspectLoadingState(page, kind);
+    await page.evaluate((loadingKind) => {
+      document.querySelector(`[data-loading-surface="${loadingKind}"]`).moguriaLoadingExperience.nextTip();
+    }, kind);
+    fixture.reducedAfterManual = await inspectLoadingState(page, kind);
+
+    await page.evaluate((loadingKind) => {
+      document.querySelector(`[data-loading-surface="${loadingKind}"]`).moguriaLoadingExperience.error({
+        title: '読み込めませんでした',
+        phase: '通信状態を確認して、もう一度ためしてください'
+      });
+    }, kind);
+    fixture.errorState = await inspectLoadingState(page, kind);
+
+    await page.evaluate(({ loadingKind, targetPercent }) => {
+      document.querySelector(`[data-loading-surface="${loadingKind}"]`).moguriaLoadingExperience.start({
+        progress: targetPercent,
+        revealMs: 0,
+        phase: loadingKind === 'startup' ? 'ホームの灯りをともしています' : '星影洞窟をひらいています'
+      });
+    }, { loadingKind: kind, targetPercent: percent });
+    await page.waitForTimeout(30);
+    fixture.finalState = await inspectLoadingState(page, kind);
+  } finally {
+    await page.emulateMedia({ reducedMotion:'reduce' });
+    await setQaFreeze(page, true);
   }
-  if (!fixture.imageDecoded) failures.push(`loading Mogu is not decoded: ${JSON.stringify(fixture.naturalSize)}`);
-  if (!fixture.imageVisible) failures.push('loading Mogu is not visible');
-  if (fixture.imageAlt !== '' || fixture.imageAriaHidden !== 'true') {
-    failures.push(`loading Mogu decorative semantics differ: alt=${fixture.imageAlt} aria-hidden=${fixture.imageAriaHidden}`);
+
+  const alignmentFailures = (label, state) => {
+    const geometry = state?.geometry || {};
+    for (const [name, value] of [['frontier', geometry.frontierX], ['carried light', geometry.lightCenterX]]) {
+      if (!Number.isFinite(value) || !Number.isFinite(geometry.fillTipX)
+        || Math.abs(value - geometry.fillTipX) > LOADING_QA_CONTRACT.frontierTolerancePx) {
+        failures.push(`${label} fill tip does not align with ${name}: ${JSON.stringify(geometry)}`);
+      }
+    }
+  };
+  if (fixture.defaults?.revealMs !== LOADING_QA_CONTRACT.revealMs
+    || fixture.defaults?.autoMs !== LOADING_QA_CONTRACT.autoMs
+    || fixture.defaults?.transitionMs !== LOADING_QA_CONTRACT.tipTransitionMs
+    || fixture.defaults?.debounceMs !== LOADING_QA_CONTRACT.manualDebounceMs
+    || fixture.defaults?.quietMs !== LOADING_QA_CONTRACT.progressQuietMs) {
+    failures.push(`loading timing defaults differ: ${JSON.stringify(fixture.defaults)}`);
   }
-  if (!fixture.bubbleVisible || !fixture.bubble.includes('ちょっと待っててね')) failures.push(`loading bubble copy is missing: ${fixture.bubble || '(empty)'}`);
-  if (!fixture.statusVisible || !fixture.status) failures.push('loading phase status is empty');
-  if (!fixture.progress?.visible
-    || fixture.progress.role !== 'progressbar'
-    || fixture.progress.busy !== 'true'
-    || fixture.progress.min !== '0'
-    || fixture.progress.max !== '100'
-    || fixture.progress.now !== String(percent)
-    || !fixture.progress.valueText?.includes(`${percent}%`)
-    || fixture.progress.percentText !== `${percent}%`
-    || fixture.progress.inlineFillWidth !== `${percent}%`) {
-    failures.push(`loading progress semantics differ: ${JSON.stringify(fixture.progress)}`);
+  if (!fixture.asset?.decoded || fixture.asset.sourcePath !== LOADING_QA_CONTRACT.assetPath
+    || fixture.asset.naturalSize?.[0] !== 256 || fixture.asset.naturalSize?.[1] !== 128
+    || fixture.asset.backgroundRepeat !== 'no-repeat') {
+    failures.push(`child Mogu production sprite did not decode: ${JSON.stringify(fixture.asset)}`);
   }
-  if (fixture.liveStatus?.role !== 'status'
-    || fixture.liveStatus.live !== 'polite'
-    || fixture.liveStatus.insideBusyProgress
-    || fixture.liveStatus.insideBusyRegion) {
-    failures.push(`loading live-region semantics differ: ${JSON.stringify(fixture.liveStatus)}`);
+  const silhouetteWidth = fixture.asset?.displaySilhouette?.[0];
+  if (!Number.isFinite(silhouetteWidth)
+    || silhouetteWidth < LOADING_QA_CONTRACT.silhouetteWidthMinPx
+    || silhouetteWidth > LOADING_QA_CONTRACT.silhouetteWidthMaxPx
+    || fixture.asset.viewportWidthRatio > LOADING_QA_CONTRACT.silhouetteViewportRatioMax) {
+    failures.push(`child Mogu silhouette is not small: ${JSON.stringify(fixture.asset)}`);
   }
-  const origin = fixture.normalMotion?.transformOriginPercent;
-  if (fixture.normalMotion?.matches !== false
-    || fixture.normalMotion?.imageAnimationName !== 'loadingMoguWait'
-    || fixture.normalMotion?.animationDuration !== '2.2s'
-    || fixture.normalMotion?.animationIterationCount !== 'infinite'
-    || !Array.isArray(origin)
-    || Math.abs(origin[0] - 50) > 1
-    || Math.abs(origin[1] - 82) > 1) {
-    failures.push(`loading normal-motion contract differs: ${JSON.stringify(fixture.normalMotion)}`);
+  if (!fixture.plateau?.child?.visible || fixture.plateau.child.actorCount !== 1
+    || !fixture.plateau.child.decorativeAncestor
+    || fixture.plateau?.inertAncestor || fixture.plateau?.ariaHiddenAncestor) {
+    failures.push(`child Mogu sprite visibility/semantics differ: ${JSON.stringify(fixture.plateau?.child)}`);
   }
-  if (!fixture.normalMotion?.animationFound
-    || !fixture.normalMotion?.transformAt0
-    || !fixture.normalMotion?.transformAt1100
-    || fixture.normalMotion.transformAt0 === fixture.normalMotion.transformAt1100) {
-    failures.push(`loading motion keyframes do not change transform: ${JSON.stringify(fixture.normalMotion)}`);
+  if (!fixture.normalMotion?.found || fixture.normalMotion.animationName !== 'loadingChildFlight'
+    || (fixture.normalMotion.iterationCount !== Infinity && fixture.normalMotion.iterationCount !== 'Infinity')
+    || fixture.normalMotion.xDelta > LOADING_QA_CONTRACT.frontierTolerancePx
+    || fixture.normalMotion.yDelta < 2) {
+    failures.push(`child Mogu plateau motion differs: ${JSON.stringify(fixture.normalMotion)}`);
   }
-  if (!fixture.reducedMotion.matches || fixture.reducedMotion.imageAnimationName !== 'none') {
-    failures.push(`loading reduced-motion contract differs: ${JSON.stringify(fixture.reducedMotion)}`);
+  alignmentFailures('plateau', fixture.plateau);
+  alignmentFailures('progress midpoint', fixture.advanceMidpoint);
+  alignmentFailures('progress settled', fixture.advanceSettled);
+  const beforeGeometry = fixture.plateau?.geometry || {};
+  const afterGeometry = fixture.advanceSettled?.geometry || {};
+  const frontierAdvance = (afterGeometry.frontierX ?? 0) - (beforeGeometry.frontierX ?? 0);
+  const childAdvance = (afterGeometry.childX ?? 0) - (beforeGeometry.childX ?? 0);
+  if (frontierAdvance <= 1 || childAdvance <= 1
+    || Math.abs(frontierAdvance - childAdvance) > LOADING_QA_CONTRACT.frontierTolerancePx
+    || fixture.advanceSettled?.progress?.now !== String(fixture.advancedPercent)) {
+    failures.push(`progress and child did not advance together: ${JSON.stringify({ beforeGeometry, afterGeometry })}`);
+  }
+  const plateauProgress = fixture.plateau?.progress;
+  if (!fixture.plateau?.visible || fixture.plateau.state !== 'loading'
+    || fixture.plateau.mirroredState !== 'loading' || fixture.plateau.rootProgress !== String(percent)
+    || plateauProgress?.role !== 'progressbar'
+    || !plateauProgress?.label
+    || plateauProgress?.busy !== 'true' || plateauProgress?.min !== '0' || plateauProgress?.max !== '100'
+    || plateauProgress?.now !== String(percent) || plateauProgress?.percentText !== `${percent}%`
+    || plateauProgress?.fillInlineWidth !== `${percent}%`) {
+    failures.push(`loading progress semantics differ: ${JSON.stringify(plateauProgress)}`);
+  }
+  if (!fixture.plateau?.phase?.visible || !fixture.plateau.phase.text
+    || fixture.plateau.phase.role !== 'status' || fixture.plateau.phase.live !== 'polite'
+    || fixture.plateau.phase.atomic !== 'true'
+    || fixture.plateau.phase.insideBusyProgress || fixture.plateau.phase.insideBusyRegion) {
+    failures.push(`loading live-region semantics differ: ${JSON.stringify(fixture.plateau?.phase)}`);
+  }
+  const sessionTips = fixture.plateau?.snapshot?.sessionTips || [];
+  const sessionTipIds = sessionTips.map(tip => tip.id);
+  if (sessionTips.length !== LOADING_QA_CONTRACT.sessionTipCount
+    || new Set(sessionTipIds).size !== LOADING_QA_CONTRACT.sessionTipCount
+    || fixture.defaults?.poolSize < LOADING_QA_CONTRACT.tipPoolMinimum
+    || fixture.plateau?.tips?.poolSize < LOADING_QA_CONTRACT.tipPoolMinimum
+    || fixture.plateau?.tips?.selectionSize !== LOADING_QA_CONTRACT.sessionTipCount) {
+    failures.push(`loading tip session is not five unique entries from a large pool: ${JSON.stringify({ sessionTipIds, tips:fixture.plateau?.tips })}`);
+  }
+  const displayedTips = fixture.tipsAfterReveal?.tips;
+  if (!displayedTips?.visible || displayedTips.dataVisible !== 'true' || displayedTips.ariaHidden !== 'false'
+    || displayedTips.inert || !displayedTips.oneTextNode || !displayedTips.tipId
+    || displayedTips.announcementRole !== 'status' || displayedTips.announcementLive !== 'polite'
+    || displayedTips.counterNodeCount !== 0 || displayedTips.hasCounterCopy || displayedTips.renderedLines > 2) {
+    failures.push(`loading tip presentation differs: ${JSON.stringify(displayedTips)}`);
+  }
+  if (fullTemporal && (fixture.tipsBeforeReveal?.tips?.dataVisible !== 'false'
+    || !fixture.tipsBeforeReveal?.tips?.inert || !fixture.tipsBeforeReveal?.tips?.buttonDisabled
+    || fixture.tipsBeforeBoundary?.tips?.dataVisible !== 'false' || !fixture.autoChangedTip
+    || !fixture.keyboardReachability?.firstTab || !fixture.keyboardReachability?.secondTab
+    || !fixture.keyboardReachability?.wrapsToFirst
+    || fixture.tipsPaused?.tips?.autoPressed !== 'true' || !fixture.pausedTipStayed
+    || !fixture.manualTipsUnique || !fixture.manualAnnouncement?.startsWith('次のヒント。'))) {
+    failures.push(`loading tip timing/manual/pause contract differs: ${JSON.stringify({
+      before: fixture.tipsBeforeReveal?.tips,
+      boundary: fixture.tipsBeforeBoundary?.tips,
+      after: displayedTips,
+      keyboardReachability: fixture.keyboardReachability,
+      autoChangedTip: fixture.autoChangedTip,
+      paused: fixture.tipsPaused?.tips,
+      pausedTipStayed: fixture.pausedTipStayed,
+      manualTipIds: fixture.manualTipIds,
+      manualAnnouncement: fixture.manualAnnouncement
+    })}`);
+  }
+  const completionStates = fixture.completion?.states || [];
+  const ordered = ['arriving', 'contact', 'complete'].map(state => completionStates.indexOf(state));
+  if (ordered.some(index => index < 0) || !(ordered[0] < ordered[1] && ordered[1] < ordered[2])
+    || fixture.completeState?.state !== 'complete' || fixture.completeState?.mirroredState !== 'complete'
+    || fixture.completeState?.progress?.busy !== 'false'
+    || !fixture.completeState?.gate?.visible
+    || fixture.completeState.gate.zIndex <= fixture.completeState.gate.frontierZIndex
+    || !fixture.completeState.gate.centerIsGate || !fixture.completeState.gate.socketVisible
+    || !fixture.completeState.gate.socketContent.includes('◇')) {
+    failures.push(`arrival-contact-complete/gate contract differs: ${JSON.stringify({ completion:fixture.completion, complete:fixture.completeState })}`);
+  }
+  if (fixture.reducedBeforeManual?.snapshot?.reducedMotion !== true
+    || fixture.reducedBeforeManual?.child?.animationName !== 'none'
+    || fixture.reducedBeforeManual?.tips?.autoDisabled !== true
+    || fixture.reducedBeforeManual?.tips?.autoPressed !== 'true'
+    || !fixture.reducedBeforeManual?.tips?.tipId
+    || fixture.reducedAfterManual?.tips?.tipId === fixture.reducedBeforeManual?.tips?.tipId) {
+    failures.push(`loading reduced-motion contract differs: ${JSON.stringify({ before:fixture.reducedBeforeManual, after:fixture.reducedAfterManual })}`);
+  }
+  if (fixture.errorState?.state !== 'error' || fixture.errorState?.mirroredState !== 'error'
+    || fixture.errorState?.progress?.busy !== 'false'
+    || fixture.errorState?.phase?.role !== 'alert' || fixture.errorState?.phase?.live !== 'assertive'
+    || fixture.errorState?.tips?.dataVisible !== 'false' || !fixture.errorState?.tips?.inert
+    || !fixture.errorState?.errorActionPresent) {
+    failures.push(`loading error/retry contract differs: ${JSON.stringify(fixture.errorState)}`);
+  }
+  if (!fixture.finalState?.cardFitsViewport || fixture.finalState.documentOverflowX > 1
+    || fixture.finalState?.surfaceRect?.width !== await page.evaluate(() => innerWidth)
+    || fixture.finalState?.surfaceRect?.height !== await page.evaluate(() => innerHeight)) {
+    failures.push(`loading surface does not fit the mobile viewport: ${JSON.stringify(fixture.finalState)}`);
   }
   if (failures.length) throw new Error(failures.join(' | '));
   return fixture;
@@ -786,7 +1139,14 @@ async function prepareSkillVfx(page, level, { reducedMotion = false, quality = '
 const SCREEN_CONTRACTS = Object.freeze({
   'startup-loading': {
     surface: '#startupLoader:not([hidden])',
-    touch: [],
+    touch: [
+      '[data-loading-surface="startup"] [data-loading-tip-button]',
+      '[data-loading-surface="startup"] [data-loading-tip-auto-toggle]'
+    ],
+    fit: [
+      '[data-loading-surface="startup"] [data-loading-tip-button]',
+      '[data-loading-surface="startup"] [data-loading-tip-auto-toggle]'
+    ],
     setup: async (page) => prepareLoadingFixture(page, 'startup', 50)
   },
   home: {
@@ -842,7 +1202,14 @@ const SCREEN_CONTRACTS = Object.freeze({
   },
   'adventure-loading': {
     surface: '#adventureLoading:not(.hidden)',
-    touch: [],
+    touch: [
+      '[data-loading-surface="adventure"] [data-loading-tip-button]',
+      '[data-loading-surface="adventure"] [data-loading-tip-auto-toggle]'
+    ],
+    fit: [
+      '[data-loading-surface="adventure"] [data-loading-tip-button]',
+      '[data-loading-surface="adventure"] [data-loading-tip-auto-toggle]'
+    ],
     setup: async (page) => prepareLoadingFixture(page, 'adventure', 47)
   },
   'battle-hud': {

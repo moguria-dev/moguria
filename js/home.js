@@ -41,7 +41,8 @@ window.MoguriaHome = (() => {
     const progress = $('adventureLoadingProgress');
     const hint = $('adventureLoadingHint');
     if (loading) {
-      delete loading.dataset.state;
+      loading.dataset.state = 'loading';
+      loading.dataset.loadingState = 'loading';
     }
     progress?.setAttribute?.('aria-busy', 'true');
     if (actions) actions.hidden = true;
@@ -54,22 +55,32 @@ window.MoguriaHome = (() => {
     const progress = $('adventureLoadingProgress');
     const hint = $('adventureLoadingHint');
     if (!loading) return;
+    const failurePhase = message || '通信と空き容量を確認して、もう一度ためしてね。';
+    if (typeof window.MoguriaUI?.errorAdventureLoading === 'function') {
+      window.MoguriaUI.errorAdventureLoading({
+        title:'冒険を始められませんでした',
+        phase:failurePhase
+      });
+    } else {
+      setText('adventureLoadingTitle', '冒険を始められませんでした');
+      setText('adventureLoadingStatus', failurePhase);
+      window.MoguriaUI?.updateAdventureLoading?.({ stopWaiting:true, busy:false });
+    }
     loading.dataset.state = 'error';
+    loading.dataset.loadingState = 'error';
     progress?.setAttribute?.('aria-busy', 'false');
-    setText('adventureLoadingTitle', '冒険を始められませんでした');
     setText('adventureLoadingCost', 'おなかは追加で消費されません');
-    setText('adventureLoadingStatus', message || '通信と空き容量を確認して、もう一度ためしてね。');
-    window.MoguriaUI?.updateAdventureLoading?.({ stopWaiting:true, busy:false });
     if (hint) hint.textContent = 'この案内は操作するまで消えません';
     if (actions) actions.hidden = false;
     window.requestAnimationFrame?.(() => $('adventureRetryBtn')?.focus?.());
   }
 
-  function closeAdventureError(focusTarget = ''){
+  function closeAdventureError(focusTarget = '', endSession = false){
     resetAdventureError();
     window.MoguriaUI?.hideAdventureLoading?.({
       restoreFocus: false,
-      focusTarget
+      focusTarget,
+      endSession
     });
   }
 
@@ -81,7 +92,7 @@ window.MoguriaHome = (() => {
     };
     const home = $('adventureHomeBtn');
     if (home) home.onclick = () => {
-      closeAdventureError('startBtn');
+      closeAdventureError('startBtn', true);
       window.MoguriaUI?.show?.('home');
     };
     if (adventureErrorKeysBound || typeof document.addEventListener !== 'function') return;
@@ -196,8 +207,8 @@ window.MoguriaHome = (() => {
     let gameOpened = false;
     let adventureStarted = false;
     let failureMessage = '';
-    window.MoguriaUI?.showAdventureLoading?.({ resume: Boolean(existingRun), percent:2 });
     resetAdventureError();
+    window.MoguriaUI?.showAdventureLoading?.({ resume: Boolean(existingRun), percent:2 });
 
     try {
       window.MoguriaUI?.updateAdventureLoading?.({
@@ -275,6 +286,7 @@ window.MoguriaHome = (() => {
         busy:false,
         stopWaiting:true
       });
+      await window.MoguriaUI?.waitForAdventureLoadingExperience?.();
       await nextVisibleFrame();
     } catch (error) {
       console.warn('[MoguriaHome] battle preparation failed', error);
@@ -294,7 +306,8 @@ window.MoguriaHome = (() => {
         : 'pauseBtn';
       window.MoguriaUI?.hideAdventureLoading?.({
         restoreFocus: false,
-        focusTarget
+        focusTarget,
+        endSession:true
       });
     }
   }

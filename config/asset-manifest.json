@@ -27,7 +27,7 @@
     }
   },
   "runtimeManifest": {
-    "version": "3.3.1-loading",
+    "version": "3.3.2-loading-child",
     "policy": {
       "initialAudio": "metadata-only",
       "lazyLoad": true,
@@ -48,6 +48,11 @@
         "id": "home_v2_expedition_mogu",
         "type": "image",
         "src": "assets/images/home-v2/expedition_mogu.png"
+      },
+      {
+        "id": "loading_child_mogu_flight",
+        "type": "image",
+        "src": "assets/images/loading/child-mogu-flight.webp"
       },
       {
         "id": "home_v2_star_companion",
@@ -451,6 +456,7 @@
       "home_v2_currency_coin": "assets/images/home-v2/currency_coin.png",
       "home_v2_currency_gem": "assets/images/home-v2/currency_gem.png",
       "home_v2_expedition_mogu": "assets/images/home-v2/expedition_mogu.png",
+      "loading_child_mogu_flight": "assets/images/loading/child-mogu-flight.webp",
       "home_v2_frame": "assets/images/home-v2/frame_glass_gold_9slice.png",
       "home_v2_button": "assets/images/home-v2/button_pearl_9slice.png",
       "home_v2_button_gold": "assets/images/home-v2/button_gold_9slice.png",
@@ -1911,13 +1917,10 @@
       "type": "image",
       "usage": {
         "screens": [
-          "home",
-          "startup-loading",
-          "adventure-loading"
+          "home"
         ],
         "states": [
-          "expedition",
-          "waiting"
+          "expedition"
         ]
       },
       "lifecycle": {
@@ -1949,7 +1952,7 @@
         "sha256": "2f05adff9af2a663ec51c3bd5f3ea258e7e7da5ace2ac99bcad8e1072d7d147b"
       },
       "category": "home-ui",
-      "semanticRole": "home.expedition+loading.waiting",
+      "semanticRole": "home.expedition",
       "format": "png",
       "transparency": {
         "status": "verified-imagemagick",
@@ -1968,6 +1971,71 @@
       "approval": {
         "status": "audit-backfill-unknown",
         "approvedAt": null
+      }
+    },
+    {
+      "logicalId": "loading_child_mogu_flight",
+      "path": "assets/images/loading/child-mogu-flight.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "startup-loading",
+          "adventure-loading"
+        ],
+        "states": [
+          "neutral",
+          "complete"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260815-loading-child-1"
+      },
+      "dimensions": {
+        "width": 256,
+        "height": 128
+      },
+      "minDisplay": {
+        "width": 48,
+        "height": 48,
+        "unit": "css-px"
+      },
+      "sourceMaster": "assets/images/battle-v3/companion-atlas.png",
+      "provenance": {
+        "method": "deterministic-approved-production-atlas-extract",
+        "source": "battle_v3_companions frames 0 and 7; 256x256 source cells resized to 128x128 and packed left-to-right as lossless WebP",
+        "approvedDate": "2026-08-15",
+        "approvalBasis": "approved-by-user-preview"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "ee247360773f21dc69c859b6bcad3589bbca547f",
+        "sha256": "d47b12e7005302872d40cbc0fdaa11dcf291680bc0a28eb791fdf5e836d47585"
+      },
+      "category": "loading-character",
+      "semanticRole": "loading.progress-companion.neutral+complete",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null
+      },
+      "sourceMasterId": "battle_v3_companions:frames-0-and-7",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-15"
       }
     },
     {

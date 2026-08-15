@@ -89,11 +89,20 @@ Companions keep core-owned simulation coordinates. The renderer places up to six
 
 The battle scene owns elapsed presentation time. Core simulation delta must not be reused as a second animation clock.
 
-## Loading Mogu wait motion
+## Loading Child Mogu flight motion
 
-Startup and adventure loading reuse the existing active production asset `home_v2_expedition_mogu`. They do not introduce a screenshot crop, line-art substitute, or a second character asset. The canonical UI-motion entry is `uiAnimations.loadingMoguWait` in `config/animation-manifest.json`; it binds the shared asset to the `startup-loading` and `adventure-loading` surfaces.
+Startup and adventure loading use the dedicated active asset `loading_child_mogu_flight` and canonical animation entry `uiAnimations.loadingChildMoguFlight`. It is a 256×128 lossless WebP with two fixed 128×128 cells extracted deterministically from the approved `battle_v3_companions` production atlas: neutral is source frame 0 at cell 0, and complete is source frame 7 at cell 1. CSS uses `background-size: 200% 100%`, `background-position: 0 0` for neutral, and `100% 0` for complete. The battle atlas remains battle-pack-owned; loading never pulls the 1024×512 atlas into the critical set.
 
-The CSS wait loop is 2.2 seconds with `cubic-bezier(.45,0,.34,1)` easing and a `50% 82%` transform origin. Its small lift and tilt read as a patient, living wait without competing with the progress value. The bubble, status copy, progress bar, and delayed wait hint remain DOM content and are not baked into the image. Under `prefers-reduced-motion: reduce`, the character loop and decorative sparkle motion stop while determinate progress and status changes remain available.
+The render box is 64×64 CSS pixels on a fixed cell canvas. Automatic crop is prohibited. Measured at nonzero alpha, the neutral visual bounds are 98×84 source-cell pixels from `(15, 24)`, the complete bounds are 98×92 from `(7, 11)`, and their union is 106×97 from `(7, 11)`. The stable pivot is `(0.5, 0.78)` in normalized cell space. Keeping the full cell, pivot, fill tip and gate geometry stable prevents a visible jump when the art changes from neutral to complete.
+
+The loading actor and determinate progress UI are one causal system:
+
+- During a progress plateau its horizontal delta is exactly 0; only the `.54s` vertical hover continues.
+- During an advance its horizontal position comes from the effective progress-fill tip and uses the same `.22s cubic-bezier(.22,.8,.3,1)` transition. It never advances on elapsed time or fabricated percentage.
+- At 100%, arrival keeps the neutral cell until horizontal movement reaches the gate. Contact stops hover without changing horizontal position. Complete then selects the right-hand complete cell and holds it until the overlay exits.
+- Pausing or hiding the presentation does not invent progress. Resume continues from the current effective progress value.
+
+The bubble, status copy, Tips, progress value, bar, gate and delayed wait hint remain DOM content and are not baked into the image. Under `prefers-reduced-motion: reduce`, hover and decorative motion stop while progress-synchronized horizontal position, determinate status changes, and the neutral-to-complete frame change remain available.
 
 ## Reduced motion and adaptive quality
 

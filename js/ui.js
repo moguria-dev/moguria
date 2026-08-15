@@ -6,6 +6,8 @@ window.MoguriaUI = (() => {
   let loadingFocused = null;
   let loadingProgress = 0;
   let loadingWaitTimers = [];
+  let loadingExperience = null;
+  let loadingCompletionPromise = null;
   let blockedAppState = null;
 
   const ENTITY = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
@@ -122,7 +124,20 @@ window.MoguriaUI = (() => {
     ].filter(timer => timer != null);
   }
 
-  function setAdventureLoadingProgress(value, { reset = false, busy } = {}){
+  function ensureAdventureLoadingExperience(){
+    const loading = document.getElementById('adventureLoading');
+    const create = window.MoguriaLoadingExperience?.create;
+    if (!loading || typeof create !== 'function') return null;
+    if (loadingExperience && loading.moguriaLoadingExperience === loadingExperience) return loadingExperience;
+    loadingExperience = create(loading, {
+      contactPhase:'星灯りが冒険の扉へ届きました',
+      completeTitle:'準備できました',
+      completePhase:'冒険へ出発します'
+    });
+    return loadingExperience;
+  }
+
+  function setAdventureLoadingProgress(value, { reset = false, busy, phase, syncExperience = true } = {}){
     const numeric = Number(value);
     if (Number.isFinite(numeric)) {
       const bounded = Math.max(0, Math.min(100, numeric));
@@ -138,7 +153,18 @@ window.MoguriaUI = (() => {
     if (progress) {
       progress.setAttribute('aria-valuenow', String(rounded));
       progress.setAttribute('aria-valuetext', `${rounded}% 準備完了`);
-      if (busy != null) progress.setAttribute('aria-busy', busy ? 'true' : 'false');
+      const controllerOwnsCompletion = loadingExperience && loadingProgress >= 100;
+      if (busy != null && !controllerOwnsCompletion) progress.setAttribute('aria-busy', busy ? 'true' : 'false');
+    }
+    if (syncExperience && loadingExperience && Number.isFinite(numeric)) {
+      const transition = loadingExperience.advance(loadingProgress, {
+        phase,
+        valueText:`${rounded}% 準備完了`,
+        contactPhase:'星灯りが冒険の扉へ届きました',
+        completeTitle:'準備できました',
+        completePhase:'冒険へ出発します'
+      });
+      if (loadingProgress >= 100) loadingCompletionPromise = transition;
     }
     return loadingProgress;
   }
@@ -184,14 +210,21 @@ window.MoguriaUI = (() => {
     const card = document.getElementById('adventureLoadingCard');
     if (!loading) return;
     if (loading.classList.contains('hidden')) loadingFocused = rememberFocusedElement();
-    delete loading.dataset.state;
-    setDialogText('adventureLoadingTitle', options.title || (options.resume ? '冒険を再開中' : '冒険の準備中'));
-    setDialogText('adventureLoadingCost', options.resume ? '続きから再開・おなか消費なし' : '新しい冒険・おなか 1消費');
-    setDialogText('adventureLoadingStatus', options.message || (options.resume
+    const title = options.title || (options.resume ? '冒険を再開中' : '冒険の準備中');
+    const message = options.message || (options.resume
       ? '続きの冒険を読み込んでいます…'
-      : '戦闘データを読み込んでいます…'));
+      : '戦闘データを読み込んでいます…');
+    const initialProgress = options.percent ?? 2;
+    const experience = ensureAdventureLoadingExperience();
+    experience?.start?.({ progress:initialProgress, title, phase:message });
+    loadingCompletionPromise = experience?.whenComplete?.() || null;
+    loading.dataset.state = 'loading';
+    loading.dataset.loadingState = 'loading';
+    setDialogText('adventureLoadingTitle', title);
+    setDialogText('adventureLoadingCost', options.resume ? '続きから再開・おなか消費なし' : '新しい冒険・おなか 1消費');
+    setDialogText('adventureLoadingStatus', message);
     setDialogText('adventureLoadingHint', options.hint || 'そのまま少し待ってね');
-    setAdventureLoadingProgress(options.percent ?? 2, { reset:true, busy:true });
+    setAdventureLoadingProgress(initialProgress, { reset:true, busy:true, phase:message, syncExperience:false });
     loading.classList.remove('hidden');
     blockApplication();
     scheduleAdventureWaitHints();
@@ -206,10 +239,33 @@ window.MoguriaUI = (() => {
     if (options.hint != null) setDialogText('adventureLoadingHint', options.hint);
     const nextPercent = options.percent ?? options.progress;
     if (nextPercent != null || options.busy != null) {
-      setAdventureLoadingProgress(nextPercent, { busy:options.busy });
+      setAdventureLoadingProgress(nextPercent, { busy:options.busy, phase:options.message });
     }
     if (options.stopWaiting || options.busy === false || loadingProgress >= 100) clearAdventureWaitTimers();
     return loadingProgress;
+  }
+
+  function errorAdventureLoading(messageOrOptions = {}){
+    const options = typeof messageOrOptions === 'string'
+      ? { phase:messageOrOptions }
+      : messageOrOptions || {};
+    clearAdventureWaitTimers();
+    const title = options.title || '冒険を始められませんでした';
+    const phase = options.phase || options.message || '通信と空き容量を確認して、もう一度ためしてね。';
+    const experience = ensureAdventureLoadingExperience();
+    experience?.error?.({ title, phase });
+    if (!experience) {
+      setDialogText('adventureLoadingTitle', title);
+      setDialogText('adventureLoadingStatus', phase);
+    }
+    loadingCompletionPromise = Promise.resolve({ state:'error', reason:'error' });
+    return loadingProgress;
+  }
+
+  function waitForAdventureLoadingExperience(){
+    return loadingCompletionPromise
+      || loadingExperience?.whenComplete?.()
+      || Promise.resolve({ state:'complete', reason:'unavailable' });
   }
 
   function hideAdventureLoading(options = {}){
@@ -218,6 +274,13 @@ window.MoguriaUI = (() => {
     setAdventureLoadingProgress(loadingProgress, { busy:false });
     if (loading) {
       loading.classList.add('hidden');
+    }
+    if (options.endSession) {
+      loadingExperience?.destroy?.();
+      loadingExperience = null;
+      loadingCompletionPromise = null;
+    } else {
+      loadingExperience?.pause?.();
     }
     releaseApplicationIfClear();
     const restore = loadingFocused;
@@ -232,7 +295,10 @@ window.MoguriaUI = (() => {
   function trapSystemDialogFocus(event, container){
     if (event.key !== 'Tab' || !container) return;
     const nodes = typeof container.querySelectorAll === 'function'
-      ? [...container.querySelectorAll('button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])')].filter(canFocus)
+      ? [...container.querySelectorAll('button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])')].filter(element => {
+        if (!canFocus(element) || element.hidden || element.disabled) return false;
+        return !element.closest?.('[hidden], [inert], [aria-hidden="true"]');
+      })
       : [];
     if (!nodes.length) {
       event.preventDefault();
@@ -758,8 +824,13 @@ window.MoguriaUI = (() => {
       }
       const loading = document.getElementById('adventureLoading');
       if (loading && !loading.classList.contains('hidden')) {
-        if (event.key === 'Escape' || event.key === 'Tab') event.preventDefault();
-        document.getElementById('adventureLoadingCard')?.focus?.();
+        const card = document.getElementById('adventureLoadingCard');
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          card?.focus?.();
+        } else {
+          trapSystemDialogFocus(event, card);
+        }
         return;
       }
       const metaOverlay = document.getElementById('overlay');
@@ -774,6 +845,7 @@ window.MoguriaUI = (() => {
 
   return {
     init, show, showResult, showDex, showLogs, showEquipment, showGacha, showOuting,
-    confirmAction, showAdventureLoading, updateAdventureLoading, hideAdventureLoading
+    confirmAction, showAdventureLoading, updateAdventureLoading, errorAdventureLoading,
+    waitForAdventureLoadingExperience, hideAdventureLoading
   };
 })();

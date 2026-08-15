@@ -61,7 +61,7 @@ test('service worker remains off and an attempted ON transition detects stale pr
 test('active production assets have unique lifecycle and provenance catalog records', () => {
   const source = json('config/asset-manifest.json');
   const active = source.catalog.filter((record) => record.lifecycle.status === 'active');
-  assert.equal(active.length, 86);
+  assert.equal(active.length, 87);
   assert.equal(new Set(active.map((record) => record.logicalId)).size, active.length);
   assert.equal(new Set(active.map((record) => record.path)).size, active.length);
   for (const record of active) {
@@ -76,22 +76,30 @@ test('active production assets have unique lifecycle and provenance catalog reco
   }
 });
 
-test('loading feedback reuses the existing active production expedition Mogu with aligned manifests and UI motion', () => {
+test('loading feedback uses the approved dedicated child Mogu sheet with aligned manifests and UI motion', () => {
   const state = json('config/project-state.json');
   const source = json('config/asset-manifest.json');
   const runtime = json('assets/manifest.json');
   const animation = json('config/animation-manifest.json');
-  assert.equal(state.versions.assetManifest, '3.3.1-loading');
+  assert.equal(state.versions.assetManifest, '3.3.2-loading-child');
   assert.equal(source.runtimeManifest.version, state.versions.assetManifest);
   assert.equal(runtime.version, state.versions.assetManifest);
-  assert.equal(source.runtimeManifest.critical.length, 16);
-  assert.equal(runtime.critical.length, 16);
+  assert.equal(source.runtimeManifest.critical.length, 17);
+  assert.equal(runtime.critical.length, 17);
   assert.deepStrictEqual(
     source.runtimeManifest.critical.find((record) => record.id === 'home_v2_expedition_mogu'),
     {
       id: 'home_v2_expedition_mogu',
       type: 'image',
       src: 'assets/images/home-v2/expedition_mogu.png'
+    }
+  );
+  assert.deepStrictEqual(
+    source.runtimeManifest.critical.find((record) => record.id === 'loading_child_mogu_flight'),
+    {
+      id: 'loading_child_mogu_flight',
+      type: 'image',
+      src: 'assets/images/loading/child-mogu-flight.webp'
     }
   );
   assert.deepStrictEqual(runtime.critical, source.runtimeManifest.critical);
@@ -101,24 +109,49 @@ test('loading feedback reuses the existing active production expedition Mogu wit
     .assets.find((asset) => asset.id === 'battle_v3_atlas_manifest');
   assert.equal(canonicalAtlas.src, 'assets/images/battle-v3/atlas.json?v=20260814-motion-rig2-1');
   assert.deepStrictEqual(runtimeAtlas, canonicalAtlas, 'warm and foreground atlas requests must share the exact cache URL');
-  const catalog = source.catalog.find((record) => record.logicalId === 'home_v2_expedition_mogu');
-  assert.deepStrictEqual(catalog.usage.screens, ['home', 'startup-loading', 'adventure-loading']);
-  assert.deepStrictEqual(catalog.usage.states, ['expedition', 'waiting']);
-  assert.equal(catalog.lifecycle.status, 'active');
-  assert.equal(catalog.semanticRole, 'home.expedition+loading.waiting');
-  assert.deepStrictEqual(animation.uiAnimations.loadingMoguWait, {
-    assetId: 'home_v2_expedition_mogu',
-    implementation: 'css-keyframes',
-    surfaces: ['startup-loading', 'adventure-loading'],
-    duration: '2.2s',
-    easing: 'cubic-bezier(.45,0,.34,1)',
-    iterationCount: 'infinite',
-    transformOrigin: '50% 82%',
-    reducedMotion: {
-      animation: 'none',
-      preserveProgressFeedback: true
-    }
+  const expeditionCatalog = source.catalog.find((record) => record.logicalId === 'home_v2_expedition_mogu');
+  assert.deepStrictEqual(expeditionCatalog.usage.screens, ['home']);
+  assert.deepStrictEqual(expeditionCatalog.usage.states, ['expedition']);
+  assert.equal(expeditionCatalog.lifecycle.status, 'active');
+  assert.equal(expeditionCatalog.semanticRole, 'home.expedition');
+
+  const loadingCatalog = source.catalog.find((record) => record.logicalId === 'loading_child_mogu_flight');
+  assert.deepStrictEqual(loadingCatalog.usage.screens, ['startup-loading', 'adventure-loading']);
+  assert.deepStrictEqual(loadingCatalog.usage.states, ['neutral', 'complete']);
+  assert.equal(loadingCatalog.lifecycle.status, 'active');
+  assert.equal(loadingCatalog.semanticRole, 'loading.progress-companion.neutral+complete');
+  assert.deepStrictEqual(loadingCatalog.dimensions, { width: 256, height: 128 });
+  assert.equal(loadingCatalog.sourceMasterId, 'battle_v3_companions:frames-0-and-7');
+  assert.equal(loadingCatalog.provenance.approvalBasis, 'approved-by-user-preview');
+  assert.equal(loadingCatalog.approval.status, 'approved');
+
+  const loadingMotion = animation.uiAnimations.loadingChildMoguFlight;
+  assert.equal(loadingMotion.assetId, 'loading_child_mogu_flight');
+  assert.deepStrictEqual(loadingMotion.surfaces, ['startup-loading', 'adventure-loading']);
+  assert.deepStrictEqual(loadingMotion.spriteSheet.cell, { width: 128, height: 128 });
+  assert.equal(loadingMotion.spriteSheet.backgroundSize, '200% 100%');
+  assert.deepStrictEqual(loadingMotion.spriteSheet.frames.neutral, {
+    index: 0,
+    backgroundPosition: '0 0',
+    sourceAtlasAssetId: 'battle_v3_companions',
+    sourceAtlasFrame: 0
   });
+  assert.deepStrictEqual(loadingMotion.spriteSheet.frames.complete, {
+    index: 1,
+    backgroundPosition: '100% 0',
+    sourceAtlasAssetId: 'battle_v3_companions',
+    sourceAtlasFrame: 7
+  });
+  assert.deepStrictEqual(loadingMotion.pivot, { space: 'cell-normalized', x: 0.5, y: 0.78 });
+  assert.deepStrictEqual(loadingMotion.visualBounds.union, { x: 7, y: 11, width: 106, height: 97 });
+  assert.deepStrictEqual(loadingMotion.visualBounds.frames.neutral, { x: 15, y: 24, width: 98, height: 84 });
+  assert.deepStrictEqual(loadingMotion.visualBounds.frames.complete, { x: 7, y: 11, width: 98, height: 92 });
+  assert.equal(loadingMotion.noAutoCrop, true);
+  assert.equal(loadingMotion.progressMotion.plateau.horizontalDeltaPx, 0);
+  assert.equal(loadingMotion.progressMotion.advance.horizontalPositionSource, 'effective-progress-fill-tip');
+  assert.equal(loadingMotion.progressMotion.advance.synchronizeWithFill, true);
+  assert.equal(loadingMotion.progressMotion.complete.frame, 'complete');
+  assert.equal(loadingMotion.reducedMotion.preserveFrameStateChange, true);
   assert.equal(animation.runtimeVersion, 2, 'loading UI motion must not change the battle projection version');
   assert.equal(state.versions.animationManifest, 2);
 });

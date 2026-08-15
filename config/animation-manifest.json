@@ -87,20 +87,116 @@
     ]
   },
   "uiAnimations": {
-    "loadingMoguWait": {
-      "assetId": "home_v2_expedition_mogu",
-      "implementation": "css-keyframes",
+    "loadingChildMoguFlight": {
+      "animationId": "loading.child-mogu-flight",
+      "actorId": "loading-child-mogu",
+      "assetId": "loading_child_mogu_flight",
+      "implementation": "css-sprite-sheet-with-progress-synchronized-transform",
       "surfaces": [
         "startup-loading",
         "adventure-loading"
       ],
-      "duration": "2.2s",
-      "easing": "cubic-bezier(.45,0,.34,1)",
+      "spriteSheet": {
+        "image": "assets/images/loading/child-mogu-flight.webp",
+        "width": 256,
+        "height": 128,
+        "columns": 2,
+        "rows": 1,
+        "cell": {
+          "width": 128,
+          "height": 128
+        },
+        "backgroundSize": "200% 100%",
+        "frames": {
+          "neutral": {
+            "index": 0,
+            "backgroundPosition": "0 0",
+            "sourceAtlasAssetId": "battle_v3_companions",
+            "sourceAtlasFrame": 0
+          },
+          "complete": {
+            "index": 1,
+            "backgroundPosition": "100% 0",
+            "sourceAtlasAssetId": "battle_v3_companions",
+            "sourceAtlasFrame": 7
+          }
+        }
+      },
+      "renderBox": {
+        "width": 64,
+        "height": 64,
+        "unit": "css-px"
+      },
+      "visualBounds": {
+        "space": "cell-px",
+        "policy": "nonzero-alpha-inside-fixed-cell",
+        "union": {
+          "x": 7,
+          "y": 11,
+          "width": 106,
+          "height": 97
+        },
+        "frames": {
+          "neutral": {
+            "x": 15,
+            "y": 24,
+            "width": 98,
+            "height": 84
+          },
+          "complete": {
+            "x": 7,
+            "y": 11,
+            "width": 98,
+            "height": 92
+          }
+        }
+      },
+      "pivot": {
+        "space": "cell-normalized",
+        "x": 0.5,
+        "y": 0.78
+      },
+      "transformOrigin": "50% 78%",
+      "noAutoCrop": true,
+      "duration": ".54s",
+      "easing": "ease-in-out",
       "iterationCount": "infinite",
-      "transformOrigin": "50% 82%",
+      "progressMotion": {
+        "plateau": {
+          "horizontalDeltaPx": 0,
+          "verticalMotion": "hover-only"
+        },
+        "advance": {
+          "horizontalPositionSource": "effective-progress-fill-tip",
+          "synchronizeWithFill": true,
+          "positionAdvancesOnlyWithEffectiveProgress": true,
+          "transitionDuration": ".22s",
+          "transitionEasing": "cubic-bezier(.22,.8,.3,1)"
+        },
+        "arrival": {
+          "frame": "neutral",
+          "progress": 100,
+          "waitForHorizontalTransitionEnd": true
+        },
+        "contact": {
+          "frame": "neutral",
+          "horizontalDeltaPx": 0,
+          "verticalMotion": "none"
+        },
+        "complete": {
+          "frame": "complete",
+          "holdUntilOverlayExit": true
+        }
+      },
+      "visibility": {
+        "pauseWhenDocumentHidden": true,
+        "resume": "continue-from-current-progress"
+      },
       "reducedMotion": {
         "animation": "none",
-        "preserveProgressFeedback": true
+        "preserveProgressFeedback": true,
+        "preserveProgressSynchronizedX": true,
+        "preserveFrameStateChange": true
       }
     }
   },

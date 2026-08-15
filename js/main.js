@@ -25,6 +25,7 @@ async function moguriaCleanupOldServiceWorker(){
   let retryBound = false;
   let serviceWorkerRegistrationStarted = false;
   let battleWarmupScheduled = false;
+  let startupExperience = null;
 
   const byId = id => document.getElementById(id);
 
@@ -54,8 +55,21 @@ async function moguriaCleanupOldServiceWorker(){
   function startupPhaseMessage(progress, percent){
     const phase = String(progress.phase || '');
     if(phase === 'manifest') return 'データを確認しています';
-    if(phase === 'ready' || percent >= 100) return 'ホームの準備ができました';
+    if(phase === 'ready') return 'ホームの準備ができました';
     return 'ホームの景色を読み込んでいます';
+  }
+
+  function ensureStartupExperience(){
+    if(startupExperience) return startupExperience;
+    const loader = byId('startupLoader');
+    const create = window.MoguriaLoadingExperience?.create;
+    if(!loader || typeof create !== 'function') return null;
+    startupExperience = create(loader, {
+      contactPhase:'星灯りがホームへ届きました',
+      completeTitle:'ホームの準備ができました',
+      completePhase:'ホームへ戻ります'
+    });
+    return startupExperience;
   }
 
   function setLoaderProgress(progress = {}, options = {}){
@@ -66,20 +80,33 @@ async function moguriaCleanupOldServiceWorker(){
       ? Math.max(0, Math.min(100, reportedPercent))
       : total > 0 ? completed / total * 100 : 0;
     startupProgress = options.reset ? candidate : Math.max(startupProgress, candidate);
-    const rounded = Math.round(startupProgress);
+    const ready = String(progress.phase || '') === 'ready';
+    const visibleProgress = ready ? startupProgress : Math.min(startupProgress, 99);
+    const rounded = Math.round(visibleProgress);
     const bar = byId('startupProgressBar');
     const fill = byId('startupProgressFill');
     const percent = byId('startupProgressPercent');
     const status = byId('startupProgressText');
 
-    if(fill) fill.style.width = `${startupProgress}%`;
+    if(fill) fill.style.width = `${visibleProgress}%`;
     if(percent) percent.textContent = `${rounded}%`;
     if(bar){
       bar.setAttribute('aria-valuenow', String(rounded));
       bar.setAttribute('aria-valuetext', `${rounded}% 準備完了`);
     }
-    const phaseMessage = startupPhaseMessage(progress, startupProgress);
+    const phaseMessage = startupPhaseMessage(progress, visibleProgress);
     if(status && status.textContent !== phaseMessage) status.textContent = phaseMessage;
+    const experience = ensureStartupExperience();
+    if(experience){
+      return experience.advance(visibleProgress, {
+        phase:phaseMessage,
+        valueText:`${rounded}% 準備完了`,
+        contactPhase:'星灯りがホームへ届きました',
+        completeTitle:'ホームの準備ができました',
+        completePhase:'ホームへ戻ります'
+      });
+    }
+    return Promise.resolve();
   }
 
   function beginLoaderAttempt(){
@@ -94,7 +121,13 @@ async function moguriaCleanupOldServiceWorker(){
       retry.hidden = true;
       retry.disabled = true;
     }
-    setLoaderProgress({ total:0, completed:0, phase:'manifest' }, { reset:true });
+    const experience = ensureStartupExperience();
+    experience?.start?.({
+      progress:0,
+      title:'ホームを準備中',
+      phase:'データを確認しています'
+    });
+    void setLoaderProgress({ total:0, completed:0, phase:'manifest' }, { reset:true });
   }
 
   function showLoaderFailure(result = {}){
@@ -104,15 +137,20 @@ async function moguriaCleanupOldServiceWorker(){
     const status = byId('startupProgressText');
     const total = Math.max(0, Math.floor(Number(result.total) || 0));
     const loaded = Math.max(0, Math.floor(Number(result.loaded) || 0));
-    setLoaderProgress({ total, completed:loaded }, { reset:true });
+    void setLoaderProgress({ total, completed:loaded }, { reset:true });
+    const failureMessage = total > 0
+      ? `準備できなかったデータがあります（${loaded} / ${total}）`
+      : 'データを読み込めませんでした。通信を確認してください。';
+    ensureStartupExperience()?.error?.({
+      title:'ホームを準備できませんでした',
+      phase:failureMessage
+    });
     if(loader){
       loader.dataset.state = 'error';
     }
     if(bar) bar.setAttribute('aria-busy', 'false');
     if(status){
-      status.textContent = total > 0
-        ? `準備できなかったデータがあります（${loaded} / ${total}）`
-        : 'データを読み込めませんでした。通信を確認してください。';
+      status.textContent = failureMessage;
     }
     if(retry){
       retry.hidden = false;
@@ -195,7 +233,7 @@ async function moguriaCleanupOldServiceWorker(){
           showLoaderFailure(result);
           return result || { ok:false, reason:'asset-preload-failed' };
         }
-        setLoaderProgress({ percent:100, phase:'ready' });
+        await setLoaderProgress({ percent:100, phase:'ready' });
 
         const validation = window.MoguriaValidator?.validate?.();
         if(validation && !validation.ok) window.MoguriaDebug?.warn?.('validation failed', validation.errors);
