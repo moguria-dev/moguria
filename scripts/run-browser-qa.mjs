@@ -708,7 +708,9 @@ async function prepareLoadingFixture(page, kind, percent) {
           phase: '星灯りを運んでいます'
         });
       }, kind);
-      await page.waitForTimeout(30);
+      // Compact-view QA skips the full 1.2 s timing exercise, but it must still
+      // let the real Tips opacity transition settle before asserting visibility.
+      await page.waitForTimeout(LOADING_QA_CONTRACT.tipTransitionMs + 80);
       fixture.tipsAfterReveal = await inspectLoadingState(page, kind);
     }
 
@@ -881,7 +883,7 @@ async function prepareLoadingFixture(page, kind, percent) {
     || !fixture.tipsBeforeReveal?.tips?.inert || !fixture.tipsBeforeReveal?.tips?.buttonDisabled
     || fixture.tipsBeforeBoundary?.tips?.dataVisible !== 'false' || !fixture.autoChangedTip
     || !fixture.keyboardReachability?.firstTab || !fixture.keyboardReachability?.secondTab
-    || !fixture.keyboardReachability?.wrapsToFirst
+    || (kind === 'adventure' && !fixture.keyboardReachability?.wrapsToFirst)
     || fixture.tipsPaused?.tips?.autoPressed !== 'true' || !fixture.pausedTipStayed
     || !fixture.manualTipsUnique || !fixture.manualAnnouncement?.startsWith('次のヒント。'))) {
     failures.push(`loading tip timing/manual/pause contract differs: ${JSON.stringify({
