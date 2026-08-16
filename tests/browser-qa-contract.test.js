@@ -654,6 +654,18 @@ test('Story runtime evidence records all four motions continuously and projects 
     source.indexOf('async function inspectStoryVideoArtifact'),
     source.indexOf('async function runStoryRuntimeEvidence')
   );
+  const webkitScreenshotSource = source.slice(
+    source.indexOf('async function inspectWebKitVideoElementScreenshots'),
+    source.indexOf('async function inspectStoryVideoArtifact')
+  );
+  const webkitStateSource = source.slice(
+    source.indexOf('function validWebKitScreenshotState'),
+    source.indexOf('async function inspectWebKitVideoElementScreenshots')
+  );
+  const pngDecoderSource = source.slice(
+    source.indexOf('function decodePngVisual'),
+    source.indexOf('export function pngVisualStats')
+  );
   for (const decodeContract of [
     'maximumVideoBytes',
     "new Blob([bytes], { type:'video/webm' })",
@@ -695,7 +707,7 @@ test('Story runtime evidence records all four motions continuously and projects 
     'withDeadline(auditPage.evaluate',
     'browserType.name()',
     "browserName === 'webkit'",
-    "'webkit-playback-quality-raf'",
+    "'webkit-element-screenshot-png'",
     "'request-video-frame-callback'",
     'presentationStrategy',
     'sourceSha256Before',
@@ -712,9 +724,7 @@ test('Story runtime evidence records all four motions continuously and projects 
     'HTMLMediaElement.HAVE_CURRENT_DATA',
     'if (video.error) onError()',
     'capturePresentedFrame',
-    'captureWithPlaybackQuality',
     'readPlaybackQuality',
-    'cancelAnimationFrame',
     'video.getVideoPlaybackQuality',
     'quality?.totalVideoFrames',
     'quality?.droppedVideoFrames',
@@ -723,12 +733,9 @@ test('Story runtime evidence records all four motions continuously and projects 
     'displayedVideoFrames:totalVideoFrames - droppedVideoFrames',
     'qualityBefore',
     'qualityAfter',
-    'displayedFrameIncrease',
-    'if (video.paused)',
     'video.requestVideoFrameCallback',
     'video.cancelVideoFrameCallback',
     "presentationMethod:'requestVideoFrameCallback'",
-    "presentationMethod:'getVideoPlaybackQuality+rAF'",
     "fail(new Error('requestVideoFrameCallback timed out for the requested frame'))",
     'await capturePresentedFrame(',
     'targetSeconds, context, canvas, 10000',
@@ -737,7 +744,7 @@ test('Story runtime evidence records all four motions continuously and projects 
     'mediaTime',
     'frameReadiness',
     'strategyEvidenceComplete',
-    'playbackQualityEvidenceComplete',
+    'webkitScreenshotEvidenceComplete',
     'decodePhase = `seek@${fraction}`',
     'throw new Error(`${decodePhase}: ${error?.message || String(error)}`)',
     'retries are reserved for transient engine errors'
@@ -775,42 +782,21 @@ test('Story runtime evidence records all four motions continuously and projects 
     /decodePhase = 'first-frame';[\s\S]*HTMLMediaElement\.HAVE_CURRENT_DATA[\s\S]*waitFor\('loadeddata', 10000\)[\s\S]*decodePhase = `seek@\$\{fraction\}`/,
     'the audit must wait for first-frame data before phase-labelled seeking');
   assert.match(decodeSource,
-    /const browserName = browserType\.name\(\);\s+const presentationStrategy = browserName === 'webkit'\s+\? 'webkit-playback-quality-raf'\s+: 'request-video-frame-callback';/,
+    /const browserName = browserType\.name\(\);\s+const presentationStrategy = browserName === 'webkit'\s+\? 'webkit-element-screenshot-png'\s+: 'request-video-frame-callback';/,
     'the public Playwright browser name must select the presentation strategy on the Node side');
   assert.match(decodeSource,
-    /auditPage\.evaluate\(async \(\{[\s\S]*presentationStrategy[\s\S]*\}\) =>[\s\S]*base64:buffer\.toString\('base64'\)[\s\S]*presentationStrategy/,
-    'the selected Node-side strategy must be passed explicitly into the browser audit');
-  const qualitySource = decodeSource.slice(
-    decodeSource.indexOf('const captureWithPlaybackQuality'),
-    decodeSource.indexOf('const capturePresentedFrame')
-  );
-  assert.match(qualitySource,
-    /new Promise\(\(resolve, reject\) => \{[\s\S]*qualityBefore = readPlaybackQuality\(true\)[\s\S]*setTimeout\([\s\S]*video\.addEventListener\('error', onError, \{ once:true \}\)[\s\S]*frameId = requestAnimationFrame\(inspectPresentedFrame\)[\s\S]*video\.play\(\)/,
-    'WebKit playback-quality capture must be bounded, error-aware, and driven by real playback plus rAF');
-  assert.match(qualitySource,
-    /qualityAfter\.displayedVideoFrames <= qualityBefore\.displayedVideoFrames[\s\S]*video\.currentTime < targetSeconds - frameToleranceSeconds[\s\S]*video\.currentTime > targetSeconds \+ frameToleranceSeconds[\s\S]*video\.pause\(\);\s+try \{\s+context\.drawImage\(video[\s\S]*qualityBefore,[\s\S]*qualityAfter,/,
-    'WebKit must synchronously draw only after a strict displayed-frame increase inside target tolerance');
-  assert.match(qualitySource,
-    /const cleanup = \(\) => \{[\s\S]*clearTimeout\(timer\)[\s\S]*removeEventListener\('error', onError\)[\s\S]*cancelAnimationFrame\(frameId\)/,
-    'the WebKit playback-quality path must cancel its timer, rAF, and error listener');
-  assert.doesNotMatch(qualitySource, /requestVideoFrameCallback|timeAdvanced|initialTime \+ 1 \/ 120/,
-    'the WebKit strategy must bypass rVFC and cannot accept currentTime-only readiness');
+    /presentationStrategy === 'webkit-element-screenshot-png'[\s\S]*inspectWebKitVideoElementScreenshots\(\{[\s\S]*presentationStrategy[\s\S]*auditPage\.evaluate\(async \(\{[\s\S]*base64:buffer\.toString\('base64'\)/,
+    'the Node-side strategy must dispatch WebKit to element screenshots before the Chromium audit');
   const strategyDispatchSource = decodeSource.slice(
     decodeSource.indexOf('const capturePresentedFrame'),
     decodeSource.indexOf("let decodePhase = 'metadata'")
   );
   assert.match(strategyDispatchSource,
-    /presentationStrategy === 'webkit-playback-quality-raf'[\s\S]*return captureWithPlaybackQuality[\s\S]*presentationStrategy !== 'request-video-frame-callback'[\s\S]*typeof video\.requestVideoFrameCallback !== 'function'/,
-    'WebKit must exit through playback quality before the Chromium rVFC path is considered');
-  assert.match(decodeSource,
-    /totalVideoFrames < droppedVideoFrames[\s\S]*displayedVideoFrames:totalVideoFrames - droppedVideoFrames/,
-    'playback quality must require finite coherent total/dropped counters and derive displayed frames');
-  assert.match(decodeSource,
-    /playbackQualityEvidenceComplete[\s\S]*before\.totalVideoFrames >= before\.droppedVideoFrames[\s\S]*after\.totalVideoFrames >= after\.droppedVideoFrames[\s\S]*after\.displayedVideoFrames > before\.displayedVideoFrames[\s\S]*&& playbackQualityEvidenceComplete/,
-    'WebKit before/after counter evidence and strict increase must be part of the pass gate');
+    /presentationStrategy !== 'request-video-frame-callback'[\s\S]*typeof video\.requestVideoFrameCallback !== 'function'/,
+    'the in-page canvas path must remain Chromium rVFC-only');
   assert.doesNotMatch(decodeSource,
-    /captureWithPlaybackFallback|playback-quality-or-time-fallback|timeAdvanced|initialTime \+ 1 \/ 120/,
-    'currentTime-only readiness and the former fallback must be removed');
+    /webkit-playback-quality-raf|captureWithPlaybackQuality|playbackQualityEvidenceComplete|presentationMethod:'getVideoPlaybackQuality\+rAF'/,
+    'the failed WebKit playback-quality strategy must be removed');
   assert.match(decodeSource,
     /callbackId = video\.requestVideoFrameCallback\(onFrame\);\s+let playPromise;[\s\S]*playPromise = video\.play\(\)/,
     'the compositor callback must be armed synchronously before muted playback starts');
@@ -828,6 +814,99 @@ test('Story runtime evidence records all four motions continuously and projects 
       > decodeSource.indexOf('context.drawImage(video'),
     'the rVFC path must draw synchronously inside its accepted frame callback'
   );
+  for (const webkitContract of [
+    "'video-samples'",
+    '`attempt-${attempt}`',
+    'fs.mkdirSync(sampleDirectory, { recursive:true })',
+    "document.createElement('video')",
+    "video.id = 'audit-video'",
+    'video.controls = false',
+    "video.removeAttribute('poster')",
+    "background:'rgb(1, 2, 3)'",
+    "objectFit:'fill'",
+    "waitFor('loadedmetadata', 10000)",
+    "waitFor('loadeddata', 10000)",
+    "waitFor('seeked', 10000)",
+    'HTMLMediaElement.HAVE_CURRENT_DATA',
+    'video.pause()',
+    "activationPolicy:'paused-seek-only'",
+    "presentationMethod:'locator.screenshot'",
+    "auditPage.locator('#audit-video').screenshot({",
+    'timeout:screenshotTimeoutMs',
+    'decodePngVisual(screenshotBuffer)',
+    'fs.writeFileSync(samplePath, screenshotBuffer)',
+    'screenshotSha256:sha256(screenshotBuffer)',
+    'screenshotWidth:decodedPng.stats.width',
+    'screenshotHeight:decodedPng.stats.height',
+    'screenshotVisual:decodedPng.stats',
+    'postSeekState',
+    'preScreenshotState',
+    'postScreenshotState',
+    'screenshotTimeDriftSeconds',
+    '> 0.01',
+    'isConnected:video.isConnected',
+    'networkState:Number(video.networkState)',
+    'video.getBoundingClientRect()',
+    'Math.abs(snapshot.rect.width - expectedWidth) > 0.01',
+    'Math.abs(snapshot.rect.height - expectedHeight) > 0.01',
+    'sample removal failed:',
+    'audit URL cleanup failed:',
+    'decodedFrameDifference(',
+    'uniqueFrameHashes:new Set(samples.map((sample) => sample.frameHash)).size'
+  ]) assert.ok(webkitScreenshotSource.includes(webkitContract),
+    `WebKit element screenshot audit must enforce ${webkitContract}`);
+  assert.equal((webkitScreenshotSource.match(/\.screenshot\(\{/g) || []).length, 1,
+    'each WebKit sample must use one public locator screenshot call');
+  assert.match(webkitScreenshotSource,
+    /for \(let sampleIndex = 0;[\s\S]*document\.querySelector\('#audit-video'\)\?\.remove\(\);[\s\S]*const video = document\.createElement\('video'\)/,
+    'every fraction must replace the prior element with a fresh visible video');
+  assert.match(webkitScreenshotSource,
+    /postSeekState = state\(\);[\s\S]*assertState\(postSeekState, targetSeconds, 'post-seek'\)[\s\S]*preScreenshotState = state\(\);[\s\S]*locator\('#audit-video'\)\.screenshot[\s\S]*post-screenshot state is invalid/,
+    'paused seek, screenshot pre-state, and screenshot post-state must bind pixels to the target time');
+  assert.match(webkitScreenshotSource,
+    /screenshotTimeoutMs = Math\.max\(1, attemptDeadline - Date\.now\(\)\)[\s\S]*withDeadline\([\s\S]*locator\('#audit-video'\)\.screenshot\([\s\S]*attemptDeadline/,
+    'each screenshot must be bounded by the remaining whole-attempt deadline');
+  assert.doesNotMatch(webkitScreenshotSource,
+    /\.play\(\)|playing|getVideoPlaybackQuality|requestVideoFrameCallback|requestAnimationFrame|drawImage|ffmpeg|ffprobe|while\s*\(/,
+    'WebKit pass evidence must be a single paused native element screenshot without playback, counters, canvas, polling, or external decoders');
+  assert.doesNotMatch(webkitScreenshotSource, /\.catch\(\(\) => \{\}\)/,
+    'sample removal and Blob URL cleanup failures must fail the attempt instead of being swallowed');
+  for (const stateContract of [
+    'state.readyState >= 2',
+    'state.networkState === 1 || state.networkState === 2',
+    'state.isConnected === true',
+    'state.duration > 0',
+    'state.videoWidth === expectedVideoSize.width',
+    'state.videoHeight === expectedVideoSize.height',
+    'Math.abs(state.currentTime - targetSeconds) <= 0.25'
+  ]) assert.ok(webkitStateSource.includes(stateContract),
+    `WebKit screenshot state must enforce ${stateContract}`);
+  for (const pngContract of [
+    'zlib.inflateSync(Buffer.concat(idat))',
+    'Buffer.alloc(Math.ceil(width / stride) * Math.ceil(height / stride))',
+    'luminanceVector[vectorIndex++] = Math.round(luminance)',
+    'standardDeviation',
+    'colorBuckets: buckets.size'
+  ]) assert.ok(pngDecoderSource.includes(pngContract),
+    `Node PNG evidence decoder must preserve ${pngContract}`);
+  for (const webkitGate of [
+    "presentationMethod === 'locator.screenshot'",
+    "activationPolicy === 'paused-seek-only'",
+    'readiness.postSeekState, sample.targetSeconds, expectedVideoSize',
+    'readiness.preScreenshotState, sample.targetSeconds, expectedVideoSize',
+    'readiness.postScreenshotState, sample.targetSeconds, expectedVideoSize',
+    'readiness.screenshotTimeDriftSeconds <= 0.01',
+    "sample.screenshot.startsWith('video-samples/')",
+    '/^[a-f0-9]{64}$/.test(sample.screenshotSha256)',
+    'sample.screenshotWidth === expectedVideoSize.width',
+    'sample.screenshotHeight === expectedVideoSize.height',
+    'screenshotPath.startsWith(outputRoot + path.sep)',
+    'fs.statSync(screenshotPath).isFile()',
+    'sha256(fs.readFileSync(screenshotPath)) === sample.screenshotSha256',
+    '&& screenshotOnDisk',
+    '&& webkitScreenshotEvidenceComplete'
+  ]) assert.ok(decodeSource.includes(webkitGate),
+    `all eight WebKit PNG files must enforce ${webkitGate}`);
   assert.doesNotMatch(decodeSource, /setTimeout\(resolve, 50\)|paint-ready-fallback/,
     'post-seek readiness must not reuse the WebKit double-paint timing heuristic');
   assert.doesNotMatch(decodeSource, /getImageData\([\s\S]*while \(/,
