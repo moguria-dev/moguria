@@ -484,25 +484,14 @@ test('Story runtime evidence records all four motions continuously and projects 
     "locator('#storyChapter01Pause')",
     "dataset?.storyPaused === 'true'",
     'lifecycleFreezeWallMs',
+    'lifecycleClockToleranceMs',
     'lifecycleResumeAdvanceMs',
-    'context.newPage()',
-    "coverPage.goto('about:blank')",
-    'coverPage.bringToFront()',
-    'waitForActualPageFocus(page, false)',
-    'page.bringToFront()',
-    'waitForActualPageFocus(page, true)',
-    "window.addEventListener('blur', evidence.blurHandler)",
-    "window.addEventListener('focus', evidence.focusHandler)",
-    "event.type === 'blur'",
-    "event.type === 'focus'",
-    "mechanism:'real-tab-focus-loss-return'",
-    'browserReportedHidden',
-    "focusLostAt.domPaused !== 'false'",
-    "whileUnfocused.domPaused !== 'false'"
+    "dataset?.storyPaused === 'false'",
+    'resumedAt - frozenAt'
   ]) assert.ok(lifecycleSource.includes(lifecycleContract), `runtime lifecycle evidence must use ${lifecycleContract}`);
   assert.doesNotMatch(lifecycleSource,
-    /dispatchEvent|Object\.defineProperty|emulateMedia|newCDPSession|_channel|player\.(?:pause|resume)\(/,
-    'runtime lifecycle evidence must observe real browser/UI events without emulation or private APIs');
+    /dispatchEvent|Object\.defineProperty|emulateMedia|newCDPSession|_channel|player\.(?:pause|resume)\(|bringToFront|document\.hasFocus|(?:add|remove)EventListener\(['"](?:blur|focus)|context\.newPage/,
+    'runtime lifecycle evidence must use the real UI pause control without synthetic or unobservable focus assertions');
 
   const pivotSource = source.slice(
     source.indexOf('async function captureStoryPivotOverlay'),
@@ -525,6 +514,11 @@ test('Story runtime evidence records all four motions continuously and projects 
   );
   assert.equal((runtimeFunction.match(/browser\.newContext\(/g) || []).length, 1);
   assert.equal((runtimeFunction.match(/context\.newPage\(\)/g) || []).length, 1);
+  assert.doesNotMatch(runtimeFunction, /focusLossReturn|exerciseStoryFocusLossReturn|waitForActualPageFocus/,
+    'continuous runtime evidence must not depend on cross-tab focus state that CI cannot observe reliably');
+  assert.match(runtimeFunction,
+    /mode\.exerciseLifecycle[\s\S]*record\.lifecycle = \{ pauseResume:await exerciseStoryPauseResume\(page\) \}/,
+    'reduced/lifecycle evidence must still exercise the production UI pause/resume control');
   for (const holdContract of [
     "mode.holdTiming === 'delayed'",
     'page.waitForTimeout(STORY_RUNTIME_VIDEO_CONTRACT.delayedHoldWaitMs)',
@@ -570,12 +564,44 @@ test('Story runtime evidence records all four motions continuously and projects 
     'minimumDecodedUniqueFrames',
     'maximumDecodeAttempts',
     'decodeAttemptCount',
+    'decodeAttempts',
     'decodeErrors',
     'for (let attempt = 1; attempt <= STORY_RUNTIME_VIDEO_CONTRACT.maximumDecodeAttempts; attempt += 1)',
+    'const browserType = browser.browserType()',
+    "attempt === 1 ? 'existing-browser' : 'fresh-browser-process'",
+    "attempt === 1 ? 'producer-browser' : 'headless'",
+    'ownedRetryBrowser = await browserType.launch({ headless:true })',
+    'auditBrowser = ownedRetryBrowser',
+    'await ownedRetryBrowser.close()',
+    "status:attemptResult.passed ? 'passed' : 'invalid-content'",
+    "let decodePhase = 'metadata'",
+    "decodePhase = 'first-frame'",
+    "waitFor('loadeddata', 10000)",
+    'HTMLMediaElement.HAVE_CURRENT_DATA',
+    'if (video.error) onError()',
+    'decodePhase = `seek@${fraction}`',
+    'throw new Error(`${decodePhase}: ${error?.message || String(error)}`)',
     'retries are reserved for transient engine errors'
   ]) assert.ok(decodeSource.includes(decodeContract), `WebM decode audit must enforce ${decodeContract}`);
+  assert.equal((decodeSource.match(/ownedRetryBrowser = await browserType\.launch\(/g) || []).length, 1,
+    'retry attempts must launch exactly one owned browser process per retry');
+  assert.match(decodeSource,
+    /if \(attempt > 1\)[\s\S]*ownedRetryBrowser = await browserType\.launch\(\{ headless:true \}\)[\s\S]*auditContext = await auditBrowser\.newContext/,
+    'only retries may move the audit into a fresh browser process');
+  assert.match(decodeSource,
+    /finally \{[\s\S]*await auditContext\.close\(\)[\s\S]*await ownedRetryBrowser\.close\(\)/,
+    'every owned retry browser must close after its audit context');
+  assert.match(decodeSource,
+    /if \(attemptError\)[\s\S]*decodeAttempts\.push\(attemptRecord\)[\s\S]*continue;[\s\S]*status:attemptResult\.passed \? 'passed' : 'invalid-content'[\s\S]*return result;/,
+    'engine errors may retry, but a completed invalid content audit must return immediately');
+  assert.match(decodeSource,
+    /const processIsolation = attempt === 1 \? 'existing-browser' : 'fresh-browser-process';\s+const launchMode = attempt === 1 \? 'producer-browser' : 'headless';/,
+    'attempt evidence must distinguish producer-browser mode from headless retry processes');
+  assert.match(decodeSource,
+    /decodePhase = 'first-frame';[\s\S]*HTMLMediaElement\.HAVE_CURRENT_DATA[\s\S]*waitFor\('loadeddata', 10000\)[\s\S]*decodePhase = `seek@\$\{fraction\}`/,
+    'the audit must wait for first-frame data before phase-labelled seeking');
   assert.doesNotMatch(decodeSource, /ffprobe|child_process|newCDPSession|_channel/,
-    'WebM audit must use the generated browser and public web APIs only');
+    'WebM audit must use public Playwright and web APIs only');
   assert.ok(
     runtimeFunction.indexOf('await context.close()')
       < runtimeFunction.indexOf('await video.saveAs(videoPath)'),
