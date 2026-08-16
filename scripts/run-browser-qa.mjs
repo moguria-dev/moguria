@@ -206,7 +206,7 @@ export const STORY_RUNTIME_VIDEO_CONTRACT = Object.freeze({
   maximumVideoBytes:134217728,
   minimumVideoDurationSeconds:20,
   maximumDecodeAttempts:3,
-  decodeAttemptTimeoutMs:30000,
+  decodeAttemptTimeoutMs:70000,
   videoArtifactAuditTimeoutMs:85000,
   totalVideoAuditTimeoutMs:BROWSER_QA_TIME_BUDGET.maximumDeferredVideoAuditMs,
   browserCloseTimeoutMs:5000,
@@ -222,6 +222,14 @@ export const STORY_RUNTIME_VIDEO_CONTRACT = Object.freeze({
   minimumDecodedNonBlankSamples:7,
   minimumDecodedChangedPairs:3,
   minimumDecodedUniqueFrames:4,
+  webkitMinimumDecodedNonBlankSamples:8,
+  webkitMinimumDecodedChangedPairs:5,
+  webkitMinimumDecodedUniqueFrames:8,
+  webkitMonotonicSchedulerMs:12,
+  webkitMonotonicToleranceSeconds:0.25,
+  webkitPausedScreenshotDriftSeconds:0.01,
+  webkitInitialTimeMaximumSeconds:0.05,
+  webkitPlayedGapToleranceSeconds:0.05,
   minimumDecodedMeanDifference:2,
   minimumDecodedChangedPixelRatio:0.02,
   motions:Object.freeze([
@@ -2944,11 +2952,38 @@ function decodedFrameDifference(previous, current, fromFraction, toFraction) {
   };
 }
 
-function validWebKitScreenshotState(state, targetSeconds, expectedVideoSize) {
+function validWebKitPlayedRanges(state, coverThroughSeconds, requireComplete = false) {
+  const ranges = state?.playedRanges;
+  if (!Array.isArray(ranges) || ranges.length === 0 || !Number.isFinite(coverThroughSeconds)) {
+    return false;
+  }
+  let previousEnd = null;
+  for (const range of ranges) {
+    if (!Number.isFinite(range?.start) || !Number.isFinite(range?.end)
+      || range.start < 0 || range.end < range.start) return false;
+    if (previousEnd !== null
+      && range.start - previousEnd > STORY_RUNTIME_VIDEO_CONTRACT.webkitPlayedGapToleranceSeconds) {
+      return false;
+    }
+    previousEnd = range.end;
+  }
+  const first = ranges[0];
+  const last = ranges.at(-1);
+  const requiredEnd = requireComplete ? state.duration : coverThroughSeconds;
+  return first.start <= STORY_RUNTIME_VIDEO_CONTRACT.webkitInitialTimeMaximumSeconds
+    && last.end + STORY_RUNTIME_VIDEO_CONTRACT.webkitMonotonicToleranceSeconds >= requiredEnd;
+}
+
+function validWebKitBaseState(state, expectedVideoSize, expectedPaused, expectedEnded) {
   return state
     && state.error === null
-    && state.paused === true
+    && state.paused === expectedPaused
+    && state.ended === expectedEnded
     && state.seeking === false
+    && state.playbackRate === 1
+    && state.defaultPlaybackRate === 1
+    && state.seekingEventCount === 0
+    && state.seekedEventCount === 0
     && state.readyState >= 2
     && (state.networkState === 1 || state.networkState === 2)
     && state.isConnected === true
@@ -2956,6 +2991,8 @@ function validWebKitScreenshotState(state, targetSeconds, expectedVideoSize) {
     && state.elementCount === 1
     && state.sameElement === true
     && state.lateActivationErrorCount === 0
+    && state.documentHidden === false
+    && state.visibilityState === 'visible'
     && Number.isFinite(state.rect?.x)
     && Number.isFinite(state.rect?.y)
     && Number.isFinite(state.rect?.width)
@@ -2981,16 +3018,38 @@ function validWebKitScreenshotState(state, targetSeconds, expectedVideoSize) {
     && state.duration > 0
     && state.videoWidth === expectedVideoSize.width
     && state.videoHeight === expectedVideoSize.height
-    && Number.isFinite(state.currentTime)
-    && Math.abs(state.currentTime - targetSeconds) <= 0.25;
+    && Number.isFinite(state.currentTime);
 }
 
-function validWebKitRunningState(state, targetSeconds, expectedVideoSize) {
-  return state?.paused === false
-    && validWebKitScreenshotState({ ...state, paused:true }, targetSeconds, expectedVideoSize);
+function validWebKitSetupState(state, expectedVideoSize) {
+  return validWebKitBaseState(state, expectedVideoSize, true, false)
+    && state.currentTime >= 0
+    && state.currentTime <= STORY_RUNTIME_VIDEO_CONTRACT.webkitInitialTimeMaximumSeconds
+    && state.endedEventCount === 0
+    && Array.isArray(state.playedRanges)
+    && state.playedRanges.length === 0;
 }
 
-async function inspectWebKitVideoPageClipScreenshots({
+function validWebKitPausedSampleState(state, targetSeconds, expectedVideoSize) {
+  return validWebKitBaseState(state, expectedVideoSize, true, false)
+    && state.currentTime >= targetSeconds
+    && state.currentTime <= targetSeconds
+      + STORY_RUNTIME_VIDEO_CONTRACT.webkitMonotonicToleranceSeconds
+    && state.endedEventCount === 0
+    && validWebKitPlayedRanges(state, state.currentTime);
+}
+
+function validWebKitEndedState(state, expectedVideoSize) {
+  return validWebKitBaseState(state, expectedVideoSize, true, true)
+    && state.endedEventCount === 1
+    && state.currentTime >= state.duration
+      - STORY_RUNTIME_VIDEO_CONTRACT.webkitMonotonicToleranceSeconds
+    && state.currentTime <= state.duration
+      + STORY_RUNTIME_VIDEO_CONTRACT.webkitPausedScreenshotDriftSeconds
+    && validWebKitPlayedRanges(state, state.duration, true);
+}
+
+async function inspectWebKitVideoMonotonicPageClipScreenshots({
   auditPage, buffer, filePath, expectedVideoSize, attempt, attemptDeadline, presentationStrategy
 }) {
   const outputRoot = path.dirname(path.dirname(filePath));
@@ -3007,10 +3066,12 @@ async function inspectWebKitVideoPageClipScreenshots({
   let durationSeconds = null;
   let width = null;
   let height = null;
+  let endEvidence = null;
   let auditError = null;
   try {
     initialize = await withDeadline(auditPage.evaluate(async ({
-      base64, expectedWidth, expectedHeight
+      base64, expectedWidth, expectedHeight, initialTimeMaximumSeconds,
+      monotonicToleranceSeconds, playedGapToleranceSeconds
     }) => {
       document.body.replaceChildren();
       Object.assign(document.documentElement.style, {
@@ -3054,8 +3115,33 @@ async function inspectWebKitVideoPageClipScreenshots({
       });
       video.src = url;
       document.body.append(video);
-      const audit = { url, canPlayType, elementIdentity, video };
+      const audit = {
+        url,
+        canPlayType,
+        elementIdentity,
+        video,
+        activationSerial:0,
+        lastPausedTime:0,
+        lastTargetTime:0,
+        totalActiveWallSeconds:0,
+        seekingEventCount:0,
+        seekedEventCount:0,
+        endedEventCount:0,
+        lateActivationErrors:[]
+      };
       window.__moguriaWebKitVideoAudit = audit;
+
+      const onSeeking = () => { audit.seekingEventCount += 1; };
+      const onSeeked = () => { audit.seekedEventCount += 1; };
+      const onEnded = () => { audit.endedEventCount += 1; };
+      video.addEventListener('seeking', onSeeking);
+      video.addEventListener('seeked', onSeeked);
+      video.addEventListener('ended', onEnded);
+      audit.disposeTelemetry = () => {
+        video.removeEventListener('seeking', onSeeking);
+        video.removeEventListener('seeked', onSeeked);
+        video.removeEventListener('ended', onEnded);
+      };
 
       audit.readState = () => {
         const rect = video.getBoundingClientRect();
@@ -3074,6 +3160,18 @@ async function inspectWebKitVideoPageClipScreenshots({
           networkState:Number(video.networkState),
           seeking:Boolean(video.seeking),
           paused:Boolean(video.paused),
+          ended:Boolean(video.ended),
+          playbackRate:Number(video.playbackRate),
+          defaultPlaybackRate:Number(video.defaultPlaybackRate),
+          seekingEventCount:audit.seekingEventCount,
+          seekedEventCount:audit.seekedEventCount,
+          endedEventCount:audit.endedEventCount,
+          playedRanges:Array.from({ length:video.played.length }, (_, index) => ({
+            start:Number(video.played.start(index)),
+            end:Number(video.played.end(index))
+          })),
+          documentHidden:Boolean(document.hidden),
+          visibilityState:String(document.visibilityState || ''),
           isConnected:video.isConnected,
           elementIdentity:video.dataset.auditElementIdentity || '',
           elementCount:document.querySelectorAll('#audit-video').length,
@@ -3122,10 +3220,15 @@ async function inspectWebKitVideoPageClipScreenshots({
         video.addEventListener('error', onError, { once:true });
         if (video.error) onError();
       });
-      audit.assertState = (snapshot, targetSeconds, phase, expectedPaused = true) => {
+      audit.assertBaseState = (snapshot, phase, expectedPaused, expectedEnded) => {
         if (snapshot.error !== null
           || snapshot.paused !== expectedPaused
+          || snapshot.ended !== expectedEnded
           || snapshot.seeking !== false
+          || snapshot.playbackRate !== 1
+          || snapshot.defaultPlaybackRate !== 1
+          || snapshot.seekingEventCount !== 0
+          || snapshot.seekedEventCount !== 0
           || snapshot.readyState < HTMLMediaElement.HAVE_CURRENT_DATA
           || (snapshot.networkState !== HTMLMediaElement.NETWORK_IDLE
             && snapshot.networkState !== HTMLMediaElement.NETWORK_LOADING)
@@ -3134,6 +3237,8 @@ async function inspectWebKitVideoPageClipScreenshots({
           || snapshot.elementCount !== 1
           || snapshot.sameElement !== true
           || snapshot.lateActivationErrorCount !== 0
+          || snapshot.documentHidden !== false
+          || snapshot.visibilityState !== 'visible'
           || !Number.isFinite(snapshot.rect.x)
           || !Number.isFinite(snapshot.rect.y)
           || !Number.isFinite(snapshot.rect.width)
@@ -3159,14 +3264,297 @@ async function inspectWebKitVideoPageClipScreenshots({
           || snapshot.duration <= 0
           || snapshot.videoWidth !== expectedWidth
           || snapshot.videoHeight !== expectedHeight
-          || !Number.isFinite(snapshot.currentTime)
-          || Math.abs(snapshot.currentTime - targetSeconds) > 0.25) {
-          throw new Error(`${phase} state is not screenshot-ready: ${JSON.stringify(snapshot)}`);
+          || !Number.isFinite(snapshot.currentTime)) {
+          throw new Error(`${phase} state is not monotonic-audit-ready: ${JSON.stringify(snapshot)}`);
         }
       };
-      audit.assertRunningState = (snapshot, targetSeconds, phase) => {
-        audit.assertState(snapshot, targetSeconds, phase, false);
+      audit.assertPlayedContinuity = (snapshot, coverThroughSeconds, phase, complete = false) => {
+        const ranges = snapshot.playedRanges;
+        if (!Array.isArray(ranges) || ranges.length === 0) {
+          throw new Error(`${phase} has no played media range`);
+        }
+        let previousEnd = null;
+        for (const range of ranges) {
+          if (!Number.isFinite(range?.start) || !Number.isFinite(range?.end)
+            || range.start < 0 || range.end < range.start
+            || (previousEnd !== null && range.start - previousEnd > playedGapToleranceSeconds)) {
+            throw new Error(`${phase} played ranges are discontinuous: ${JSON.stringify(ranges)}`);
+          }
+          previousEnd = range.end;
+        }
+        const requiredEnd = complete ? snapshot.duration : coverThroughSeconds;
+        if (ranges[0].start > initialTimeMaximumSeconds
+          || ranges.at(-1).end + monotonicToleranceSeconds < requiredEnd) {
+          throw new Error(`${phase} played range does not cover the monotonic path: ${JSON.stringify(ranges)}`);
+        }
       };
+      audit.assertPausedSampleState = (snapshot, targetSeconds, phase) => {
+        audit.assertBaseState(snapshot, phase, true, false);
+        if (snapshot.endedEventCount !== 0
+          || snapshot.currentTime < targetSeconds
+          || snapshot.currentTime > targetSeconds + monotonicToleranceSeconds) {
+          throw new Error(`${phase} paused outside target tolerance: ${JSON.stringify(snapshot)}`);
+        }
+        audit.assertPlayedContinuity(snapshot, snapshot.currentTime, phase);
+      };
+
+      audit.play = () => video.play();
+      audit.observePlayPromise = (playPromise, activation, fail) => {
+        Promise.resolve(playPromise).then(() => {
+          activation.playPromiseOutcome = 'fulfilled';
+        }, (error) => {
+          if (activation.settled && activation.playingObserved && error?.name === 'AbortError') return;
+          if (activation.settled) {
+            audit.lateActivationErrors.push({
+              phaseLabel:activation.phaseLabel,
+              name:String(error?.name || ''),
+              message:String(error?.message || error)
+            });
+            return;
+          }
+          fail(new Error(`video play failed: ${error?.message || String(error)}`));
+        });
+      };
+
+      audit.playMonotonicallyTo = (targetSeconds, phaseLabel, timeoutMs, schedulerMs) => (
+        new Promise((resolve, reject) => {
+          const previousPauseTime = audit.lastPausedTime;
+          if (!Number.isFinite(targetSeconds)
+            || targetSeconds <= audit.lastTargetTime
+            || targetSeconds <= previousPauseTime
+            || video.currentTime > targetSeconds) {
+            reject(new Error(`${phaseLabel} target is not strictly monotonic`));
+            return;
+          }
+          const activation = {
+            phaseLabel,
+            activationSerial:++audit.activationSerial,
+            settled:false,
+            playingObserved:false,
+            playPromiseOutcome:'pending-at-play-request'
+          };
+          let intervalId = null;
+          let deadlineId = null;
+          const activeStartedAt = performance.now();
+          const cleanup = () => {
+            if (intervalId !== null) clearInterval(intervalId);
+            if (deadlineId !== null) clearTimeout(deadlineId);
+            video.removeEventListener('playing', onPlaying);
+            video.removeEventListener('timeupdate', onTimeUpdate);
+            video.removeEventListener('error', onError);
+            video.removeEventListener('ended', onEndedBeforeTarget);
+          };
+          const fail = (error) => {
+            if (activation.settled) return;
+            activation.settled = true;
+            cleanup();
+            video.pause();
+            reject(error instanceof Error ? error : new Error(String(error)));
+          };
+          const checkTarget = (scheduler) => {
+            if (activation.settled || !activation.playingObserved) return;
+            const observedTime = Number(video.currentTime);
+            if (!Number.isFinite(observedTime)) {
+              fail(new Error(`${phaseLabel} currentTime is not finite`));
+              return;
+            }
+            if (observedTime < targetSeconds) return;
+            activation.settled = true;
+            cleanup();
+            video.pause();
+            const pausedAt = Number(video.currentTime);
+            const activeWallDeltaSeconds = (performance.now() - activeStartedAt) / 1000;
+            const mediaDeltaSeconds = pausedAt - previousPauseTime;
+            const pausedState = audit.readState();
+            try {
+              audit.assertPausedSampleState(pausedState, targetSeconds, `${phaseLabel}:paused`);
+              if (!Number.isFinite(pausedAt)
+                || pausedAt < targetSeconds
+                || pausedAt > targetSeconds + monotonicToleranceSeconds
+                || mediaDeltaSeconds <= 0
+                || mediaDeltaSeconds > activeWallDeltaSeconds + monotonicToleranceSeconds) {
+                throw new Error(`${phaseLabel} media/wall monotonicity failed`);
+              }
+            } catch (error) {
+              reject(error instanceof Error ? error : new Error(String(error)));
+              return;
+            }
+            audit.lastPausedTime = pausedAt;
+            audit.lastTargetTime = targetSeconds;
+            audit.totalActiveWallSeconds += activeWallDeltaSeconds;
+            resolve({
+              setupOnly:false,
+              pixelPassSignal:false,
+              method:'monotonic-playback-paused-page-clip-screenshot',
+              phaseLabel,
+              activationSerial:activation.activationSerial,
+              playingObserved:activation.playingObserved,
+              playingTime:activation.playingTime,
+              scheduler,
+              schedulerIntervalMs:schedulerMs,
+              previousPauseTime,
+              pausedAt,
+              mediaDeltaSeconds,
+              activeWallDeltaSeconds,
+              totalActiveWallSeconds:audit.totalActiveWallSeconds,
+              pausedState,
+              playPromiseOutcome:activation.playPromiseOutcome
+            });
+          };
+          const onPlaying = () => {
+            activation.playingObserved = true;
+            activation.playingTime = Number(video.currentTime);
+            activation.playPromiseOutcome = activation.playPromiseOutcome === 'fulfilled'
+              ? 'fulfilled'
+              : 'pending-at-playing';
+            checkTarget('playing');
+          };
+          const onTimeUpdate = () => checkTarget('timeupdate');
+          const onError = () => fail(
+            new Error(`video decode failed (${video.error?.code || 'unknown'})`)
+          );
+          const onEndedBeforeTarget = () => {
+            checkTarget('ended');
+            if (!activation.settled) fail(new Error(`${phaseLabel} ended before target`));
+          };
+          video.addEventListener('playing', onPlaying, { once:true });
+          video.addEventListener('timeupdate', onTimeUpdate);
+          video.addEventListener('error', onError, { once:true });
+          video.addEventListener('ended', onEndedBeforeTarget, { once:true });
+          intervalId = setInterval(() => checkTarget('interval'), schedulerMs);
+          deadlineId = setTimeout(() => fail(
+            new Error(`${phaseLabel} monotonic playback timed out`)
+          ), timeoutMs);
+          if (video.error) {
+            onError();
+            return;
+          }
+          let playPromise;
+          try { playPromise = audit.play(); }
+          catch (error) {
+            fail(new Error(`video play failed: ${error?.message || String(error)}`));
+            return;
+          }
+          audit.observePlayPromise(playPromise, activation, fail);
+        })
+      );
+
+      audit.playMonotonicallyToEnd = (phaseLabel, timeoutMs, schedulerMs) => (
+        new Promise((resolve, reject) => {
+          const previousPauseTime = audit.lastPausedTime;
+          const activation = {
+            phaseLabel,
+            activationSerial:++audit.activationSerial,
+            settled:false,
+            playingObserved:false,
+            playPromiseOutcome:'pending-at-play-request'
+          };
+          let intervalId = null;
+          let deadlineId = null;
+          let lastObservedTime = previousPauseTime;
+          const activeStartedAt = performance.now();
+          const cleanup = () => {
+            if (intervalId !== null) clearInterval(intervalId);
+            if (deadlineId !== null) clearTimeout(deadlineId);
+            video.removeEventListener('playing', onPlaying);
+            video.removeEventListener('timeupdate', onTimeUpdate);
+            video.removeEventListener('error', onError);
+            video.removeEventListener('ended', onEnded);
+          };
+          const fail = (error) => {
+            if (activation.settled) return;
+            activation.settled = true;
+            cleanup();
+            video.pause();
+            reject(error instanceof Error ? error : new Error(String(error)));
+          };
+          const checkProgress = () => {
+            if (activation.settled || !activation.playingObserved) return;
+            const observedTime = Number(video.currentTime);
+            const activeWallDeltaSeconds = (performance.now() - activeStartedAt) / 1000;
+            if (!Number.isFinite(observedTime)
+              || observedTime + monotonicToleranceSeconds < lastObservedTime
+              || observedTime - previousPauseTime
+                > activeWallDeltaSeconds + monotonicToleranceSeconds) {
+              fail(new Error(`${phaseLabel} media/wall progress is not monotonic`));
+              return;
+            }
+            lastObservedTime = Math.max(lastObservedTime, observedTime);
+          };
+          const onPlaying = () => {
+            activation.playingObserved = true;
+            activation.playingTime = Number(video.currentTime);
+            activation.playPromiseOutcome = activation.playPromiseOutcome === 'fulfilled'
+              ? 'fulfilled'
+              : 'pending-at-playing';
+            checkProgress();
+          };
+          const onTimeUpdate = checkProgress;
+          const onError = () => fail(
+            new Error(`video decode failed (${video.error?.code || 'unknown'})`)
+          );
+          const onEnded = () => {
+            if (activation.settled) return;
+            const activeWallDeltaSeconds = (performance.now() - activeStartedAt) / 1000;
+            const endedAt = Number(video.currentTime);
+            const mediaDeltaSeconds = endedAt - previousPauseTime;
+            activation.settled = true;
+            cleanup();
+            const endedState = audit.readState();
+            try {
+              audit.assertBaseState(endedState, `${phaseLabel}:ended`, true, true);
+              audit.assertPlayedContinuity(endedState, endedState.duration, `${phaseLabel}:ended`, true);
+              if (!activation.playingObserved
+                || endedState.endedEventCount !== 1
+                || endedAt < endedState.duration - monotonicToleranceSeconds
+                || endedAt > endedState.duration + monotonicToleranceSeconds
+                || mediaDeltaSeconds <= 0
+                || mediaDeltaSeconds > activeWallDeltaSeconds + monotonicToleranceSeconds) {
+                throw new Error(`${phaseLabel} final media/wall integrity failed`);
+              }
+            } catch (error) {
+              reject(error instanceof Error ? error : new Error(String(error)));
+              return;
+            }
+            audit.lastPausedTime = endedAt;
+            audit.totalActiveWallSeconds += activeWallDeltaSeconds;
+            resolve({
+              method:'monotonic-playback-to-ended',
+              phaseLabel,
+              activationSerial:activation.activationSerial,
+              playingObserved:activation.playingObserved,
+              playingTime:activation.playingTime,
+              schedulerIntervalMs:schedulerMs,
+              previousPauseTime,
+              endedAt,
+              mediaDeltaSeconds,
+              activeWallDeltaSeconds,
+              totalActiveWallSeconds:audit.totalActiveWallSeconds,
+              endedState,
+              playPromiseOutcome:activation.playPromiseOutcome
+            });
+          };
+          video.addEventListener('playing', onPlaying, { once:true });
+          video.addEventListener('timeupdate', onTimeUpdate);
+          video.addEventListener('error', onError, { once:true });
+          video.addEventListener('ended', onEnded, { once:true });
+          intervalId = setInterval(checkProgress, schedulerMs);
+          deadlineId = setTimeout(() => fail(
+            new Error(`${phaseLabel} monotonic playback to end timed out`)
+          ), timeoutMs);
+          if (video.error) {
+            onError();
+            return;
+          }
+          let playPromise;
+          try { playPromise = audit.play(); }
+          catch (error) {
+            fail(new Error(`video play failed: ${error?.message || String(error)}`));
+            return;
+          }
+          audit.observePlayPromise(playPromise, activation, fail);
+        })
+      );
 
       const metadataReady = audit.waitFor('loadedmetadata', 10000);
       video.load();
@@ -3182,95 +3570,15 @@ async function inspectWebKitVideoPageClipScreenshots({
         throw new Error('decoded WebM has no current frame data');
       }
 
-      audit.activationSerial = 0;
-      audit.lateActivationErrors = [];
-      audit.activateAtTarget = (targetSeconds, phaseLabel, timeoutMs) => (
-        new Promise((resolve, reject) => {
-          let settled = false;
-          let playingObserved = false;
-          let playPromiseOutcome = 'pending-at-playing';
-          let timer = null;
-          const activationSerial = ++audit.activationSerial;
-          const cleanup = () => {
-            if (timer !== null) clearTimeout(timer);
-            video.removeEventListener('playing', onPlaying);
-            video.removeEventListener('error', onError);
-          };
-          const fail = (error) => {
-            if (settled) return;
-            settled = true;
-            video.pause();
-            cleanup();
-            reject(error instanceof Error ? error : new Error(String(error)));
-          };
-          const onPlaying = () => {
-            if (settled || playingObserved) return;
-            playingObserved = true;
-            const playingTime = Number(video.currentTime);
-            const runningState = audit.readState();
-            try {
-              audit.assertRunningState(
-                runningState, targetSeconds, phaseLabel + ':playing-before-screenshot'
-              );
-            } catch (error) {
-              fail(error);
-              return;
-            }
-            if (!Number.isFinite(playingTime)
-              || Math.abs(playingTime - targetSeconds) > 0.25) {
-              fail(new Error('video playing frame escaped target tolerance at ' + phaseLabel));
-              return;
-            }
-            settled = true;
-            cleanup();
-            resolve({
-              setupOnly:false,
-              pixelPassSignal:false,
-              method:'per-sample-muted-play-running-page-clip-screenshot',
-              phaseLabel,
-              activationSerial,
-              playingObserved,
-              playingTime,
-              runningState,
-              playPromiseOutcome
-            });
-          };
-          const onError = () => fail(
-            new Error('video activation failed (' + (video.error?.code || 'unknown') + ')')
-          );
-          timer = setTimeout(() => fail(
-            new Error('video playing timed out at ' + phaseLabel)
-          ), timeoutMs);
-          video.addEventListener('playing', onPlaying, { once:true });
-          video.addEventListener('error', onError, { once:true });
-          if (video.error) {
-            onError();
-            return;
-          }
-          let playPromise;
-          try { playPromise = video.play(); }
-          catch (error) {
-            fail(new Error('video play failed: ' + (error?.message || String(error))));
-            return;
-          }
-          Promise.resolve(playPromise).then(() => {
-            playPromiseOutcome = 'fulfilled';
-          }, (error) => {
-            if (settled && playingObserved && error?.name === 'AbortError') return;
-            if (settled) {
-              audit.lateActivationErrors.push({
-                phaseLabel,
-                name:String(error?.name || ''),
-                message:String(error?.message || error)
-              });
-              return;
-            }
-            fail(new Error('video play failed: ' + (error?.message || String(error))));
-          });
-        })
-      );
       const setupState = audit.readState();
-      audit.assertState(setupState, setupState.currentTime, 'post-load setup');
+      audit.assertBaseState(setupState, 'post-load setup', true, false);
+      if (setupState.currentTime < 0
+        || setupState.currentTime > initialTimeMaximumSeconds
+        || setupState.endedEventCount !== 0
+        || setupState.playedRanges.length !== 0) {
+        throw new Error(`post-load setup did not begin at zero: ${JSON.stringify(setupState)}`);
+      }
+      audit.lastPausedTime = setupState.currentTime;
       return {
         canPlayType,
         durationSeconds:video.duration,
@@ -3282,8 +3590,15 @@ async function inspectWebKitVideoPageClipScreenshots({
     }, {
       base64:buffer.toString('base64'),
       expectedWidth:expectedVideoSize.width,
-      expectedHeight:expectedVideoSize.height
+      expectedHeight:expectedVideoSize.height,
+      initialTimeMaximumSeconds:STORY_RUNTIME_VIDEO_CONTRACT.webkitInitialTimeMaximumSeconds,
+      monotonicToleranceSeconds:STORY_RUNTIME_VIDEO_CONTRACT.webkitMonotonicToleranceSeconds,
+      playedGapToleranceSeconds:STORY_RUNTIME_VIDEO_CONTRACT.webkitPlayedGapToleranceSeconds
     }), attemptDeadline, 'WebKit singleton video load setup');
+
+    if (!validWebKitSetupState(initialize.setupState, expectedVideoSize)) {
+      throw new Error('WebKit singleton setup failed Node verification');
+    }
 
     durationSeconds = initialize.durationSeconds;
     width = initialize.width;
@@ -3296,61 +3611,75 @@ async function inspectWebKitVideoPageClipScreenshots({
       let prepared = null;
       let sampleError = null;
       try {
+        const targetSeconds = Math.min(
+          Math.max(0.05, durationSeconds * fraction),
+          Math.max(0.05, durationSeconds - 0.05)
+        );
+        const previousPausedAt = samples.at(-1)?.frameReadiness?.currentTime
+          ?? initialize.setupState.currentTime;
+        const mediaDeltaSeconds = Math.max(0, targetSeconds - previousPausedAt);
+        const playbackTimeoutMs = Math.max(
+          10000,
+          Math.ceil((mediaDeltaSeconds + 10) * 1000)
+        );
         prepared = await withDeadline(auditPage.evaluate(async ({
-          fraction:sampleFraction, phaseLabel:samplePhaseLabel
+          targetSeconds:sampleTargetSeconds,
+          phaseLabel:samplePhaseLabel,
+          timeoutMs,
+          schedulerMs
         }) => {
           const audit = window.__moguriaWebKitVideoAudit;
           const video = audit?.video;
           if (!(video instanceof HTMLVideoElement) || !audit?.url
             || typeof audit.readState !== 'function'
-            || typeof audit.waitFor !== 'function'
-            || typeof audit.assertState !== 'function'
-            || typeof audit.assertRunningState !== 'function'
-            || typeof audit.activateAtTarget !== 'function') {
+            || typeof audit.assertPausedSampleState !== 'function'
+            || typeof audit.playMonotonicallyTo !== 'function') {
             throw new Error('WebKit singleton audit video is unavailable');
           }
-          const targetSeconds = Math.min(
-            Math.max(0.05, video.duration * sampleFraction),
-            Math.max(0.05, video.duration - 0.05)
+          const activation = await audit.playMonotonicallyTo(
+            sampleTargetSeconds, samplePhaseLabel, timeoutMs, schedulerMs
           );
-          video.pause();
-          const seeked = audit.waitFor('seeked', 10000);
-          video.currentTime = targetSeconds;
-          await seeked;
-          const postSeekState = audit.readState();
-          audit.assertState(postSeekState, targetSeconds, `${samplePhaseLabel}:post-seek`);
-          const activation = await audit.activateAtTarget(
-            targetSeconds, samplePhaseLabel, 10000
-          );
-          audit.assertRunningState(
-            activation.runningState,
-            targetSeconds,
-            `${samplePhaseLabel}:playing-before-screenshot`
+          audit.assertPausedSampleState(
+            activation.pausedState,
+            sampleTargetSeconds,
+            `${samplePhaseLabel}:paused-before-screenshot`
           );
           return {
             canPlayType:audit.canPlayType,
-            fraction:sampleFraction,
-            targetSeconds,
+            targetSeconds:sampleTargetSeconds,
             durationSeconds:video.duration,
             width:video.videoWidth,
             height:video.videoHeight,
             elementIdentity:audit.elementIdentity,
-            activation,
-            postSeekState
+            activation
           };
-        }, { fraction, phaseLabel }), attemptDeadline,
-        `WebKit video ${phaseLabel} seek and running activation`);
+        }, {
+          targetSeconds,
+          phaseLabel,
+          timeoutMs:playbackTimeoutMs,
+          schedulerMs:STORY_RUNTIME_VIDEO_CONTRACT.webkitMonotonicSchedulerMs
+        }), attemptDeadline,
+        `WebKit video ${phaseLabel} monotonic playback and pause`);
 
-        if (!validWebKitScreenshotState(
-          prepared.postSeekState, prepared.targetSeconds, expectedVideoSize
-        ) || !validWebKitRunningState(
-          prepared.activation?.runningState, prepared.targetSeconds, expectedVideoSize
-        )) {
-          throw new Error(`WebKit seek/activation state failed Node verification at ${fraction}`);
-        }
+        if (!validWebKitPausedSampleState(
+          prepared.activation?.pausedState, prepared.targetSeconds, expectedVideoSize
+        )) throw new Error(`WebKit monotonic pause failed Node verification at ${fraction}`);
         if (prepared.activation?.playingObserved !== true
-          || !Number.isFinite(prepared.activation.playingTime)
-          || Math.abs(prepared.activation.playingTime - prepared.targetSeconds) > 0.25) {
+          || prepared.activation.activationSerial !== sampleIndex + 1
+          || prepared.activation.schedulerIntervalMs
+            !== STORY_RUNTIME_VIDEO_CONTRACT.webkitMonotonicSchedulerMs
+          || !['playing', 'timeupdate', 'interval'].includes(prepared.activation.scheduler)
+          || !Number.isFinite(prepared.activation.previousPauseTime)
+          || !Number.isFinite(prepared.activation.pausedAt)
+          || prepared.activation.pausedAt < prepared.targetSeconds
+          || prepared.activation.pausedAt > prepared.targetSeconds
+            + STORY_RUNTIME_VIDEO_CONTRACT.webkitMonotonicToleranceSeconds
+          || prepared.activation.pausedAt <= prepared.activation.previousPauseTime
+          || !Number.isFinite(prepared.activation.mediaDeltaSeconds)
+          || !Number.isFinite(prepared.activation.activeWallDeltaSeconds)
+          || prepared.activation.mediaDeltaSeconds
+            > prepared.activation.activeWallDeltaSeconds
+              + STORY_RUNTIME_VIDEO_CONTRACT.webkitMonotonicToleranceSeconds) {
           throw new Error(`WebKit activation timing failed Node verification at ${fraction}`);
         }
         const screenshotTimeoutMs = Math.max(1, attemptDeadline - Date.now());
@@ -3371,58 +3700,49 @@ async function inspectWebKitVideoPageClipScreenshots({
           `WebKit video sample ${sampleIndex + 1} page clip screenshot`
         );
         const postScreenshot = await withDeadline(auditPage.evaluate(({
-          targetSeconds, playingTime, phaseLabel:samplePhaseLabel
+          targetSeconds, pausedAt, phaseLabel:samplePhaseLabel, screenshotDriftSeconds
         }) => {
           const audit = window.__moguriaWebKitVideoAudit;
           const video = audit?.video;
-          video?.pause();
           if (!(video instanceof HTMLVideoElement)
             || typeof audit.readState !== 'function'
-            || typeof audit.assertState !== 'function') {
+            || typeof audit.assertPausedSampleState !== 'function') {
             throw new Error('WebKit singleton audit video disappeared after screenshot');
           }
-          const postPauseTime = Number(video.currentTime);
           const postScreenshotState = audit.readState();
-          audit.assertState(
+          audit.assertPausedSampleState(
             postScreenshotState,
             targetSeconds,
-            samplePhaseLabel + ':post-screenshot-pause'
+            samplePhaseLabel + ':post-screenshot-paused'
           );
-          const playingToPostPauseIntervalSeconds = postPauseTime - playingTime;
-          if (!Number.isFinite(playingTime) || !Number.isFinite(postPauseTime)
-            || Math.abs(playingTime - targetSeconds) > 0.25
-            || Math.abs(postPauseTime - targetSeconds) > 0.25
-            || postPauseTime + 0.01 < playingTime
-            || playingToPostPauseIntervalSeconds > 0.25
-            || Math.abs(postScreenshotState.currentTime - postPauseTime) > 0.01) {
+          const pausedScreenshotDriftSeconds = Math.abs(
+            postScreenshotState.currentTime - pausedAt
+          );
+          if (!Number.isFinite(pausedAt)
+            || pausedScreenshotDriftSeconds > screenshotDriftSeconds) {
             throw new Error(
-              samplePhaseLabel + ': running screenshot interval escaped target tolerance'
+              samplePhaseLabel + ': paused screenshot changed the media clock'
             );
           }
           return {
-            postPauseTime,
             postScreenshotState,
-            playingToPostPauseIntervalSeconds
+            pausedScreenshotDriftSeconds
           };
         }, {
           targetSeconds:prepared.targetSeconds,
-          playingTime:prepared.activation.playingTime,
-          phaseLabel
+          pausedAt:prepared.activation.pausedAt,
+          phaseLabel,
+          screenshotDriftSeconds:
+            STORY_RUNTIME_VIDEO_CONTRACT.webkitPausedScreenshotDriftSeconds
         }), attemptDeadline,
-        `WebKit video ${phaseLabel} immediate post-screenshot pause`);
-        if (!validWebKitScreenshotState(
+        `WebKit video ${phaseLabel} immediate post-screenshot paused state`);
+        if (!validWebKitPausedSampleState(
           postScreenshot.postScreenshotState, prepared.targetSeconds, expectedVideoSize
         )
-          || !Number.isFinite(postScreenshot.postPauseTime)
-          || Math.abs(postScreenshot.postPauseTime - prepared.targetSeconds) > 0.25
-          || postScreenshot.postPauseTime + 0.01 < prepared.activation.playingTime
-          || !Number.isFinite(postScreenshot.playingToPostPauseIntervalSeconds)
-          || postScreenshot.playingToPostPauseIntervalSeconds < -0.01
-          || postScreenshot.playingToPostPauseIntervalSeconds > 0.25
-          || Math.abs(
-            postScreenshot.postScreenshotState.currentTime - postScreenshot.postPauseTime
-          ) > 0.01) {
-          throw new Error(`WebKit running screenshot timing failed Node verification at ${fraction}`);
+          || !Number.isFinite(postScreenshot.pausedScreenshotDriftSeconds)
+          || postScreenshot.pausedScreenshotDriftSeconds
+            > STORY_RUNTIME_VIDEO_CONTRACT.webkitPausedScreenshotDriftSeconds) {
+          throw new Error(`WebKit paused screenshot timing failed Node verification at ${fraction}`);
         }
         const sampleName = `sample-${String(sampleIndex + 1).padStart(2, '0')}--${fraction.toFixed(2).replace('.', '_')}.png`;
         const samplePath = path.join(sampleDirectory, sampleName);
@@ -3452,12 +3772,9 @@ async function inspectWebKitVideoPageClipScreenshots({
             currentTime:postScreenshot.postScreenshotState.currentTime,
             mediaTime:null,
             activationTelemetry:prepared.activation,
-            postSeekState:prepared.postSeekState,
-            runningState:prepared.activation.runningState,
-            postPauseTime:postScreenshot.postPauseTime,
+            pausedState:prepared.activation.pausedState,
             postScreenshotState:postScreenshot.postScreenshotState,
-            playingToPostPauseIntervalSeconds:
-              postScreenshot.playingToPostPauseIntervalSeconds
+            pausedScreenshotDriftSeconds:postScreenshot.pausedScreenshotDriftSeconds
           },
           frameHash,
           screenshot:path.relative(outputRoot, samplePath).split(path.sep).join('/'),
@@ -3475,6 +3792,38 @@ async function inspectWebKitVideoPageClipScreenshots({
       }
       if (sampleError) throw sampleError;
     }
+
+    const finalSampleTime = samples.at(-1)?.frameReadiness?.currentTime;
+    const finalMediaDeltaSeconds = Math.max(0, durationSeconds - finalSampleTime);
+    const endTimeoutMs = Math.max(10000, Math.ceil((finalMediaDeltaSeconds + 10) * 1000));
+    endEvidence = await withDeadline(auditPage.evaluate(async ({
+      phaseLabel, timeoutMs, schedulerMs
+    }) => {
+      const audit = window.__moguriaWebKitVideoAudit;
+      if (!(audit?.video instanceof HTMLVideoElement)
+        || typeof audit.playMonotonicallyToEnd !== 'function') {
+        throw new Error('WebKit singleton audit video is unavailable before final drain');
+      }
+      return audit.playMonotonicallyToEnd(phaseLabel, timeoutMs, schedulerMs);
+    }, {
+      phaseLabel:'final-drain-to-ended',
+      timeoutMs:endTimeoutMs,
+      schedulerMs:STORY_RUNTIME_VIDEO_CONTRACT.webkitMonotonicSchedulerMs
+    }), attemptDeadline, 'WebKit video monotonic final drain');
+    if (endEvidence?.method !== 'monotonic-playback-to-ended'
+      || endEvidence.activationSerial
+        !== STORY_RUNTIME_VIDEO_CONTRACT.videoSampleFractions.length + 1
+      || endEvidence.playingObserved !== true
+      || endEvidence.schedulerIntervalMs
+        !== STORY_RUNTIME_VIDEO_CONTRACT.webkitMonotonicSchedulerMs
+      || !Number.isFinite(endEvidence.mediaDeltaSeconds)
+      || !Number.isFinite(endEvidence.activeWallDeltaSeconds)
+      || endEvidence.mediaDeltaSeconds
+        > endEvidence.activeWallDeltaSeconds
+          + STORY_RUNTIME_VIDEO_CONTRACT.webkitMonotonicToleranceSeconds
+      || !validWebKitEndedState(endEvidence.endedState, expectedVideoSize)) {
+      throw new Error(`WebKit monotonic final drain failed Node verification: ${JSON.stringify(endEvidence)}`);
+    }
   } catch (error) {
     auditError = error;
   } finally {
@@ -3485,6 +3834,7 @@ async function inspectWebKitVideoPageClipScreenshots({
         const lateActivationErrors = [...(audit?.lateActivationErrors || [])];
         if (video instanceof HTMLVideoElement) {
           video.pause();
+          audit?.disposeTelemetry?.();
           video.removeAttribute('src');
           video.remove();
         }
@@ -3533,7 +3883,8 @@ async function inspectWebKitVideoPageClipScreenshots({
     samplePng:{ width:samples[0]?.screenshotWidth || 0, height:samples[0]?.screenshotHeight || 0 },
     samples,
     adjacentDifferences,
-    uniqueFrameHashes:new Set(samples.map((sample) => sample.frameHash)).size
+    uniqueFrameHashes:new Set(samples.map((sample) => sample.frameHash)).size,
+    endEvidence
   };
 }
 
@@ -3542,7 +3893,7 @@ async function inspectStoryVideoArtifact(
 ) {
   const browserName = browserType.name();
   const presentationStrategy = browserName === 'webkit'
-    ? 'webkit-page-clip-screenshot-png'
+    ? 'webkit-monotonic-page-clip-png'
     : 'request-video-frame-callback';
   if (!fs.existsSync(filePath)) {
     return {
@@ -3629,8 +3980,8 @@ async function inspectStoryVideoArtifact(
           auditPage.bringToFront(), attemptDeadline, 'headed audit page activation'
         );
       }
-      const decode = presentationStrategy === 'webkit-page-clip-screenshot-png'
-        ? await withDeadline(inspectWebKitVideoPageClipScreenshots({
+      const decode = presentationStrategy === 'webkit-monotonic-page-clip-png'
+        ? await withDeadline(inspectWebKitVideoMonotonicPageClipScreenshots({
           auditPage,
           buffer,
           filePath,
@@ -3916,22 +4267,28 @@ async function inspectStoryVideoArtifact(
         difference.meanAbsoluteDifference >= STORY_RUNTIME_VIDEO_CONTRACT.minimumDecodedMeanDifference
           && difference.changedPixelRatio >= STORY_RUNTIME_VIDEO_CONTRACT.minimumDecodedChangedPixelRatio
       )).length;
+      const webkitMonotonicAudit = presentationStrategy === 'webkit-monotonic-page-clip-png';
+      const requiredNonBlankSamples = webkitMonotonicAudit
+        ? STORY_RUNTIME_VIDEO_CONTRACT.webkitMinimumDecodedNonBlankSamples
+        : STORY_RUNTIME_VIDEO_CONTRACT.minimumDecodedNonBlankSamples;
+      const requiredChangedPairs = webkitMonotonicAudit
+        ? STORY_RUNTIME_VIDEO_CONTRACT.webkitMinimumDecodedChangedPairs
+        : STORY_RUNTIME_VIDEO_CONTRACT.minimumDecodedChangedPairs;
+      const requiredUniqueFrames = webkitMonotonicAudit
+        ? STORY_RUNTIME_VIDEO_CONTRACT.webkitMinimumDecodedUniqueFrames
+        : STORY_RUNTIME_VIDEO_CONTRACT.minimumDecodedUniqueFrames;
       const strategyEvidenceComplete = decode.presentationStrategy === presentationStrategy
         && decode.samples.every((sample) => (
           sample.frameReadiness?.presentationStrategy === presentationStrategy
         ));
-      const webkitSingletonEvidenceComplete = presentationStrategy !== 'webkit-page-clip-screenshot-png'
+      const webkitSingletonEvidenceComplete = !webkitMonotonicAudit
         || (decode.singletonSetup?.elementIdentity === 'webkit-video-audit-singleton'
           && decode.singletonSetup.elementCreateCount === 1
           && decode.singletonSetup.blobUrlCreateCount === 1
           && decode.singletonSetup.sourceAssignmentCount === 1
           && decode.singletonSetup.loadCallCount === 1
-          && validWebKitScreenshotState(
-            decode.singletonSetup.setupState,
-            decode.singletonSetup.setupState?.currentTime,
-            expectedVideoSize
-          ));
-      const webkitScreenshotEvidenceComplete = presentationStrategy !== 'webkit-page-clip-screenshot-png'
+          && validWebKitSetupState(decode.singletonSetup.setupState, expectedVideoSize));
+      const webkitScreenshotEvidenceComplete = !webkitMonotonicAudit
         || decode.samples.every((sample, sampleIndex) => {
           const readiness = sample.frameReadiness;
           const activation = readiness?.activationTelemetry;
@@ -3943,32 +4300,48 @@ async function inspectStoryVideoArtifact(
             && fs.statSync(screenshotPath).isFile()
             && sha256(fs.readFileSync(screenshotPath)) === sample.screenshotSha256;
           return readiness?.presentationMethod === 'page.screenshot.clip'
-            && activation?.method === 'per-sample-muted-play-running-page-clip-screenshot'
+            && activation?.method === 'monotonic-playback-paused-page-clip-screenshot'
             && activation.pixelPassSignal === false
             && activation.phaseLabel
               === `sample-${String(sampleIndex + 1).padStart(2, '0')}@${sample.fraction}`
             && activation.activationSerial === sampleIndex + 1
             && activation.playingObserved === true
             && Number.isFinite(activation.playingTime)
-            && Math.abs(activation.playingTime - sample.targetSeconds) <= 0.25
-            && validWebKitScreenshotState(
-              readiness.postSeekState, sample.targetSeconds, expectedVideoSize
+            && activation.schedulerIntervalMs
+              === STORY_RUNTIME_VIDEO_CONTRACT.webkitMonotonicSchedulerMs
+            && ['playing', 'timeupdate', 'interval'].includes(activation.scheduler)
+            && Number.isFinite(activation.previousPauseTime)
+            && Number.isFinite(activation.pausedAt)
+            && activation.pausedAt >= sample.targetSeconds
+            && activation.pausedAt <= sample.targetSeconds
+              + STORY_RUNTIME_VIDEO_CONTRACT.webkitMonotonicToleranceSeconds
+            && activation.pausedAt > activation.previousPauseTime
+            && activation.playingTime + STORY_RUNTIME_VIDEO_CONTRACT.webkitMonotonicToleranceSeconds
+              >= activation.previousPauseTime
+            && activation.playingTime <= activation.pausedAt
+              + STORY_RUNTIME_VIDEO_CONTRACT.webkitPausedScreenshotDriftSeconds
+            && Number.isFinite(activation.mediaDeltaSeconds)
+            && activation.mediaDeltaSeconds > 0
+            && Number.isFinite(activation.activeWallDeltaSeconds)
+            && activation.activeWallDeltaSeconds > 0
+            && activation.mediaDeltaSeconds <= activation.activeWallDeltaSeconds
+              + STORY_RUNTIME_VIDEO_CONTRACT.webkitMonotonicToleranceSeconds
+            && Number.isFinite(activation.totalActiveWallSeconds)
+            && activation.totalActiveWallSeconds >= activation.activeWallDeltaSeconds
+            && validWebKitPausedSampleState(
+              readiness.pausedState, sample.targetSeconds, expectedVideoSize
             )
-            && validWebKitRunningState(
-              readiness.runningState, sample.targetSeconds, expectedVideoSize
-            )
-            && validWebKitScreenshotState(
+            && validWebKitPausedSampleState(
               readiness.postScreenshotState, sample.targetSeconds, expectedVideoSize
             )
-            && Number.isFinite(readiness.postPauseTime)
-            && Math.abs(readiness.postPauseTime - sample.targetSeconds) <= 0.25
-            && readiness.postPauseTime + 0.01 >= activation.playingTime
-            && Number.isFinite(readiness.playingToPostPauseIntervalSeconds)
-            && readiness.playingToPostPauseIntervalSeconds >= -0.01
-            && readiness.playingToPostPauseIntervalSeconds <= 0.25
+            && readiness.targetSeconds === sample.targetSeconds
+            && readiness.currentTime === readiness.postScreenshotState.currentTime
+            && Number.isFinite(readiness.pausedScreenshotDriftSeconds)
+            && readiness.pausedScreenshotDriftSeconds
+              <= STORY_RUNTIME_VIDEO_CONTRACT.webkitPausedScreenshotDriftSeconds
             && Math.abs(
-              readiness.postScreenshotState.currentTime - readiness.postPauseTime
-            ) <= 0.01
+              readiness.postScreenshotState.currentTime - activation.pausedAt
+            ) <= STORY_RUNTIME_VIDEO_CONTRACT.webkitPausedScreenshotDriftSeconds
             && typeof sample.screenshot === 'string'
             && sample.screenshot.startsWith('video-samples/')
             && /^[a-f0-9]{64}$/.test(sample.screenshotSha256)
@@ -3979,6 +4352,33 @@ async function inspectStoryVideoArtifact(
             && sample.screenshotVisual?.height === sample.screenshotHeight
             && screenshotOnDisk;
         });
+      const finalSampleTime = decode.samples.at(-1)?.frameReadiness?.currentTime;
+      const webkitEndEvidenceComplete = !webkitMonotonicAudit
+        || (decode.endEvidence?.method === 'monotonic-playback-to-ended'
+          && decode.endEvidence.phaseLabel === 'final-drain-to-ended'
+          && decode.endEvidence.activationSerial
+            === STORY_RUNTIME_VIDEO_CONTRACT.videoSampleFractions.length + 1
+          && decode.endEvidence.playingObserved === true
+          && Number.isFinite(decode.endEvidence.playingTime)
+          && decode.endEvidence.schedulerIntervalMs
+            === STORY_RUNTIME_VIDEO_CONTRACT.webkitMonotonicSchedulerMs
+          && Number.isFinite(decode.endEvidence.previousPauseTime)
+          && Number.isFinite(finalSampleTime)
+          && Math.abs(decode.endEvidence.previousPauseTime - finalSampleTime)
+            <= STORY_RUNTIME_VIDEO_CONTRACT.webkitPausedScreenshotDriftSeconds
+          && Number.isFinite(decode.endEvidence.endedAt)
+          && Number.isFinite(decode.endEvidence.mediaDeltaSeconds)
+          && decode.endEvidence.mediaDeltaSeconds > 0
+          && Number.isFinite(decode.endEvidence.activeWallDeltaSeconds)
+          && decode.endEvidence.activeWallDeltaSeconds > 0
+          && decode.endEvidence.mediaDeltaSeconds <= decode.endEvidence.activeWallDeltaSeconds
+            + STORY_RUNTIME_VIDEO_CONTRACT.webkitMonotonicToleranceSeconds
+          && Number.isFinite(decode.endEvidence.totalActiveWallSeconds)
+          && decode.endEvidence.totalActiveWallSeconds >= decode.endEvidence.activeWallDeltaSeconds
+          && decode.endEvidence.endedAt - decode.singletonSetup.setupState.currentTime
+            <= decode.endEvidence.totalActiveWallSeconds
+              + STORY_RUNTIME_VIDEO_CONTRACT.webkitMonotonicToleranceSeconds
+          && validWebKitEndedState(decode.endEvidence.endedState, expectedVideoSize));
       const passed = decode.durationSeconds >= STORY_RUNTIME_VIDEO_CONTRACT.minimumVideoDurationSeconds
         && decode.width === expectedVideoSize.width
         && decode.height === expectedVideoSize.height
@@ -3986,9 +4386,10 @@ async function inspectStoryVideoArtifact(
         && strategyEvidenceComplete
         && webkitSingletonEvidenceComplete
         && webkitScreenshotEvidenceComplete
-        && nonBlankSamples >= STORY_RUNTIME_VIDEO_CONTRACT.minimumDecodedNonBlankSamples
-        && changedPairs >= STORY_RUNTIME_VIDEO_CONTRACT.minimumDecodedChangedPairs
-        && decode.uniqueFrameHashes >= STORY_RUNTIME_VIDEO_CONTRACT.minimumDecodedUniqueFrames;
+        && webkitEndEvidenceComplete
+        && nonBlankSamples >= requiredNonBlankSamples
+        && changedPairs >= requiredChangedPairs
+        && decode.uniqueFrameHashes >= requiredUniqueFrames;
       attemptResult = {
         ...base,
         passed,
@@ -4001,6 +4402,10 @@ async function inspectStoryVideoArtifact(
           strategyEvidenceComplete,
           webkitSingletonEvidenceComplete,
           webkitScreenshotEvidenceComplete,
+          webkitEndEvidenceComplete,
+          requiredNonBlankSamples,
+          requiredChangedPairs,
+          requiredUniqueFrames,
           nonBlankSamples,
           changedPairs
         }
@@ -4052,6 +4457,25 @@ async function inspectStoryVideoArtifact(
 
     const completedAt = new Date().toISOString();
     if (attemptError) {
+      if (presentationStrategy === 'webkit-monotonic-page-clip-png') {
+        const videoSamplesRoot = path.resolve(outputRoot, 'video-samples');
+        const failedAttemptDirectory = path.resolve(
+          videoSamplesRoot,
+          path.basename(filePath, path.extname(filePath)),
+          `attempt-${attempt}`
+        );
+        try {
+          if (!failedAttemptDirectory.startsWith(videoSamplesRoot + path.sep)) {
+            throw new Error('failed-attempt PNG path escaped the video-samples root');
+          }
+          fs.rmSync(failedAttemptDirectory, { recursive:true, force:true });
+        } catch (error) {
+          const cleanupError = `failed-attempt PNG cleanup failed: ${error?.message || String(error)}`;
+          attemptError = `${attemptError}; ${cleanupError}`;
+          stopRetries = true;
+          auditCleanupFailed = true;
+        }
+      }
       const attemptRecord = {
         attempt, processIsolation, launchMode, browserName, presentationStrategy, startedAt, completedAt,
         sourceSha256Before, sourceSha256After, status:'error', error:attemptError
