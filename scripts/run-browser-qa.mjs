@@ -148,6 +148,8 @@ export const LOADING_QA_CONTRACT = Object.freeze({
   tipPoolMinimum: 30,
   sessionTipCount: 5,
   revealMs: 1200,
+  browserRevealMs: 2400,
+  browserPreBoundaryProbeMs: 600,
   autoMs: 6000,
   tipTransitionMs: 120,
   manualDebounceMs: 300,
@@ -549,9 +551,11 @@ async function setQaFreeze(page, frozen) {
   }, frozen);
 }
 
-async function waitForRenderedLoadingTip(page, kind) {
+async function waitForRenderedLoadingTip(page, kind, revealDelayMs = 0) {
+  const timeoutMs = Math.max(0, Number(revealDelayMs) || 0)
+    + LOADING_QA_CONTRACT.tipTransitionMs + 1800;
   try {
-    await page.waitForFunction((loadingKind) => {
+    const renderedHandle = await page.waitForFunction((loadingKind) => {
       const root = document.querySelector(`[data-loading-surface="${loadingKind}"]`);
       const tips = root?.querySelector('[data-loading-tips]');
       const tipText = root?.querySelector('[data-loading-tip-text]');
@@ -575,14 +579,18 @@ async function waitForRenderedLoadingTip(page, kind) {
           || Number(style.opacity) === 0) return false;
         if (current === root) break;
       }
-      return true;
-    }, kind, { timeout:LOADING_QA_CONTRACT.tipTransitionMs + 1800 });
+      return { renderedAtMs:performance.now() };
+    }, kind, { timeout:timeoutMs });
+    try { return await renderedHandle.jsonValue(); }
+    finally { await renderedHandle.dispose(); }
   } catch (error) {
     let diagnostic = null;
     try { diagnostic = await inspectLoadingState(page, kind); }
     catch (inspectError) { diagnostic = { inspectError:inspectError?.message || String(inspectError) }; }
     throw new Error(`rendered loading tip did not become ready: ${JSON.stringify({
       kind,
+      revealDelayMs,
+      timeoutMs,
       waitError:error?.message || String(error),
       tips:diagnostic?.tips || null,
       diagnostic
@@ -863,7 +871,10 @@ async function prepareLoadingFixture(page, kind, percent) {
       ...window.MoguriaLoadingExperience?.defaults,
       poolSize: window.MoguriaLoadingExperience?.TIPS?.length || 0
     }));
-    await page.evaluate(({ loadingKind, targetPercent }) => {
+    const startEvidence = await page.evaluate(async ({
+      loadingKind, targetPercent, fullTemporal:runTemporalProbe,
+      browserRevealMs, browserPreBoundaryProbeMs
+    }) => {
       const root = document.querySelector(`[data-loading-surface="${loadingKind}"]`);
       if (!root) throw new Error(`loading surface is missing: ${loadingKind}`);
       if (loadingKind === 'startup') {
@@ -883,22 +894,62 @@ async function prepareLoadingFixture(page, kind, percent) {
       if (!controller?.start || !controller?.advance || !controller?.error || !controller?.getSnapshot) {
         throw new Error(`${loadingKind} loading controller contract is missing`);
       }
+      const readTipBoundaryState = (startedAtMs) => {
+        const tips = root.querySelector('[data-loading-tips]');
+        const tipButton = root.querySelector('[data-loading-tip-button]');
+        return {
+          elapsedMs:Number((performance.now() - startedAtMs).toFixed(3)),
+          dataVisible:tips?.getAttribute('data-visible') || '',
+          ariaHidden:tips?.getAttribute('aria-hidden') || '',
+          inert:Boolean(tips?.hasAttribute('inert')),
+          buttonDisabled:Boolean(tipButton?.disabled),
+          snapshotTipsVisible:controller.getSnapshot()?.tipsVisible
+        };
+      };
+      const startedAtMs = performance.now();
       controller.start({
         progress: targetPercent,
         title: loadingKind === 'startup' ? 'ホームを準備中' : '冒険の準備中',
-        phase: loadingKind === 'startup' ? 'ホームの灯りをともしています' : '星影洞窟をひらいています'
+        phase: loadingKind === 'startup' ? 'ホームの灯りをともしています' : '星影洞窟をひらいています',
+        ...(runTemporalProbe ? { revealMs:browserRevealMs } : {})
       });
-    }, { loadingKind: kind, targetPercent: percent });
+      const beforeReveal = readTipBoundaryState(startedAtMs);
+      if (!runTemporalProbe) return { beforeReveal };
+      const beforeBoundary = await new Promise(resolve => {
+        window.setTimeout(() => resolve(readTipBoundaryState(startedAtMs)), browserPreBoundaryProbeMs);
+      });
+      return {
+        startedAtMs,
+        explicitRevealMs:browserRevealMs,
+        preBoundaryProbeMs:browserPreBoundaryProbeMs,
+        beforeReveal,
+        beforeBoundary
+      };
+    }, {
+      loadingKind:kind,
+      targetPercent:percent,
+      fullTemporal,
+      browserRevealMs:LOADING_QA_CONTRACT.browserRevealMs,
+      browserPreBoundaryProbeMs:LOADING_QA_CONTRACT.browserPreBoundaryProbeMs
+    });
 
     if (fullTemporal) {
-      fixture.tipsBeforeReveal = await inspectLoadingState(page, kind);
-      // Keep a generous margin from the 1.2 s reveal boundary: headed WebKit
-      // can spend appreciable wall time collecting the preceding geometry.
-      const preRevealMarginMs = 400;
-      await page.waitForTimeout(LOADING_QA_CONTRACT.revealMs - preRevealMarginMs);
-      fixture.tipsBeforeBoundary = await inspectLoadingState(page, kind);
-      await page.waitForTimeout(preRevealMarginMs + 160);
+      fixture.tipsBeforeReveal = { tips:startEvidence.beforeReveal };
+      fixture.tipsBeforeBoundary = { tips:startEvidence.beforeBoundary };
+      fixture.revealTiming = {
+        startedAtMs:startEvidence.startedAtMs,
+        explicitRevealMs:startEvidence.explicitRevealMs,
+        preBoundaryProbeMs:startEvidence.preBoundaryProbeMs,
+        preBoundaryElapsedMs:startEvidence.beforeBoundary?.elapsedMs ?? null,
+        renderedElapsedMs:null
+      };
+      const renderedEvidence = await waitForRenderedLoadingTip(
+        page, kind, LOADING_QA_CONTRACT.browserRevealMs
+      );
       fixture.tipsAfterReveal = await inspectLoadingState(page, kind);
+      fixture.revealTiming.renderedElapsedMs = Number((
+        renderedEvidence.renderedAtMs - startEvidence.startedAtMs
+      ).toFixed(3));
       fixture.keyboardReachability = await page.evaluate((loadingKind) => {
         const root = document.querySelector(`[data-loading-surface="${loadingKind}"]`);
         const tipButton = root?.querySelector('[data-loading-tip-button]');
@@ -1146,8 +1197,22 @@ async function prepareLoadingFixture(page, kind, percent) {
     failures.push(`loading tip presentation differs: ${JSON.stringify(displayedTips)}`);
   }
   if (fullTemporal && (fixture.tipsBeforeReveal?.tips?.dataVisible !== 'false'
+    || fixture.tipsBeforeReveal?.tips?.ariaHidden !== 'true'
     || !fixture.tipsBeforeReveal?.tips?.inert || !fixture.tipsBeforeReveal?.tips?.buttonDisabled
-    || fixture.tipsBeforeBoundary?.tips?.dataVisible !== 'false' || !fixture.autoChangedTip
+    || fixture.tipsBeforeReveal?.tips?.snapshotTipsVisible !== false
+    || fixture.tipsBeforeBoundary?.tips?.dataVisible !== 'false'
+    || fixture.tipsBeforeBoundary?.tips?.ariaHidden !== 'true'
+    || !fixture.tipsBeforeBoundary?.tips?.inert
+    || !fixture.tipsBeforeBoundary?.tips?.buttonDisabled
+    || fixture.tipsBeforeBoundary?.tips?.snapshotTipsVisible !== false
+    || fixture.revealTiming?.explicitRevealMs !== LOADING_QA_CONTRACT.browserRevealMs
+    || fixture.revealTiming?.preBoundaryProbeMs !== LOADING_QA_CONTRACT.browserPreBoundaryProbeMs
+    || !Number.isFinite(fixture.revealTiming?.preBoundaryElapsedMs)
+    || fixture.revealTiming.preBoundaryElapsedMs <= 0
+    || fixture.revealTiming.preBoundaryElapsedMs >= LOADING_QA_CONTRACT.revealMs
+    || !Number.isFinite(fixture.revealTiming?.renderedElapsedMs)
+    || fixture.revealTiming.renderedElapsedMs < LOADING_QA_CONTRACT.browserRevealMs
+    || !fixture.autoChangedTip
     || !fixture.keyboardReachability?.firstTab || !fixture.keyboardReachability?.secondTab
     || (kind === 'adventure' && !fixture.keyboardReachability?.wrapsToFirst)
     || fixture.tipsPaused?.tips?.autoPressed !== 'true' || !fixture.pausedTipStayed
@@ -1156,6 +1221,7 @@ async function prepareLoadingFixture(page, kind, percent) {
       before: fixture.tipsBeforeReveal?.tips,
       boundary: fixture.tipsBeforeBoundary?.tips,
       after: displayedTips,
+      revealTiming: fixture.revealTiming,
       keyboardReachability: fixture.keyboardReachability,
       autoChangedTip: fixture.autoChangedTip,
       paused: fixture.tipsPaused?.tips,
@@ -3240,7 +3306,6 @@ async function inspectWebKitVideoElementScreenshots({
         const screenshotTimeoutMs = Math.max(1, attemptDeadline - Date.now());
         const screenshotBuffer = await withDeadline(
           auditPage.locator('#audit-video').screenshot({
-            animations:'disabled',
             type:'png',
             timeout:screenshotTimeoutMs
           }),

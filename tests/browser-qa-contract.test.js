@@ -202,6 +202,8 @@ test('runner contract covers both mobile viewports and every approved screen', a
     tipPoolMinimum: 30,
     sessionTipCount: 5,
     revealMs: 1200,
+    browserRevealMs: 2400,
+    browserPreBoundaryProbeMs: 600,
     autoMs: 6000,
     tipTransitionMs: 120,
     manualDebounceMs: 300,
@@ -289,6 +291,7 @@ test('runner contract covers both mobile viewports and every approved screen', a
     'loading tip presentation differs',
     'loading tip timing/manual/pause contract differs',
     'tipsBeforeBoundary',
+    'revealTiming',
     'autoChangedTip',
     'pausedTipStayed',
     'manualTipsUnique',
@@ -339,6 +342,8 @@ test('runner contract covers both mobile viewports and every approved screen', a
   );
   for (const loadingTipWaitContract of [
     'page.waitForFunction',
+    'revealDelayMs = 0',
+    'Math.max(0, Number(revealDelayMs) || 0)',
     "tips.getAttribute('data-visible') !== 'true'",
     "tips.getAttribute('aria-hidden') !== 'false'",
     "tips.hasAttribute('inert')",
@@ -349,7 +354,8 @@ test('runner contract covers both mobile viewports and every approved screen', a
     'textOpacity < 0.99',
     "style.display === 'none'",
     "Number(style.opacity) === 0",
-    'timeout:LOADING_QA_CONTRACT.tipTransitionMs + 1800',
+    'return { renderedAtMs:performance.now() }',
+    'timeout:timeoutMs',
     'diagnostic = await inspectLoadingState(page, kind)',
     'rendered loading tip did not become ready'
   ]) assert.ok(loadingTipWaitSource.includes(loadingTipWaitContract),
@@ -358,9 +364,56 @@ test('runner contract covers both mobile viewports and every approved screen', a
     source.indexOf('async function prepareLoadingFixture'),
     source.indexOf('const alignmentFailures')
   );
+  const loadingValidationSource = source.slice(
+    source.indexOf('const alignmentFailures'),
+    source.indexOf('async function prepareBattle')
+  );
+  const loadingTemporalProbeSource = loadingFixtureSource.slice(
+    loadingFixtureSource.indexOf('const startEvidence = await page.evaluate'),
+    loadingFixtureSource.indexOf('fixture.keyboardReachability =')
+  );
+  for (const timingContract of [
+    'browserRevealMs:LOADING_QA_CONTRACT.browserRevealMs',
+    'browserPreBoundaryProbeMs:LOADING_QA_CONTRACT.browserPreBoundaryProbeMs',
+    'const startedAtMs = performance.now()',
+    'revealMs:browserRevealMs',
+    'window.setTimeout(() => resolve(readTipBoundaryState(startedAtMs)), browserPreBoundaryProbeMs)',
+    'elapsedMs:Number((performance.now() - startedAtMs).toFixed(3))',
+    'snapshotTipsVisible:controller.getSnapshot()?.tipsVisible',
+    'fixture.tipsBeforeBoundary = { tips:startEvidence.beforeBoundary }',
+    'const renderedEvidence = await waitForRenderedLoadingTip(',
+    'renderedEvidence.renderedAtMs - startEvidence.startedAtMs'
+  ]) assert.ok(loadingTemporalProbeSource.includes(timingContract),
+    `full loading timing probe must preserve ${timingContract}`);
+  const beforeBoundaryHostSource = loadingTemporalProbeSource.slice(
+    0,
+    loadingTemporalProbeSource.indexOf('fixture.tipsBeforeBoundary = { tips:startEvidence.beforeBoundary }')
+  );
+  assert.doesNotMatch(beforeBoundaryHostSource,
+    /page\.waitForTimeout|inspectLoadingState\(page, kind\)/,
+    'the pre-boundary state must be sampled atomically in the page without a host timing race');
+  for (const failClosedTimingContract of [
+    '!Number.isFinite(fixture.revealTiming?.preBoundaryElapsedMs)',
+    'fixture.revealTiming.preBoundaryElapsedMs <= 0',
+    'fixture.revealTiming.preBoundaryElapsedMs >= LOADING_QA_CONTRACT.revealMs',
+    '!Number.isFinite(fixture.revealTiming?.renderedElapsedMs)',
+    'fixture.revealTiming.renderedElapsedMs < LOADING_QA_CONTRACT.browserRevealMs',
+    "fixture.tipsBeforeBoundary?.tips?.dataVisible !== 'false'",
+    "fixture.tipsBeforeBoundary?.tips?.ariaHidden !== 'true'",
+    'fixture.tipsBeforeBoundary?.tips?.snapshotTipsVisible !== false'
+  ]) assert.ok(loadingValidationSource.includes(failClosedTimingContract),
+    `full loading timing probe must fail closed on ${failClosedTimingContract}`);
   assert.match(loadingFixtureSource,
     /revealMs: 0,[\s\S]*await waitForRenderedLoadingTip\(page, kind\);\s+fixture\.tipsAfterReveal = await inspectLoadingState\(page, kind\);/,
     'compact loading QA must wait for actual rendered tip text before inspection');
+  const loadingExperienceTestSource = read('tests/loading-experience.test.js');
+  const defaultRevealBoundaryTestSource = loadingExperienceTestSource.slice(
+    loadingExperienceTestSource.indexOf("test('tips reveal after 1.2 seconds"),
+    loadingExperienceTestSource.indexOf("test('manual switching announces")
+  );
+  assert.match(defaultRevealBoundaryTestSource,
+    /harness\.clock\.tick\(1199\);\s+assert\.equal\(harness\.controller\.getSnapshot\(\)\.tipsVisible, false\);\s+harness\.clock\.tick\(1\);\s+assert\.equal\(harness\.controller\.getSnapshot\(\)\.tipsVisible, true\);/,
+    'the Node fake-clock contract must preserve the exact 1199/1200 ms default reveal boundary');
   const lifecycleSource = source.slice(
     source.indexOf('async function openFreshStoryEntry'),
     source.indexOf('async function prepareStoryFixture')
@@ -915,6 +968,8 @@ test('Story runtime evidence records all four motions continuously and projects 
   );
   assert.doesNotMatch(webkitRunningScreenshotSource, /video\??\.pause\(\)/,
     'no browser-side pause may occur between activation and the locator screenshot');
+  assert.doesNotMatch(webkitRunningScreenshotSource, /animations\s*:/,
+    'the running WebKit screenshot must not fast-forward video through animation suppression');
   assert.match(webkitSetupSource,
     /setTimeout\(\(\) => fail\([\s\S]*addEventListener\('playing'[\s\S]*addEventListener\('error'[\s\S]*video\.play\(\)[\s\S]*settled && playingObserved && error\?\.name === 'AbortError'/,
     'per-sample activation must be timeout/error bounded and ignore only a late settled AbortError');
