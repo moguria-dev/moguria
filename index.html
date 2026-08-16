@@ -2,9 +2,9 @@
 <html lang="ja">
 <head>
  <meta charset="utf-8" />
- <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+ <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
  <meta name="theme-color" content="#171025" />
- <title>Moguria v3.3.0</title>
+ <title>Moguria v3.4.0</title>
  <link rel="stylesheet" href="style.css?v=20260815-loading-child-tips-1" />
  <link rel="stylesheet" href="css/moguria-kv-visual-refresh.css?v=20260613-asset-rich" />
  <link rel="stylesheet" href="css/moguria-final-ui.css?v=20260803-home-layout-2" />
@@ -86,6 +86,7 @@
  <button id="snackBtn" type="button"><img src="assets/images/home-v2/icon_snack.png" alt="" /><small>おやつ</small></button>
  <button id="dexBtn" type="button"><img src="assets/images/home-v2/icon_dex.png" alt="" /><small>図鑑</small></button>
  <button id="logsBtn" type="button"><img src="assets/images/home-v2/icon_logs.png" alt="" /><small>記録</small></button>
+ <button id="storyBtn" type="button" aria-label="物語 第1章をひらく"><span class="home-v2__story-mark" aria-hidden="true">✦</span><small>物語</small></button>
  </nav>
 
  <nav class="home-v2__frame home-v2__dock" aria-label="メインメニュー">
@@ -94,6 +95,47 @@
  <button id="startBtn" class="home-v2__gold-button home-v2__start" type="button"><img src="assets/images/home-v2/icon_dungeon.png" alt="" /><b>ダンジョンへ</b><small>Wave 12</small></button>
  <button id="outingBtn" type="button"><img src="assets/images/home-v2/icon_outing.png" alt="" /><b>おでかけ</b></button>
  </nav>
+ </section>
+ <section id="storyChapter01" class="screen story-ch01" data-story-state="idle" data-story-scene="return-light" role="dialog" aria-modal="true" aria-labelledby="storyChapter01Title" aria-describedby="storyChapter01SceneText" tabindex="-1">
+ <canvas id="storyChapter01Canvas" class="story-ch01__canvas" width="780" height="1688" aria-hidden="true"></canvas>
+ <div class="story-ch01__shade" aria-hidden="true"></div>
+
+ <header class="story-ch01__header">
+ <button id="storyChapter01Close" class="story-ch01__close" type="button" aria-label="物語を閉じてホームへ戻る"><span aria-hidden="true">‹</span><small>ホーム</small></button>
+ <div class="story-ch01__heading">
+ <p>STARLIGHT MEMORY</p>
+ <h1 id="storyChapter01Title">第1章　帰り灯</h1>
+ </div>
+ <div class="story-ch01__tools">
+ <button id="storyChapter01Pause" class="story-ch01__pause" type="button" aria-label="物語を一時停止" aria-pressed="false"><span aria-hidden="true">Ⅱ</span><small>止める</small></button>
+ <span id="storyChapter01Count" class="story-ch01__count" aria-label="4場面中1場面目">1 / 4</span>
+ </div>
+ </header>
+
+ <div id="storyChapter01Loading" class="story-ch01__loading" role="status" aria-live="polite" aria-atomic="true" hidden>
+ <span class="story-ch01__loading-light" aria-hidden="true">✦</span>
+ <b>星の記憶をひらいています</b>
+ <small id="storyChapter01LoadingText">灯りを集めています…</small>
+ </div>
+
+ <section class="story-ch01__dialogue" aria-labelledby="storyChapter01SceneTitle" aria-describedby="storyChapter01SceneText">
+ <p id="storyChapter01Eyebrow" class="story-ch01__eyebrow">THE RETURN LIGHT</p>
+ <h2 id="storyChapter01SceneTitle">帰り灯</h2>
+ <p id="storyChapter01SceneText">いつもと同じはずの灯りが、一度だけ細く揺れた。</p>
+ </section>
+
+ <div class="story-ch01__actions">
+ <button id="storyChapter01Hold" class="story-ch01__hold" type="button" hidden aria-describedby="storyChapter01HoldHint" aria-pressed="false">
+ <span>光へ手を伸ばす</span>
+ <i id="storyChapter01HoldTrack" role="progressbar" aria-label="光へ手を伸ばす進み具合" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><b id="storyChapter01HoldProgress"></b></i>
+ <small id="storyChapter01HoldHint">急がなくて大丈夫。そっと押し続けてください。</small>
+ </button>
+ <button id="storyChapter01HoldAlternative" class="story-ch01__hold-alternative" type="button" hidden>長押しが難しい方はこちら</button>
+ <button id="storyChapter01Next" class="story-ch01__next" type="button" hidden>次の記憶へ</button>
+ </div>
+
+ <div id="storyChapter01Steps" class="story-ch01__steps" aria-hidden="true"><i class="active"></i><i></i><i></i><i></i></div>
+ <p id="storyChapter01Status" class="story-ch01__sr-only" role="status" aria-live="polite" aria-atomic="true"></p>
  </section>
  <section id="game" class="screen">
  <canvas id="gameCanvas"></canvas>
@@ -295,11 +337,11 @@
  </div>
  </div>
  </section>
- <script src="js/config.js?v=20260814-ui-consistency-1"></script>
+ <script src="js/config.js?v=20260816-story-ch01-1"></script>
  <script src="js/debug.js?v=20260814-ui-consistency-1"></script>
- <script src="js/save.js"></script>
+ <script src="js/save.js?v=20260816-story-ch01-1"></script>
  <script src="js/ui-assets.js?v=20260814-ui-consistency-1"></script>
- <script src="js/meta.js?v=20260814-ui-consistency-1"></script>
+ <script src="js/meta.js?v=20260816-story-ch01-1"></script>
  <script src="js/skills.js?v=20260814-ui-consistency-1"></script>
  <script src="js/enemies.js"></script>
  <script src="js/validator.js"></script>
@@ -307,12 +349,12 @@
  <script src="js/dungeon.js"></script>
  <script src="js/result.js"></script>
  <script src="js/loading-experience.js?v=20260815-loading-child-tips-1"></script>
- <script src="js/home.js?v=20260815-loading-child-tips-1"></script>
+ <script src="js/home.js?v=20260816-story-ch01-1"></script>
  <script src="js/audio.js"></script>
  <script src="js/battle-v3-loader.js?v=20260814-loading-experience-1"></script>
- <script src="js/game.js?v=20260814-skill-vfx-1"></script>
- <script src="js/ui.js?v=20260815-loading-child-tips-1"></script>
- <script src="js/assetManager.js?v=20260814-loading-experience-1"></script>
+ <script src="js/game.js?v=20260816-story-ch01-1"></script>
+ <script src="js/ui.js?v=20260816-story-ch01-1"></script>
+ <script src="js/assetManager.js?v=20260816-story-ch01-1"></script>
  <script src="js/performance.js"></script>
  <script src="js/network.js"></script>
  <script src="js/errorLog.js"></script>

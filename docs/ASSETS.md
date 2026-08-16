@@ -10,9 +10,10 @@ This document defines asset ownership, loading classes, lifecycle, and the relat
 | `config/asset-manifest.json` | Canonical inventory and metadata for production assets. |
 | `assets/manifest.json` | Compatibility projection consumed by `js/assetManager.js` today. |
 | `config/animation-manifest.json` | Canonical semantic animation contract. |
-| `assets/images/battle-v3/atlas.json` | Compatibility projection consumed by the Phaser renderer today. |
+| `assets/images/battle-v3/atlas.json` | Battle compatibility projection consumed by the Phaser renderer, runtime version 2. |
+| `assets/animations/story-ch01.json` | Separate Story compatibility projection consumed by the Chapter 1 Canvas2D player, runtime version 1. |
 
-Generation is not installed in the current baseline. Edit a canonical manifest and its runtime projection together, then run the validator declared by project-state. Validation must fail on missing files, duplicate IDs, unsafe URLs, version mismatch, group mismatch, or divergent animation frame maps.
+Generation is not installed in the current baseline. Edit a canonical manifest and every affected runtime projection together, then run the validator declared by project-state. A Story change must not rewrite the Battle projection merely to synchronize version labels. Validation must fail on missing files, duplicate IDs, unsafe URLs, version mismatch, group mismatch, or divergent animation frame maps.
 
 Do not store the full inventory in `project-state`; it should point to manifests and budgets rather than becoming a third copy.
 
@@ -22,7 +23,7 @@ Do not store the full inventory in `project-state`; it should point to manifests
 - `lazy`: optional files that can load after first interaction.
 - `packs`: coherent groups loaded before a screen, stage, battle renderer, event, or audio set is used.
 
-At the loading-child baseline, the startup manifest has 17 critical images and battle remains the separate `battle-v3` pack. The existing `home_v2_expedition_mogu` stays critical for its established Home outing presentation, but loading no longer depends on it and its catalog role remains Home-only. The one added request is `loading_child_mogu_flight`: a 256×128 lossless WebP containing two 128×128 cells (`neutral`, `complete`). It is critical because the neutral cell must be available while the first critical load is still in progress and the complete cell must switch without a late request. Packing both states into one 22,942-byte file avoids a second request. Assets used only after opening another secondary screen stay out of `critical`, even when they remain in the shared image registry. Battle assets do not belong in `critical` merely because they are visually important.
+The startup manifest remains at 17 critical images and battle remains the separate `battle-v3` pack. Chapter 1 does not add to `critical`: its player and scene art are requested only when the story is opened. The existing `home_v2_expedition_mogu` stays critical for its established Home outing presentation, but loading no longer depends on it and its catalog role remains Home-only. `loading_child_mogu_flight` is a 256×128 lossless WebP containing two 128×128 cells (`neutral`, `complete`). It is critical because the neutral cell must be available while the first critical load is still in progress and the complete cell must switch without a late request. Packing both states into one 22,942-byte file avoids a second request. Assets used only after opening another secondary screen stay out of `critical`, even when they remain in the shared image registry. Battle or Story assets do not belong in `critical` merely because they are visually important.
 
 `loading_child_mogu_flight` is a deterministic runtime export from the already approved `battle_v3_companions` production atlas, not a crop from a key visual, screenshot, mockup, or review sheet. Source frame 0 becomes the left neutral cell and source frame 7 becomes the right complete cell; each 256×256 source cell is Lanczos-resized to 128×128, placed left-to-right, stripped of metadata, and encoded as lossless WebP. The source atlas remains owned by the battle pack, while the small derivative is independently cataloged, approved from the user-reviewed loading preview, and owned by startup/adventure loading.
 
@@ -30,17 +31,33 @@ After Home becomes interactive, eligible browsers may fetch the battle scripts a
 
 All runtime asset URLs must remain first-party relative paths below the approved asset tree. Remote URLs and path traversal are rejected by policy and tests.
 
+## Chapter 1 lazy packs
+
+Chapter 1 adds 11 approved production WebP images under `assets/images/story/ch01/`. They remain split by first-use boundary:
+
+| Pack | Runtime contents | Loading boundary |
+| --- | --- | --- |
+| `story-ch01-core` | Return Light prop plus `assets/animations/story-ch01.json` | Loaded before the player resolves a story scene. |
+| `story-ch01-return-hall` | Return Hall background, young Mogu atlas, Guardian candidate atlas | Loaded for Return Light and reverse/crack/rescue memories. |
+| `story-ch01-fragment-chamber` | Fragment Chamber background, damaged fragment, community lamp, current Mogu atlas, Star Companion atlas | Loaded for the deliberate fragment commitment. |
+| `story-ch01-archive` | Archive background and return ledger | Loaded only for the post-investigation ledger scene. |
+
+The JSON projection is a pack member but is not one of the 11 image assets. Pack boundaries prevent the archive and fragment art from being decoded during Return Light playback. Reusing a shared prop across scenes does not make it startup-critical.
+
 ## Budget ownership
 
 Numeric budgets live only in `config/project-state.json.performanceBudgets`, including:
 
 - `criticalTransferBytes` and `criticalDecodedBytes`;
 - `battlePackTransferBytes`;
+- `storyPackTransferBytes`;
 - `singleRuntimeAssetBytes`;
 - `initialStylesheetBytes` and `initialScriptBytes`;
-- `dynamicBattleScriptBytes`.
+- `dynamicBattleScriptBytes` and `dynamicStoryScriptBytes`.
 
 The asset manifest records files and groups; this document explains the budget; neither should invent a competing number. If a desired visual exceeds a budget, measure on target devices and make an explicit quality/performance decision rather than silently raising or ignoring the limit.
+
+For v3.4.0, the final asset validation measured the initial classic-script set at 384,026 bytes (about 375 KiB). The owned `initialScriptBytes` limit was therefore reviewed and changed from 358,400 to 393,216 bytes. This was an explicit measured baseline revision, not unused headroom for loading the Story player eagerly: `js/story-ch01-player.js` remains dynamic and is governed separately by `dynamicStoryScriptBytes` (131,072 bytes). `storyPackTransferBytes` is 1,048,576 bytes. `initialStylesheetBytes` remains 358,400 bytes, and the 17-item critical set and its existing critical budgets are unchanged. The live numeric source remains `config/project-state.json.performanceBudgets`.
 
 ## Active asset families
 
@@ -52,6 +69,8 @@ The following paths are active at the audited baseline:
 | `assets/images/loading/` | Dedicated small loading actors and state sheets required before Home readiness. |
 | `assets/images/battle-v3/` | Four background layers, actor atlases and runtime atlas projection. |
 | `assets/images/skill-icons/` | Production skill icon atlases used by choice and owned-power UI. |
+| `assets/images/story/ch01/` | Approved Chapter 1 backgrounds, props, and fixed-cell actor pose atlases, loaded in four story packs. |
+| `assets/animations/` | Renderer-specific Story animation projections; not a replacement for the canonical manifest. |
 | `vendor/phaser/` | Vendored Phaser browser build and license. |
 
 Other image families such as `battle-v2`, `home`, `home-icons`, `kv-*`, and `play-ui` may still be referenced by legacy or fallback layers. They are not approved for deletion based on naming alone.
@@ -92,6 +111,8 @@ Every canonical asset entry should have, directly or through its group:
 7. Run manifest/path/budget validation and the relevant tests.
 8. Inspect transparency, white/black backgrounds when relevant, smallest display size, baseline device viewport, and affected interaction states.
 9. Classify the replaced file. Do not delete it until references and rollback needs are resolved.
+
+For Chapter 1 actor atlases, keep the declared full cells and pivots. Automatic cropping is prohibited because alpha-bounds differ by pose and would make an actor jump. Verify at both `390×844` and `375×667`, including the minimum declared display size, pause/resume, and reduced-motion presentation.
 
 ## Service Worker boundary
 

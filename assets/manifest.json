@@ -1,5 +1,5 @@
 {
-  "version": "3.3.2-loading-child",
+  "version": "3.4.0-story-ch01",
   "policy": {
     "criticalBudgetMB": 4,
     "initialAudio": "metadata-only",
@@ -411,6 +411,90 @@
       "id": "audio-basic",
       "label": "基本SE/BGM",
       "assets": []
+    },
+    {
+      "id": "story-ch01-core",
+      "label": "第1章 共通小道具",
+      "assets": [
+        {
+          "id": "story_ch01_animation_manifest",
+          "type": "json",
+          "src": "assets/animations/story-ch01.json?v=20260816-story-ch01-1"
+        },
+        {
+          "id": "story_ch01_return_light",
+          "type": "image",
+          "src": "assets/images/story/ch01/props/story_ch01_return_light.webp"
+        }
+      ]
+    },
+    {
+      "id": "story-ch01-return-hall",
+      "label": "第1章 帰り灯／逆流／救助",
+      "assets": [
+        {
+          "id": "story_ch01_bg_return_hall",
+          "type": "image",
+          "src": "assets/images/story/ch01/backgrounds/story_ch01_bg_return_hall.webp"
+        },
+        {
+          "id": "story_ch01_young_mogu_pose_atlas",
+          "type": "image",
+          "src": "assets/images/story/ch01/actors/story_ch01_young_mogu_pose_atlas.webp"
+        },
+        {
+          "id": "story_ch01_star_guardian_candidate_pose_atlas",
+          "type": "image",
+          "src": "assets/images/story/ch01/actors/story_ch01_star_guardian_candidate_pose_atlas.webp"
+        }
+      ]
+    },
+    {
+      "id": "story-ch01-fragment-chamber",
+      "label": "第1章 損傷片",
+      "assets": [
+        {
+          "id": "story_ch01_bg_fragment_chamber",
+          "type": "image",
+          "src": "assets/images/story/ch01/backgrounds/story_ch01_bg_fragment_chamber.webp"
+        },
+        {
+          "id": "story_ch01_damaged_fragment",
+          "type": "image",
+          "src": "assets/images/story/ch01/props/story_ch01_damaged_fragment.webp"
+        },
+        {
+          "id": "story_ch01_community_lamp",
+          "type": "image",
+          "src": "assets/images/story/ch01/props/story_ch01_community_lamp.webp"
+        },
+        {
+          "id": "story_ch01_current_mogu_pose_atlas",
+          "type": "image",
+          "src": "assets/images/story/ch01/actors/story_ch01_current_mogu_pose_atlas.webp"
+        },
+        {
+          "id": "story_ch01_star_companion_pose_atlas",
+          "type": "image",
+          "src": "assets/images/story/ch01/actors/story_ch01_star_companion_pose_atlas.webp"
+        }
+      ]
+    },
+    {
+      "id": "story-ch01-archive",
+      "label": "第1章 古い記録",
+      "assets": [
+        {
+          "id": "story_ch01_bg_archive",
+          "type": "image",
+          "src": "assets/images/story/ch01/backgrounds/story_ch01_bg_archive.webp"
+        },
+        {
+          "id": "story_ch01_return_ledger",
+          "type": "image",
+          "src": "assets/images/story/ch01/props/story_ch01_return_ledger.webp"
+        }
+      ]
     }
   ],
   "images": {
@@ -482,6 +566,17 @@
     "ui_refresh_slots_body": "assets/images/ui-refresh/slots/body.webp",
     "ui_refresh_slots_hand": "assets/images/ui-refresh/slots/hand.webp",
     "ui_refresh_slots_foot": "assets/images/ui-refresh/slots/foot.webp",
-    "ui_refresh_slots_charm": "assets/images/ui-refresh/slots/charm.webp"
+    "ui_refresh_slots_charm": "assets/images/ui-refresh/slots/charm.webp",
+    "story_ch01_bg_return_hall": "assets/images/story/ch01/backgrounds/story_ch01_bg_return_hall.webp",
+    "story_ch01_bg_fragment_chamber": "assets/images/story/ch01/backgrounds/story_ch01_bg_fragment_chamber.webp",
+    "story_ch01_bg_archive": "assets/images/story/ch01/backgrounds/story_ch01_bg_archive.webp",
+    "story_ch01_return_light": "assets/images/story/ch01/props/story_ch01_return_light.webp",
+    "story_ch01_damaged_fragment": "assets/images/story/ch01/props/story_ch01_damaged_fragment.webp",
+    "story_ch01_community_lamp": "assets/images/story/ch01/props/story_ch01_community_lamp.webp",
+    "story_ch01_return_ledger": "assets/images/story/ch01/props/story_ch01_return_ledger.webp",
+    "story_ch01_current_mogu_pose_atlas": "assets/images/story/ch01/actors/story_ch01_current_mogu_pose_atlas.webp",
+    "story_ch01_young_mogu_pose_atlas": "assets/images/story/ch01/actors/story_ch01_young_mogu_pose_atlas.webp",
+    "story_ch01_star_guardian_candidate_pose_atlas": "assets/images/story/ch01/actors/story_ch01_star_guardian_candidate_pose_atlas.webp",
+    "story_ch01_star_companion_pose_atlas": "assets/images/story/ch01/actors/story_ch01_star_companion_pose_atlas.webp"
   }
 }

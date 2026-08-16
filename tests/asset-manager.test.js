@@ -222,6 +222,59 @@ test('a pack JSON body stall times out instead of blocking preparation forever',
   assert.match(harness.assets.stats().errors.join('\n'), /json atlas timed out after 8ms/);
 });
 
+test('story pack JSON is cached and releasePack frees unshared decoded bytes', async () => {
+  const sharedImage = { id:'shared-scene', type:'image', src:'assets/shared-scene.png' };
+  const manifest = {
+    critical:[],
+    lazy:[],
+    packs:[
+      { id:'story-a', assets:[sharedImage, { id:'story-contract', type:'json', src:'assets/story.json' }] },
+      { id:'story-b', assets:[sharedImage] }
+    ]
+  };
+  const harness = createHarness(manifest, { 'assets/shared-scene.png':{ width:512, height:512 } }, {
+    json:{ 'assets/story.json':{ value:{ version:1 } } }
+  });
+
+  assert.equal((await harness.assets.loadPack('story-a')).ok, true);
+  assert.equal((await harness.assets.loadPack('story-b')).ok, true);
+  assert.equal(harness.assets.getJson('story-contract').version, 1);
+  assert.equal(harness.assets.stats().images, 1);
+  assert.equal(harness.assets.stats().json, 1);
+  assert.equal(harness.assets.stats().approxMB, 1);
+
+  const firstRelease = harness.assets.releasePack('story-a');
+  assert.deepEqual(Array.from(firstRelease.released), ['story-contract']);
+  assert.equal(harness.assets.stats().images, 1, 'an asset shared by another loaded pack must remain decoded');
+  assert.equal(harness.assets.stats().json, 0);
+  assert.equal(harness.assets.stats().approxMB, 1);
+
+  const finalRelease = harness.assets.releasePack('story-b');
+  assert.deepEqual(Array.from(finalRelease.released), ['shared-scene']);
+  assert.equal(harness.assets.stats().images, 0);
+  assert.equal(harness.assets.stats().approxMB, 0, 'decoded-byte accounting must decrease on release');
+});
+
+test('an aborted story image pack settles promptly without caching partial decoded state', async () => {
+  const manifest = {
+    critical:[], lazy:[],
+    packs:[{ id:'story-pending', assets:[{ id:'pending-scene', type:'image', src:'assets/pending-scene.png' }] }]
+  };
+  const harness = createHarness(manifest, { 'assets/pending-scene.png':{ load:'pending', width:512, height:512 } });
+  const controller = new AbortController();
+  const loading = harness.assets.loadPack('story-pending', { signal:controller.signal });
+  await flushMicrotasks();
+  controller.abort();
+  const result = await loading;
+
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, 'asset-load-failed');
+  assert.deepEqual(Array.from(result.failed), ['pending-scene']);
+  assert.equal(harness.assets.getImage('pending-scene'), null);
+  assert.equal(harness.assets.stats().images, 0);
+  assert.doesNotMatch(harness.assets.stats().errors.join('\n'), /aborted/);
+});
+
 test('warmPack fills only the HTTP cache with exact URLs, drains bodies, dedupes, and limits concurrency to two', async () => {
   const manifest = {
     critical:[],

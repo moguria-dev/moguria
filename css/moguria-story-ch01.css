@@ -1,0 +1,409 @@
+/* Chapter 01 story player. Canvas owns the painted memory; DOM owns all text,
+   controls, focus, safe areas and the deliberate-hold interaction. */
+
+#home.home-v2 #storyBtn .home-v2__story-mark {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  color: #fff2ae;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 25px;
+  line-height: 1;
+  text-shadow: 0 0 5px #fff, 0 0 13px rgba(255, 211, 107, .9), 0 0 22px rgba(178, 130, 255, .58);
+}
+
+#storyChapter01.story-ch01 {
+  --story-safe-top: env(safe-area-inset-top, 0px);
+  --story-safe-right: env(safe-area-inset-right, 0px);
+  --story-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --story-safe-left: env(safe-area-inset-left, 0px);
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  isolation: isolate;
+  color: #fff4df;
+  background: #060716;
+  font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", "Noto Sans JP", sans-serif;
+  overscroll-behavior: none;
+}
+
+#storyChapter01 .story-ch01__canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: #070817;
+  touch-action: none;
+}
+
+#storyChapter01 .story-ch01__shade {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(2, 3, 13, .62), transparent 20%, transparent 58%, rgba(2, 3, 14, .82) 86%, rgba(2, 3, 14, .96)),
+    radial-gradient(ellipse at 50% 43%, transparent 39%, rgba(3, 3, 14, .16) 70%, rgba(2, 2, 12, .52));
+}
+
+#storyChapter01 .story-ch01__header {
+  position: absolute;
+  z-index: 5;
+  top: calc(var(--story-safe-top) + 10px);
+  left: calc(var(--story-safe-left) + 12px);
+  right: calc(var(--story-safe-right) + 12px);
+  min-height: 58px;
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr) 98px;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+}
+
+#storyChapter01 .story-ch01__header > * { pointer-events: auto; }
+
+#storyChapter01 .story-ch01__close {
+  width: 52px;
+  min-height: 52px;
+  margin: 0;
+  padding: 4px 3px 5px;
+  display: grid;
+  grid-template-rows: 28px 10px;
+  place-items: center;
+  border: 1px solid rgba(255, 228, 169, .42);
+  border-radius: 19px;
+  color: #fff3d8;
+  background: linear-gradient(180deg, rgba(35, 30, 68, .9), rgba(11, 12, 35, .88));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .05), 0 7px 24px rgba(1, 2, 12, .38);
+  text-shadow: 0 1px 5px rgba(0, 0, 0, .8);
+}
+
+#storyChapter01 .story-ch01__close span { font-family: Georgia, serif; font-size: 32px; line-height: .8; }
+#storyChapter01 .story-ch01__close small { color: #d9c9e8; font-size: 8px; font-weight: 800; line-height: 1; }
+#storyChapter01 .story-ch01__close:disabled { opacity: .48; cursor: default; }
+
+#storyChapter01 .story-ch01__tools {
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+#storyChapter01 .story-ch01__pause {
+  width: 44px;
+  min-height: 44px;
+  margin: 0;
+  padding: 4px 2px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(233, 211, 163, .34);
+  border-radius: 15px;
+  color: #fff3d8;
+  background: rgba(9, 10, 31, .76);
+  font-size: 14px;
+  line-height: 1;
+}
+
+#storyChapter01 .story-ch01__pause small { color: #d9c9e8; font-size: 7px; font-weight: 800; }
+#storyChapter01 .story-ch01__pause[aria-pressed="true"] { border-color: rgba(255, 229, 154, .76); background: rgba(63, 45, 91, .94); }
+
+#storyChapter01 .story-ch01__heading {
+  min-width: 0;
+  text-align: center;
+  text-shadow: 0 2px 9px rgba(0, 0, 0, .82);
+}
+
+#storyChapter01 .story-ch01__heading p {
+  margin: 0 0 3px;
+  color: #d8c4f4;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: .18em;
+}
+
+#storyChapter01 .story-ch01__heading h1 {
+  overflow: hidden;
+  margin: 0;
+  color: #fff1ce;
+  font-family: Georgia, "Yu Mincho", "Hiragino Mincho ProN", serif;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#storyChapter01 .story-ch01__count {
+  justify-self: end;
+  min-width: 50px;
+  padding: 7px 6px;
+  border: 1px solid rgba(233, 211, 163, .34);
+  border-radius: 999px;
+  color: #eadcbf;
+  background: rgba(9, 10, 31, .7);
+  font-size: 10px;
+  font-weight: 850;
+  line-height: 1;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+#storyChapter01 .story-ch01__dialogue {
+  position: absolute;
+  z-index: 4;
+  left: calc(var(--story-safe-left) + 18px);
+  right: calc(var(--story-safe-right) + 18px);
+  bottom: calc(var(--story-safe-bottom) + 91px);
+  min-height: 126px;
+  max-height: min(40vh, 300px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  margin: 0;
+  padding: 17px 18px 16px;
+  border: 1px solid rgba(255, 224, 158, .42);
+  border-radius: 24px;
+  background: linear-gradient(180deg, rgba(26, 23, 55, .92), rgba(10, 11, 33, .94));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .04), 0 18px 45px rgba(1, 2, 13, .5), 0 0 28px rgba(119, 83, 193, .11);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  transition: opacity .18s ease, transform .18s ease;
+}
+
+#storyChapter01 .story-ch01__dialogue::before {
+  content: "✦";
+  position: absolute;
+  top: -9px;
+  left: 24px;
+  padding: 0 8px;
+  color: #ffe7a0;
+  background: #181634;
+  font-size: 12px;
+  text-shadow: 0 0 9px rgba(255, 221, 126, .7);
+}
+
+#storyChapter01 .story-ch01__eyebrow {
+  margin: 0 0 4px;
+  color: #cab5e8;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 8px;
+  font-weight: 750;
+  letter-spacing: .15em;
+}
+
+#storyChapter01 .story-ch01__dialogue h2 {
+  margin: 0 0 7px;
+  color: #fff0c9;
+  font-family: Georgia, "Yu Mincho", "Hiragino Mincho ProN", serif;
+  font-size: 20px;
+  line-height: 1.2;
+}
+
+#storyChapter01 .story-ch01__dialogue > p:last-child {
+  min-height: 42px;
+  margin: 0;
+  color: #f3e9dc;
+  font-size: 12px;
+  font-weight: 580;
+  line-height: 1.7;
+  letter-spacing: .012em;
+  text-wrap: pretty;
+}
+
+#storyChapter01 .story-ch01__actions {
+  position: absolute;
+  z-index: 6;
+  left: calc(var(--story-safe-left) + 24px);
+  right: calc(var(--story-safe-right) + 24px);
+  bottom: calc(var(--story-safe-bottom) + 23px);
+  display: grid;
+  place-items: center;
+  gap: 7px;
+}
+
+#storyChapter01 .story-ch01__next,
+#storyChapter01 .story-ch01__hold {
+  width: min(100%, 310px);
+  min-height: 52px;
+  margin: 0;
+  border: 1px solid rgba(255, 235, 181, .7);
+  border-radius: 999px;
+  color: #322340;
+  background: linear-gradient(180deg, #fff1b9, #d9a85d);
+  box-shadow: inset 0 1px rgba(255, 255, 255, .7), 0 6px 0 rgba(64, 39, 54, .62), 0 0 22px rgba(255, 209, 105, .21);
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: .03em;
+  touch-action: manipulation;
+}
+
+#storyChapter01 .story-ch01__hold-alternative {
+  min-height: 44px;
+  margin: 0;
+  padding: 4px 13px;
+  border: 1px solid rgba(225, 207, 245, .42);
+  border-radius: 999px;
+  color: #eee2f8;
+  background: rgba(14, 13, 39, .9);
+  font-size: 10px;
+  font-weight: 750;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+#storyChapter01 .story-ch01__hold-alternative[hidden] { display: none; }
+#storyChapter01[data-story-hold="true"] .story-ch01__dialogue { bottom: calc(var(--story-safe-bottom) + 190px); }
+
+#storyChapter01 .story-ch01__next:active { transform: translateY(2px); box-shadow: inset 0 1px rgba(255, 255, 255, .7), 0 4px 0 rgba(64, 39, 54, .62); }
+
+#storyChapter01 .story-ch01__hold {
+  min-height: 72px;
+  padding: 10px 19px 9px;
+  display: grid;
+  grid-template-columns: auto 78px;
+  grid-template-rows: auto auto;
+  align-items: center;
+  justify-content: center;
+  column-gap: 12px;
+  color: #fff0d4;
+  background: linear-gradient(180deg, rgba(61, 42, 90, .97), rgba(22, 21, 54, .98));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .05), 0 6px 0 rgba(5, 5, 22, .8), 0 0 22px rgba(162, 107, 242, .25);
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+
+#storyChapter01 .story-ch01__hold > span { justify-self: end; }
+
+#storyChapter01 .story-ch01__hold i {
+  position: relative;
+  display: block;
+  width: 78px;
+  height: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 231, 171, .44);
+  border-radius: 999px;
+  background: rgba(5, 6, 24, .82);
+  box-shadow: inset 0 1px 4px rgba(0, 0, 0, .6);
+}
+
+#storyChapter01 .story-ch01__hold i b {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #936cda, #d7b7ff 55%, #ffe793);
+  box-shadow: 0 0 9px rgba(255, 226, 141, .7);
+}
+
+#storyChapter01 .story-ch01__hold small {
+  grid-column: 1 / -1;
+  margin-top: 4px;
+  color: #d9cce7;
+  font-size: 9px;
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+#storyChapter01 .story-ch01__hold[data-holding="true"] {
+  border-color: rgba(255, 240, 186, .95);
+  box-shadow: inset 0 0 18px rgba(255, 225, 143, .12), 0 6px 0 rgba(5, 5, 22, .8), 0 0 28px rgba(255, 216, 119, .32);
+}
+
+#storyChapter01 .story-ch01__steps {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  bottom: calc(var(--story-safe-bottom) + 12px);
+  display: flex;
+  gap: 6px;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+#storyChapter01 .story-ch01__steps i {
+  display: block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(223, 205, 237, .32);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, .05);
+}
+
+#storyChapter01 .story-ch01__steps i.active {
+  background: #ffe59a;
+  box-shadow: 0 0 8px rgba(255, 225, 133, .84);
+}
+
+#storyChapter01 .story-ch01__loading {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 8px;
+  padding: 30px;
+  color: #fff1d2;
+  background: radial-gradient(circle at 50% 43%, rgba(111, 79, 179, .28), transparent 31%), rgba(6, 7, 23, .93);
+  text-align: center;
+}
+
+#storyChapter01 .story-ch01__loading[hidden] { display: none; }
+#storyChapter01 .story-ch01__loading-light { color: #ffe79b; font-size: 34px; text-shadow: 0 0 8px #fff, 0 0 24px rgba(255, 217, 114, .82); animation: storyCh01Loading 1.4s ease-in-out infinite; }
+#storyChapter01 .story-ch01__loading b { font-family: Georgia, "Yu Mincho", serif; font-size: 18px; }
+#storyChapter01 .story-ch01__loading small { color: #d9cce6; font-size: 11px; }
+
+#storyChapter01 .story-ch01__sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+#storyChapter01 button:focus-visible { outline: 2px solid #fff0a8; outline-offset: 3px; }
+#storyChapter01[data-story-state="loading"] .story-ch01__dialogue,
+#storyChapter01[data-story-state="loading"] .story-ch01__actions { opacity: 0; pointer-events: none; }
+
+@keyframes storyCh01Loading {
+  0%, 100% { opacity: .55; transform: translateY(2px) scale(.92) rotate(-4deg); }
+  50% { opacity: 1; transform: translateY(-3px) scale(1.07) rotate(4deg); }
+}
+
+@media (max-height: 720px) {
+  #storyChapter01 .story-ch01__header { top: calc(var(--story-safe-top) + 6px); min-height: 50px; grid-template-columns: 48px minmax(0, 1fr) 98px; }
+  #storyChapter01 .story-ch01__close { width: 46px; min-height: 46px; border-radius: 16px; grid-template-rows: 24px 9px; }
+  #storyChapter01 .story-ch01__close span { font-size: 28px; }
+  #storyChapter01 .story-ch01__heading h1 { font-size: 15px; }
+  #storyChapter01 .story-ch01__count { min-width: 46px; font-size: 9px; }
+  #storyChapter01 .story-ch01__pause { width: 44px; min-height: 44px; border-radius: 13px; }
+  #storyChapter01 .story-ch01__dialogue { left: calc(var(--story-safe-left) + 12px); right: calc(var(--story-safe-right) + 12px); bottom: calc(var(--story-safe-bottom) + 81px); min-height: 108px; padding: 14px 15px 12px; border-radius: 20px; }
+  #storyChapter01 .story-ch01__dialogue h2 { margin-bottom: 5px; font-size: 17px; }
+  #storyChapter01 .story-ch01__dialogue > p:last-child { min-height: 36px; font-size: 10px; line-height: 1.55; }
+  #storyChapter01 .story-ch01__actions { left: calc(var(--story-safe-left) + 18px); right: calc(var(--story-safe-right) + 18px); bottom: calc(var(--story-safe-bottom) + 20px); }
+  #storyChapter01 .story-ch01__next { min-height: 48px; }
+  #storyChapter01 .story-ch01__hold { min-height: 64px; padding-top: 7px; padding-bottom: 7px; }
+  #storyChapter01[data-story-hold="true"] .story-ch01__dialogue { bottom: calc(var(--story-safe-bottom) + 175px); }
+  #storyChapter01 .story-ch01__steps { bottom: calc(var(--story-safe-bottom) + 9px); }
+}
+
+@media (max-width: 380px) {
+  #storyChapter01 .story-ch01__header { left: calc(var(--story-safe-left) + 8px); right: calc(var(--story-safe-right) + 8px); }
+  #storyChapter01 .story-ch01__heading p { letter-spacing: .12em; }
+  #storyChapter01 .story-ch01__dialogue { left: calc(var(--story-safe-left) + 10px); right: calc(var(--story-safe-right) + 10px); }
+  #storyChapter01 .story-ch01__actions { left: calc(var(--story-safe-left) + 14px); right: calc(var(--story-safe-right) + 14px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #storyChapter01 .story-ch01__dialogue,
+  #storyChapter01 .story-ch01__hold i b { transition: none; }
+  #storyChapter01 .story-ch01__loading-light { animation: none; }
+}

@@ -8,3 +8,5 @@
 - 素材別の扱い: `docs/ASSETS.md`
 
 数値を変更する場合は、測定根拠と対象端末・sceneを記録し、`project-state`だけを更新して検証を通します。
+
+v3.4.0 の measured budget revision は `docs/ASSETS.md` と `RELEASE_NOTES_v3.4.0.md` に根拠を記録済みですが、現在の数値上限の正本は引き続き `config/project-state.json#/performanceBudgets` です。

@@ -11,14 +11,90 @@ export const VIEWPORTS = Object.freeze([
   Object.freeze({ id: 'iphone-390x844', width: 390, height: 844, deviceScaleFactor: 3 }),
   Object.freeze({ id: 'iphone-se-375x667', width: 375, height: 667, deviceScaleFactor: 2 })
 ]);
+export const STORY_SCENE_FIXTURES = Object.freeze({
+  'story-return-light': Object.freeze({
+    sceneIndex: 0, sceneId: 'return-light', sceneTimeMs: 2860, postTimeMs: 0,
+    holdCommitted: false, reducedMotion: false, holdVisible: false, closeDisabled: false
+  }),
+  'story-rescue': Object.freeze({
+    sceneIndex: 1, sceneId: 'reverse-rescue', sceneTimeMs: 4050, postTimeMs: 0,
+    holdCommitted: false, reducedMotion: false, holdVisible: false, closeDisabled: true
+  }),
+  'story-fragment-hold': Object.freeze({
+    sceneIndex: 2, sceneId: 'fragment-chamber', sceneTimeMs: 700, postTimeMs: 0,
+    holdCommitted: false, reducedMotion: false, holdVisible: true, closeDisabled: false
+  }),
+  'story-fragment-postcommit': Object.freeze({
+    sceneIndex: 2, sceneId: 'fragment-chamber', sceneTimeMs: 700, postTimeMs: 2600,
+    holdCommitted: true, reducedMotion: false, holdVisible: false, closeDisabled: true
+  }),
+  'story-ledger': Object.freeze({
+    sceneIndex: 3, sceneId: 'archive-ledger', sceneTimeMs: 2940, postTimeMs: 0,
+    holdCommitted: false, reducedMotion: false, holdVisible: false, closeDisabled: true
+  }),
+  'story-fragment-reduced': Object.freeze({
+    sceneIndex: 2, sceneId: 'fragment-chamber', sceneTimeMs: 700, postTimeMs: 2600,
+    holdCommitted: true, reducedMotion: true, holdVisible: false, closeDisabled: true
+  })
+});
+export const STORY_CANVAS_PROBE = Object.freeze({
+  minStandardDeviation: 8,
+  minColorBuckets: 80
+});
+export const STORY_LIFECYCLE_SCREEN_ID = 'story-ledger';
+export const STORY_MOTION_EVIDENCE = Object.freeze({
+  'story-return-light': Object.freeze({
+    motionId: 'returnLightFlicker',
+    frames: Object.freeze([
+      Object.freeze({ label:'before-weakening', sceneIndex:0, sceneTimeMs:2240, postTimeMs:0, holdCommitted:false }),
+      Object.freeze({ label:'minimum-not-off', sceneIndex:0, sceneTimeMs:2880, postTimeMs:0, holdCommitted:false }),
+      Object.freeze({ label:'unstable-recovery', sceneIndex:0, sceneTimeMs:4400, postTimeMs:0, holdCommitted:false })
+    ])
+  }),
+  'story-rescue': Object.freeze({
+    motionId: 'reverseCrackRescue',
+    frames: Object.freeze([
+      Object.freeze({ label:'reverse-before-crack', sceneIndex:1, sceneTimeMs:1200, postTimeMs:0, holdCommitted:false }),
+      Object.freeze({ label:'crack-after-reverse', sceneIndex:1, sceneTimeMs:1600, postTimeMs:0, holdCommitted:false }),
+      Object.freeze({ label:'guardian-contact', sceneIndex:1, sceneTimeMs:3700, postTimeMs:0, holdCommitted:false })
+    ])
+  }),
+  'story-fragment-postcommit': Object.freeze({
+    motionId: 'fragmentConsumeStumble',
+    frames: Object.freeze([
+      Object.freeze({ label:'lamp-before-interference', sceneIndex:2, sceneTimeMs:700, postTimeMs:1100, holdCommitted:true }),
+      Object.freeze({ label:'body-interference', sceneIndex:2, sceneTimeMs:700, postTimeMs:1550, holdCommitted:true }),
+      Object.freeze({ label:'stumble', sceneIndex:2, sceneTimeMs:700, postTimeMs:2200, holdCommitted:true }),
+      Object.freeze({ label:'companion-approach', sceneIndex:2, sceneTimeMs:700, postTimeMs:2500, holdCommitted:true })
+    ])
+  }),
+  'story-ledger': Object.freeze({
+    motionId: 'ledgerBrokenPulse',
+    frames: Object.freeze([
+      Object.freeze({ label:'pulse-before-gap', sceneIndex:3, sceneTimeMs:2300, postTimeMs:0, holdCommitted:false }),
+      Object.freeze({ label:'inside-320ms-gap', sceneIndex:3, sceneTimeMs:2500, postTimeMs:0, holdCommitted:false }),
+      Object.freeze({ label:'pulse-after-gap', sceneIndex:3, sceneTimeMs:2700, postTimeMs:0, holdCommitted:false }),
+      Object.freeze({ label:'silence', sceneIndex:3, sceneTimeMs:4250, postTimeMs:0, holdCommitted:false })
+    ])
+  })
+});
 export const SCREEN_IDS = Object.freeze([
-  'startup-loading', 'home', 'dex', 'logs', 'equipment', 'gacha', 'outing', 'adventure-loading',
+  'startup-loading', 'home',
+  'story-return-light', 'story-rescue', 'story-fragment-hold', 'story-fragment-postcommit',
+  'story-ledger', 'story-fragment-reduced',
+  'dex', 'logs', 'equipment', 'gacha', 'outing', 'adventure-loading',
   'battle-hud', 'battle-vfx-lv1', 'battle-vfx-lv3', 'battle-vfx-lv5', 'battle-vfx-lv5-reduced', 'battle-vfx-lv5-low',
   'skill-choice', 'artifact-choice', 'pause', 'result'
 ]);
 export const VISUAL_SCROLL_ROOTS = Object.freeze({
   'startup-loading': Object.freeze([]),
   home: Object.freeze([]),
+  'story-return-light': Object.freeze([]),
+  'story-rescue': Object.freeze([]),
+  'story-fragment-hold': Object.freeze([]),
+  'story-fragment-postcommit': Object.freeze([]),
+  'story-ledger': Object.freeze([]),
+  'story-fragment-reduced': Object.freeze([]),
   dex: Object.freeze(['#overlayBody']),
   logs: Object.freeze(['#overlayBody']),
   equipment: Object.freeze(['#overlayBody']),
@@ -38,7 +114,10 @@ export const VISUAL_SCROLL_ROOTS = Object.freeze({
 });
 export const GLOBAL_VISUAL_SCROLL_ROOTS = Object.freeze(['html', 'body', '#app', '#overlay']);
 export const VIEWPORT_SURFACE_SCREENS = Object.freeze([
-  'startup-loading', 'home', 'dex', 'logs', 'equipment', 'gacha', 'outing', 'adventure-loading',
+  'startup-loading', 'home',
+  'story-return-light', 'story-rescue', 'story-fragment-hold', 'story-fragment-postcommit',
+  'story-ledger', 'story-fragment-reduced',
+  'dex', 'logs', 'equipment', 'gacha', 'outing', 'adventure-loading',
   'battle-hud', 'battle-vfx-lv1', 'battle-vfx-lv3', 'battle-vfx-lv5', 'battle-vfx-lv5-reduced', 'battle-vfx-lv5-low', 'result'
 ]);
 export const TRANSIENT_ABSENCE = Object.freeze({
@@ -77,6 +156,94 @@ export const LOADING_QA_CONTRACT = Object.freeze({
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DEFAULT_OUTPUT = path.join(ROOT, 'browser-qa-output');
 const RUNTIME_ASSET_MANIFEST = JSON.parse(fs.readFileSync(path.join(ROOT, 'assets/manifest.json'), 'utf8'));
+const STORY_ANIMATION_PROJECTION = JSON.parse(
+  fs.readFileSync(path.join(ROOT, 'assets/animations/story-ch01.json'), 'utf8')
+);
+const STORY_PIVOT_ATLAS_IDS = Object.freeze([
+  'currentMogu', 'youngMogu', 'starGuardianCandidate', 'starCompanion'
+]);
+export const STORY_PIVOT_ATLASES = Object.freeze(STORY_PIVOT_ATLAS_IDS.map((id) => {
+  const atlas = STORY_ANIMATION_PROJECTION.poseAtlases?.[id];
+  if (!atlas?.assetId
+    || atlas.frameOrder !== 'row-major'
+    || atlas.cellOrigin !== 'top-left'
+    || atlas.pivot?.space !== 'cell-normalized'
+    || atlas.noAutoCrop !== true
+    || atlas.width !== atlas.columns * atlas.cell?.width
+    || atlas.height !== atlas.rows * atlas.cell?.height) {
+    throw new Error(`Chapter 1 fixed-cell pose atlas contract is invalid: ${id}`);
+  }
+  const pack = (RUNTIME_ASSET_MANIFEST.packs || [])
+    .find((candidate) => candidate.assets?.some((asset) => asset.id === atlas.assetId));
+  if (!pack) throw new Error(`Chapter 1 pose atlas is absent from runtime packs: ${atlas.assetId}`);
+  return Object.freeze({
+    id,
+    assetId:atlas.assetId,
+    packId:pack.id,
+    width:atlas.width,
+    height:atlas.height,
+    columns:atlas.columns,
+    rows:atlas.rows,
+    cell:Object.freeze({ width:atlas.cell.width, height:atlas.cell.height }),
+    pivot:Object.freeze({ x:atlas.pivot.x, y:atlas.pivot.y })
+  });
+}));
+export const STORY_RUNTIME_VIDEO_CONTRACT = Object.freeze({
+  logicalTiming:'runtime-1x-no-seek',
+  holdTimeoutMs:3000,
+  completionTimeoutMs:15000,
+  minimumRuntimeWallMs:20000,
+  minimumVideoBytes:65536,
+  maximumVideoBytes:134217728,
+  minimumVideoDurationSeconds:20,
+  lifecycleFreezeWallMs:600,
+  lifecycleClockToleranceMs:34,
+  lifecycleResumeAdvanceMs:120,
+  delayedHoldWaitMs:1200,
+  earlyHoldMaximumDelayMs:750,
+  minimumHoldWallMs:700,
+  videoSampleFractions:Object.freeze([0.08, 0.2, 0.32, 0.44, 0.56, 0.68, 0.8, 0.92]),
+  minimumDecodedStandardDeviation:3,
+  minimumDecodedColorBuckets:8,
+  minimumDecodedNonBlankSamples:7,
+  minimumDecodedChangedPairs:3,
+  minimumDecodedUniqueFrames:4,
+  minimumDecodedMeanDifference:2,
+  minimumDecodedChangedPixelRatio:0.02,
+  motions:Object.freeze([
+    Object.freeze({
+      sceneIndex:0, sceneId:'return-light', motionId:'returnLightFlicker',
+      durationMs:Number(STORY_ANIMATION_PROJECTION.storyAnimations.returnLightFlicker.durationMs)
+    }),
+    Object.freeze({
+      sceneIndex:1, sceneId:'reverse-rescue', motionId:'reverseCrackRescue',
+      durationMs:Number(STORY_ANIMATION_PROJECTION.storyAnimations.reverseCrackRescue.durationMs)
+    }),
+    Object.freeze({
+      sceneIndex:2, sceneId:'fragment-chamber', motionId:'fragmentConsumeStumble',
+      preCommitMs:Number(STORY_ANIMATION_PROJECTION.storyAnimations.fragmentConsumeStumble.preCommitLogicalTimeMs),
+      durationMs:Number(STORY_ANIMATION_PROJECTION.storyAnimations.fragmentConsumeStumble.nominalDurationMsAfterHoldConfirmed)
+    }),
+    Object.freeze({
+      sceneIndex:3, sceneId:'archive-ledger', motionId:'ledgerBrokenPulse',
+      durationMs:Number(STORY_ANIMATION_PROJECTION.storyAnimations.ledgerBrokenPulse.durationMs)
+    })
+  ])
+});
+export const STORY_RUNTIME_EVIDENCE_MODES = Object.freeze([
+  Object.freeze({
+    id:'normal',
+    reducedMotion:false,
+    exerciseLifecycle:false,
+    holdTiming:'early'
+  }),
+  Object.freeze({
+    id:'reduced-lifecycle-delayed',
+    reducedMotion:true,
+    exerciseLifecycle:true,
+    holdTiming:'delayed'
+  })
+]);
 export const SPECULATIVE_BATTLE_PACK_URLS = Object.freeze(
   (RUNTIME_ASSET_MANIFEST.packs || [])
     .find((pack) => pack.id === 'battle-v3')
@@ -315,10 +482,10 @@ async function installFixture(page) {
     window.MoguriaHome.update();
     return { ok: saved.ok, equipment: save.meta.inventory.length };
   });
-  if (!result.ok || result.equipment < 5) throw new Error('version-3 browser fixture could not be saved');
+  if (!result.ok || result.equipment < 5) throw new Error('version-4 browser fixture could not be saved');
 }
 
-async function waitForStablePage(page) {
+async function waitForAppReady(page) {
   await page.waitForFunction(() => window.MoguriaStartup?.isReady?.() === true, null, { timeout: 45000 });
   await page.locator('#startupLoader').waitFor({ state: 'hidden', timeout: 10000 });
   await page.waitForFunction(() => {
@@ -329,6 +496,10 @@ async function waitForStablePage(page) {
   await page.evaluate(async () => {
     if (document.fonts?.ready) await document.fonts.ready;
   });
+}
+
+async function waitForStablePage(page) {
+  await waitForAppReady(page);
   await installFixture(page);
   const freezeStyle = await page.addStyleTag({ content: `
     html { scroll-behavior: auto !important; }
@@ -1158,6 +1329,232 @@ async function prepareSkillVfx(page, level, { reducedMotion = false, quality = '
   return fixture;
 }
 
+async function openFreshStoryEntry(page) {
+  const before = await page.evaluate(() => {
+    const cleared = window.MoguriaSave.clear();
+    window.MoguriaHome.update();
+    const save = window.MoguriaSave.load();
+    return {
+      cleared,
+      entryMode: save.story?.entryMode || '',
+      currentNodeId: save.story?.currentNodeId || '',
+      belly: save.belly,
+      activeRun: save.activeRun,
+      playerLoaded: typeof window.MoguriaStoryChapter01?.open === 'function',
+      playerScriptCount: document.querySelectorAll('script[data-moguria-story-ch01]').length,
+      playerStyleCount: document.querySelectorAll('link[data-moguria-story-ch01-style]').length
+    };
+  });
+  if (!before.cleared
+    || before.entryMode !== 'new'
+    || before.currentNodeId !== 'c1_available'
+    || before.activeRun != null
+    || before.playerLoaded
+    || before.playerScriptCount !== 0
+    || before.playerStyleCount !== 0) {
+    throw new Error(`fresh Chapter 1 Home precondition failed: ${JSON.stringify(before)}`);
+  }
+
+  const entry = page.locator('#startBtn');
+  await entry.waitFor({ state: 'visible' });
+  const entryLabel = await entry.getAttribute('aria-label');
+  if (!String(entryLabel || '').includes('物語をはじめる')) {
+    throw new Error(`fresh-save story entry is not the Home primary action: ${entryLabel || '(missing)'}`);
+  }
+  await entry.click();
+  await page.waitForFunction(() => (
+    typeof window.MoguriaStoryChapter01?.seekForVerification === 'function'
+      && window.MoguriaStoryChapter01?.getHealth?.()?.ok === true
+  ), null, { timeout: 30000 });
+  await page.locator('#storyChapter01.active[data-story-state="running"]').waitFor({ state: 'visible', timeout: 10000 });
+  const afterEntry = await page.evaluate(() => {
+    const save = window.MoguriaSave.load();
+    return {
+      entryMode: save.story?.entryMode || '',
+      currentNodeId: save.story?.currentNodeId || '',
+      transitionIds: Array.from(save.story?.transitionIds || []),
+      belly: save.belly,
+      activeRun: save.activeRun,
+      playerLoaded: typeof window.MoguriaStoryChapter01?.open === 'function',
+      playerScriptCount: document.querySelectorAll('script[data-moguria-story-ch01][data-moguria-story-state="loaded"]').length,
+      playerStyleCount: document.querySelectorAll('link[data-moguria-story-ch01-style="loaded"]').length,
+      health: window.MoguriaStoryChapter01?.getHealth?.() || null
+    };
+  });
+  if (afterEntry.entryMode !== 'new'
+    || afterEntry.currentNodeId !== 'c1_seat'
+    || !afterEntry.transitionIds.includes('c1-enter-seat')
+    || afterEntry.belly !== before.belly
+    || afterEntry.activeRun != null
+    || !afterEntry.playerLoaded
+    || afterEntry.playerScriptCount !== 1
+    || afterEntry.playerStyleCount !== 1
+    || !afterEntry.health?.ok
+    || afterEntry.health.sceneId !== 'return-light') {
+    throw new Error(`fresh Chapter 1 lazy entry failed: ${JSON.stringify({ before, afterEntry })}`);
+  }
+  return { entryLabel, before, afterEntry };
+}
+
+async function exerciseStoryLifecycle(page, entryEvidence) {
+  const result = await page.evaluate(async ({ profileId, runId }) => {
+    const saveApi = window.MoguriaSave;
+    const storyPlayer = window.MoguriaStoryChapter01;
+    const assertOk = (value, label) => {
+      if (!value?.ok) throw new Error(`${label} failed: ${JSON.stringify(value)}`);
+      return value;
+    };
+    assertOk(await storyPlayer.close(), 'initial story close');
+    const transitions = [
+      assertOk(saveApi.transitionStory('c1_return_lamp'), 'return-lamp transition'),
+      assertOk(saveApi.transitionStory('c1_shard'), 'shard transition'),
+      assertOk(saveApi.transitionStory('c1_investigation_ready'), 'investigation-ready transition')
+    ];
+    const ready = saveApi.load();
+    const started = assertOk(saveApi.startRun({ runId, profileId }), 'story run start');
+    const run = {
+      runId: started.runId,
+      profileId,
+      runKind: 'story',
+      cleared: true,
+      floor: 4,
+      wave: 4,
+      lv: 1,
+      survived: 1,
+      kills: 0,
+      maxDamage: 0,
+      totalDamage: 0,
+      dps: 0,
+      critRate: 0,
+      dodgeRate: 0,
+      explosions: 0,
+      bestCombo: 0,
+      skills: [],
+      artifacts: [],
+      synergies: [],
+      titles: [],
+      visual: {},
+      giveup: false
+    };
+    const settlement = assertOk(window.MoguriaMeta.awardFromRun(run), 'story run settlement');
+    const afterSettlement = saveApi.load();
+    const resumed = assertOk(await storyPlayer.resumeAfterRun({ run, settlement }), 'story settlement handoff');
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    const returned = saveApi.load();
+    return {
+      transitions: transitions.map((item) => item.transitionId),
+      ready: {
+        currentNodeId: ready.story?.currentNodeId || '',
+        belly: ready.belly,
+        transitionIds: Array.from(ready.story?.transitionIds || [])
+      },
+      started: {
+        runId: started.runId,
+        profileId: started.activeRun?.profileId || '',
+        currentNodeId: started.data?.story?.currentNodeId || '',
+        boundRunId: started.data?.story?.boundRun?.runId || '',
+        belly: started.data?.belly
+      },
+      settlement: {
+        ok: settlement.ok,
+        amount: settlement.amount,
+        runId: settlement.runId,
+        currentNodeId: afterSettlement.story?.currentNodeId || '',
+        activeRun: afterSettlement.activeRun,
+        boundRun: afterSettlement.story?.boundRun,
+        transitionIds: Array.from(afterSettlement.story?.transitionIds || [])
+      },
+      handoff: {
+        ok: resumed.ok,
+        currentNodeId: returned.story?.currentNodeId || '',
+        transitionIds: Array.from(returned.story?.transitionIds || []),
+        health: storyPlayer.getHealth?.() || null,
+        resultScreenActive: document.getElementById('result')?.classList?.contains('active') || false
+      }
+    };
+  }, { profileId:'story-c1-investigation-v1', runId:'browser-qa-story-lifecycle' });
+
+  const expectedTransitions = ['c1-seat-complete','c1-return-lamp-complete','c1-shard-complete'];
+  if (JSON.stringify(result.transitions) !== JSON.stringify(expectedTransitions)
+    || result.ready.currentNodeId !== 'c1_investigation_ready'
+    || result.started.profileId !== 'story-c1-investigation-v1'
+    || result.started.currentNodeId !== 'c1_investigation_active'
+    || result.started.boundRunId !== result.started.runId
+    || result.started.belly !== entryEvidence.before.belly
+    || result.settlement.amount !== 0
+    || result.settlement.runId !== result.started.runId
+    || result.settlement.currentNodeId !== 'c1_return_pending'
+    || result.settlement.activeRun != null
+    || result.settlement.boundRun != null
+    || !result.settlement.transitionIds.includes('c1-investigation-settled')
+    || result.handoff.currentNodeId !== 'c1_record_signal'
+    || !result.handoff.transitionIds.includes('c1-record-opened')
+    || !result.handoff.health?.ok
+    || result.handoff.health.sceneId !== 'archive-ledger'
+    || result.handoff.resultScreenActive) {
+    throw new Error(`Chapter 1 production lifecycle did not reach the ledger: ${JSON.stringify(result)}`);
+  }
+  return result;
+}
+
+async function prepareStoryFixture(page, screenId) {
+  const fixture = STORY_SCENE_FIXTURES[screenId];
+  if (!fixture) throw new Error(`unknown Chapter 1 browser fixture: ${screenId}`);
+  await page.emulateMedia({ reducedMotion: fixture.reducedMotion ? 'reduce' : 'no-preference' });
+  const entry = await openFreshStoryEntry(page);
+  const lifecycle = screenId === STORY_LIFECYCLE_SCREEN_ID
+    ? await exerciseStoryLifecycle(page, entry)
+    : null;
+  const result = await page.evaluate(async (options) => {
+    const api = window.MoguriaStoryChapter01;
+    const sought = await api.seekForVerification(options);
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    const section = document.getElementById('storyChapter01');
+    const loading = document.getElementById('storyChapter01Loading');
+    return {
+      sought,
+      verification: api.getVerification?.() || null,
+      sectionState: section?.dataset?.storyState || '',
+      sectionScene: section?.dataset?.storyScene || '',
+      paused: section?.getAttribute?.('data-story-paused') || '',
+      loadingHidden: Boolean(loading?.hidden),
+      assetStats: window.MoguriaAssets?.stats?.() || null
+    };
+  }, fixture);
+  const verification = result.verification || {};
+  if (!result.sought?.ok
+    || !verification.ok
+    || verification.sceneIndex !== fixture.sceneIndex
+    || verification.sceneId !== fixture.sceneId
+    || verification.sceneTimeMs !== fixture.sceneTimeMs
+    || verification.postTimeMs !== fixture.postTimeMs
+    || verification.holdCommitted !== fixture.holdCommitted
+    || verification.reducedMotion !== fixture.reducedMotion
+    || result.sectionState !== 'running'
+    || result.sectionScene !== fixture.sceneId
+    || result.paused !== 'true'
+    || !result.loadingHidden
+    || result.assetStats?.errors?.length) {
+    throw new Error(`Chapter 1 verification seek did not settle: ${JSON.stringify({ screenId, fixture, result })}`);
+  }
+  return { screenId, expected: fixture, entry, lifecycle, ...result };
+}
+
+function storyScreenContract(screenId) {
+  const fixture = STORY_SCENE_FIXTURES[screenId];
+  const persistentControls = ['#storyChapter01Close', '#storyChapter01Pause'];
+  return {
+    surface: '#storyChapter01.active[data-story-state="running"]',
+    touch: fixture.holdVisible
+      ? [...persistentControls, '#storyChapter01Hold', '#storyChapter01HoldAlternative']
+      : persistentControls,
+    fit: fixture.holdVisible
+      ? [...persistentControls, '#storyChapter01Hold', '#storyChapter01HoldAlternative']
+      : persistentControls,
+    setup: async (page) => prepareStoryFixture(page, screenId)
+  };
+}
+
 const SCREEN_CONTRACTS = Object.freeze({
   'startup-loading': {
     surface: '#startupLoader:not([hidden])',
@@ -1173,9 +1570,15 @@ const SCREEN_CONTRACTS = Object.freeze({
   },
   home: {
     surface: '#home.active',
-    touch: ['#startBtn', '#snackBtn', '#dexBtn', '#logsBtn', '#equipBtn', '#gachaBtn', '#outingBtn'],
+    touch: ['#startBtn', '#snackBtn', '#dexBtn', '#logsBtn', '#storyBtn', '#equipBtn', '#gachaBtn', '#outingBtn'],
     setup: async (page) => page.locator('#home.active').waitFor({ state: 'visible' })
   },
+  'story-return-light': storyScreenContract('story-return-light'),
+  'story-rescue': storyScreenContract('story-rescue'),
+  'story-fragment-hold': storyScreenContract('story-fragment-hold'),
+  'story-fragment-postcommit': storyScreenContract('story-fragment-postcommit'),
+  'story-ledger': storyScreenContract('story-ledger'),
+  'story-fragment-reduced': storyScreenContract('story-fragment-reduced'),
   dex: {
     surface: '#overlay[data-view="dex"]:not(.hidden) .meta-shell',
     touch: ['#closeOverlay', '[data-dex-tab]'],
@@ -1507,6 +1910,201 @@ async function verifyBattleCanvas(page, viewport, output) {
   return result;
 }
 
+async function verifyStoryCanvas(page, viewport, screenId, output) {
+  const snapshot = await page.evaluate(() => {
+    const canvas = document.getElementById('storyChapter01Canvas');
+    if (!canvas) return null;
+    const rect = canvas.getBoundingClientRect();
+    return {
+      width: canvas.width,
+      height: canvas.height,
+      rect: {
+        x: Number(rect.x.toFixed(2)),
+        y: Number(rect.y.toFixed(2)),
+        width: Number(rect.width.toFixed(2)),
+        height: Number(rect.height.toFixed(2))
+      },
+      verification: window.MoguriaStoryChapter01?.getVerification?.() || null,
+      dataUrl: canvas.toDataURL('image/png')
+    };
+  });
+  if (!snapshot?.dataUrl?.startsWith('data:image/png;base64,')) {
+    throw new Error('Chapter 1 canvas did not yield a PNG verification capture');
+  }
+  const buffer = Buffer.from(snapshot.dataUrl.slice(snapshot.dataUrl.indexOf(',') + 1), 'base64');
+  const fileName = `${viewport.id}--${screenId}--canvas-probe.png`;
+  fs.writeFileSync(path.join(output, 'screenshots', fileName), buffer);
+  const visual = pngVisualStats(buffer);
+  const expectedDpr = Math.min(2, viewport.deviceScaleFactor);
+  const expectedWidth = Math.round(viewport.width * expectedDpr);
+  const expectedHeight = Math.round(viewport.height * expectedDpr);
+  const backingStoreReady = snapshot.width === expectedWidth && snapshot.height === expectedHeight;
+  const viewportAligned = Math.max(
+    Math.abs(snapshot.rect.x), Math.abs(snapshot.rect.y),
+    Math.abs(snapshot.rect.width - viewport.width), Math.abs(snapshot.rect.height - viewport.height)
+  ) <= 1;
+  const visuallyRich = !visual.nearBlank
+    && visual.standardDeviation >= STORY_CANVAS_PROBE.minStandardDeviation
+    && visual.colorBuckets >= STORY_CANVAS_PROBE.minColorBuckets;
+  return {
+    screenshot: path.posix.join('screenshots', fileName),
+    passed: backingStoreReady && viewportAligned && visuallyRich,
+    backingStoreReady,
+    viewportAligned,
+    expectedBackingStore: { width: expectedWidth, height: expectedHeight, dpr: expectedDpr },
+    canvas: { width: snapshot.width, height: snapshot.height, rect: snapshot.rect },
+    verification: snapshot.verification,
+    visual
+  };
+}
+
+async function captureStoryMotionEvidence(page, viewport, screenId, output) {
+  const contract = STORY_MOTION_EVIDENCE[screenId];
+  if (!contract) return null;
+  const frames = [];
+  for (const frame of contract.frames) {
+    const verification = await page.evaluate(async (options) => {
+      const api = window.MoguriaStoryChapter01;
+      const sought = await api.seekForVerification({ ...options, reducedMotion:false });
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      return { sought, snapshot:api.getVerification?.() || null };
+    }, frame);
+    if (!verification.sought?.ok
+      || !verification.snapshot?.ok
+      || verification.snapshot.sceneIndex !== frame.sceneIndex
+      || verification.snapshot.sceneTimeMs !== frame.sceneTimeMs
+      || verification.snapshot.postTimeMs !== frame.postTimeMs
+      || verification.snapshot.holdCommitted !== frame.holdCommitted) {
+      throw new Error(`Chapter 1 marker evidence did not settle: ${JSON.stringify({ screenId, frame, verification })}`);
+    }
+    const fileName = `${viewport.id}--${screenId}--motion-${frame.label}.png`;
+    const screenshot = await page.locator('#storyChapter01Canvas').screenshot({
+      path: path.join(output, 'screenshots', fileName),
+      animations: 'disabled',
+      scale: 'css'
+    });
+    const visual = pngVisualStats(screenshot);
+    const passed = !visual.nearBlank
+      && visual.standardDeviation >= STORY_CANVAS_PROBE.minStandardDeviation
+      && visual.colorBuckets >= STORY_CANVAS_PROBE.minColorBuckets;
+    frames.push({
+      label:frame.label,
+      sceneTimeMs:frame.sceneTimeMs,
+      postTimeMs:frame.postTimeMs,
+      screenshot:path.posix.join('screenshots', fileName),
+      passed,
+      visual,
+      verification:verification.snapshot
+    });
+  }
+  const stable = STORY_SCENE_FIXTURES[screenId];
+  const restored = await page.evaluate(async (options) => {
+    const api = window.MoguriaStoryChapter01;
+    const sought = await api.seekForVerification(options);
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    return { sought, snapshot:api.getVerification?.() || null };
+  }, stable);
+  const passed = frames.every((frame) => frame.passed)
+    && restored.sought?.ok
+    && restored.snapshot?.sceneId === stable.sceneId
+    && restored.snapshot?.sceneTimeMs === stable.sceneTimeMs
+    && restored.snapshot?.postTimeMs === stable.postTimeMs;
+  return { motionId:contract.motionId, passed, frames, restored:restored.snapshot };
+}
+
+async function auditStoryDom(page, screenId, viewport) {
+  const fixture = STORY_SCENE_FIXTURES[screenId];
+  return page.evaluate(({ expected, width, height }) => {
+    const visible = (element) => {
+      if (!element) return false;
+      const rect = element.getBoundingClientRect();
+      const style = getComputedStyle(element);
+      return rect.width > 0 && rect.height > 0 && style.display !== 'none'
+        && style.visibility !== 'hidden' && Number(style.opacity) !== 0;
+    };
+    const rectOf = (element) => {
+      if (!element) return null;
+      const rect = element.getBoundingClientRect();
+      return {
+        x: Number(rect.x.toFixed(2)), y: Number(rect.y.toFixed(2)),
+        left: Number(rect.left.toFixed(2)), right: Number(rect.right.toFixed(2)),
+        top: Number(rect.top.toFixed(2)), bottom: Number(rect.bottom.toFixed(2)),
+        width: Number(rect.width.toFixed(2)), height: Number(rect.height.toFixed(2))
+      };
+    };
+    const failures = [];
+    const section = document.getElementById('storyChapter01');
+    const canvas = document.getElementById('storyChapter01Canvas');
+    const header = section?.querySelector('.story-ch01__header');
+    const dialogue = section?.querySelector('.story-ch01__dialogue');
+    const chapterTitle = document.getElementById('storyChapter01Title');
+    const sceneTitle = document.getElementById('storyChapter01SceneTitle');
+    const sceneText = document.getElementById('storyChapter01SceneText');
+    const count = document.getElementById('storyChapter01Count');
+    const close = document.getElementById('storyChapter01Close');
+    const pause = document.getElementById('storyChapter01Pause');
+    const hold = document.getElementById('storyChapter01Hold');
+    const holdTrack = document.getElementById('storyChapter01HoldTrack');
+    const holdAlternative = document.getElementById('storyChapter01HoldAlternative');
+    const next = document.getElementById('storyChapter01Next');
+    const loading = document.getElementById('storyChapter01Loading');
+    const essential = [section, canvas, header, dialogue, chapterTitle, sceneTitle, sceneText, count, close, pause];
+    for (const element of essential) {
+      if (!visible(element)) failures.push(`Chapter 1 DOM element is missing or hidden: ${element?.id || element?.className || '(missing)'}`);
+    }
+    const fitted = expected.holdVisible ? [...essential, hold, holdAlternative] : essential;
+    for (const element of fitted.filter(Boolean)) {
+      const rect = rectOf(element);
+      if (!rect || rect.left < -1 || rect.right > width + 1 || rect.top < -1 || rect.bottom > height + 1) {
+        failures.push(`Chapter 1 DOM element does not fit the viewport: ${element.id || element.className}`);
+      }
+    }
+    const text = {
+      chapter: chapterTitle?.textContent?.trim() || '',
+      scene: sceneTitle?.textContent?.trim() || '',
+      dialogue: sceneText?.textContent?.trim() || '',
+      count: count?.textContent?.trim() || ''
+    };
+    if (!text.chapter || !text.scene || text.dialogue.length < 8 || text.count !== `${expected.sceneIndex + 1} / 4`) {
+      failures.push(`Chapter 1 DOM copy is blank or inconsistent: ${JSON.stringify(text)}`);
+    }
+    if (section?.dataset?.storyState !== 'running' || section?.dataset?.storyScene !== expected.sceneId) {
+      failures.push(`Chapter 1 DOM state is inconsistent: ${section?.dataset?.storyState}/${section?.dataset?.storyScene}`);
+    }
+    if (Boolean(close?.disabled) !== expected.closeDisabled
+      || close?.getAttribute?.('aria-disabled') !== String(expected.closeDisabled)) {
+      failures.push(`Chapter 1 close-boundary state differs: disabled=${Boolean(close?.disabled)}`);
+    }
+    if (visible(hold) !== expected.holdVisible
+      || visible(holdAlternative) !== expected.holdVisible
+      || visible(next)
+      || visible(loading)) {
+      failures.push(`Chapter 1 action visibility differs: hold=${visible(hold)} alternative=${visible(holdAlternative)} next=${visible(next)} loading=${visible(loading)}`);
+    }
+    if (expected.holdVisible && (holdTrack?.getAttribute?.('role') !== 'progressbar'
+      || holdTrack?.getAttribute?.('aria-valuemin') !== '0'
+      || holdTrack?.getAttribute?.('aria-valuemax') !== '100'
+      || holdTrack?.getAttribute?.('aria-valuenow') !== '0')) {
+      failures.push('Chapter 1 deliberate-hold progress semantics differ');
+    }
+    return {
+      failures,
+      state: { value: section?.dataset?.storyState || '', scene: section?.dataset?.storyScene || '' },
+      text,
+      visible: { hold: visible(hold), next: visible(next), loading: visible(loading) },
+      controls: {
+        close: { disabled: Boolean(close?.disabled), rect: rectOf(close) },
+        pause: { visible: visible(pause), pressed: pause?.getAttribute?.('aria-pressed') || null, rect: rectOf(pause) },
+        hold: { visible: visible(hold), rect: rectOf(hold), progressNow: holdTrack?.getAttribute?.('aria-valuenow') || null },
+        holdAlternative: { visible: visible(holdAlternative), rect: rectOf(holdAlternative) }
+      },
+      geometry: {
+        section: rectOf(section), canvas: rectOf(canvas), header: rectOf(header), dialogue: rectOf(dialogue)
+      }
+    };
+  }, { expected: fixture, width: viewport.width, height: viewport.height });
+}
+
 async function auditDom(page, contract, viewport, screenId) {
   return page.evaluate(({ surfaceSelector, touchSelectors, contentFitSelectors, width, height, viewportSurfaceExpected }) => {
     const visible = (element) => {
@@ -1740,6 +2338,18 @@ async function runScreen(browser, baseUrl, browserName, viewport, screenId, outp
     await waitForTransientAbsence(page, TRANSIENT_ABSENCE[screenId]);
     record.scrollRoots = await settleVisuals(page, contract.surface, VISUAL_SCROLL_ROOTS[screenId]);
     record.dom = await auditDom(page, contract, viewport, screenId);
+    if (Object.hasOwn(STORY_SCENE_FIXTURES, screenId)) {
+      record.storyDom = await auditStoryDom(page, screenId, viewport);
+      record.storyCanvas = await verifyStoryCanvas(page, viewport, screenId, output);
+      record.storyMotionEvidence = await captureStoryMotionEvidence(page, viewport, screenId, output);
+      record.failures.push(...record.storyDom.failures);
+      if (!record.storyCanvas.passed) {
+        record.failures.push(`Chapter 1 canvas is blank, undersized, or displaced: ${JSON.stringify(record.storyCanvas)}`);
+      }
+      if (record.storyMotionEvidence && !record.storyMotionEvidence.passed) {
+        record.failures.push(`Chapter 1 marker evidence is incomplete or blank: ${JSON.stringify(record.storyMotionEvidence)}`);
+      }
+    }
     if (screenId === 'battle-hud') {
       record.canvasProbe = await verifyBattleCanvas(page, viewport, output);
       if (!record.canvasProbe.passed) {
@@ -1777,6 +2387,1007 @@ async function runScreen(browser, baseUrl, browserName, viewport, screenId, outp
   return record;
 }
 
+function attachRuntimeEvidenceDiagnostics(page, record, baseUrl) {
+  page.on('console', (message) => {
+    if (message.type() === 'error') record.diagnostics.consoleErrors.push(message.text());
+  });
+  page.on('pageerror', (error) => record.diagnostics.pageErrors.push(error.message));
+  page.on('requestfailed', (request) => {
+    const failure = {
+      method:request.method(),
+      resourceType:request.resourceType(),
+      isNavigationRequest:request.isNavigationRequest(),
+      headers:request.headers(),
+      url:request.url(),
+      errorText:request.failure()?.errorText || ''
+    };
+    const description = `${failure.method} ${failure.url} ${failure.errorText}`;
+    if (isExpectedSpeculativeWarmAbort(failure, baseUrl)) {
+      record.ignoredDiagnostics.speculativeWarmAborts.push(description);
+      return;
+    }
+    record.diagnostics.requestFailures.push(description);
+  });
+  page.on('response', (response) => {
+    if (response.status() >= 400 && response.url().startsWith(baseUrl)) {
+      record.diagnostics.responseErrors.push(`${response.status()} ${response.url()}`);
+    }
+  });
+}
+
+async function openFreshStoryRuntimeEntry(page) {
+  const before = await page.evaluate(() => {
+    const cleared = window.MoguriaSave.clear();
+    window.MoguriaHome.update();
+    const save = window.MoguriaSave.load();
+    return {
+      cleared,
+      entryMode:save.story?.entryMode || '',
+      currentNodeId:save.story?.currentNodeId || '',
+      belly:save.belly,
+      activeRun:save.activeRun,
+      playerLoaded:typeof window.MoguriaStoryChapter01?.open === 'function',
+      playerScriptCount:document.querySelectorAll('script[data-moguria-story-ch01]').length,
+      playerStyleCount:document.querySelectorAll('link[data-moguria-story-ch01-style]').length
+    };
+  });
+  if (!before.cleared
+    || before.entryMode !== 'new'
+    || before.currentNodeId !== 'c1_available'
+    || before.activeRun != null
+    || before.playerLoaded
+    || before.playerScriptCount !== 0
+    || before.playerStyleCount !== 0) {
+    throw new Error(`runtime video fresh-entry precondition failed: ${JSON.stringify(before)}`);
+  }
+
+  const entry = page.locator('#startBtn');
+  await entry.waitFor({ state:'visible' });
+  const entryLabel = await entry.getAttribute('aria-label');
+  if (!String(entryLabel || '').includes('物語をはじめる')) {
+    throw new Error(`runtime video Home primary action differs: ${entryLabel || '(missing)'}`);
+  }
+  await entry.click();
+  await page.waitForFunction(() => (
+    typeof window.MoguriaStoryChapter01?.open === 'function'
+      && window.MoguriaStoryChapter01?.getHealth?.()?.ok === true
+  ), null, { timeout:30000 });
+  await page.locator('#storyChapter01.active[data-story-state="running"]')
+    .waitFor({ state:'visible', timeout:10000 });
+
+  const after = await page.evaluate(() => {
+    const save = window.MoguriaSave.load();
+    return {
+      entryMode:save.story?.entryMode || '',
+      currentNodeId:save.story?.currentNodeId || '',
+      transitionIds:Array.from(save.story?.transitionIds || []),
+      belly:save.belly,
+      activeRun:save.activeRun,
+      playerScriptCount:document.querySelectorAll('script[data-moguria-story-ch01][data-moguria-story-state="loaded"]').length,
+      playerStyleCount:document.querySelectorAll('link[data-moguria-story-ch01-style="loaded"]').length,
+      health:window.MoguriaStoryChapter01.getHealth()
+    };
+  });
+  if (after.entryMode !== 'new'
+    || after.currentNodeId !== 'c1_seat'
+    || !after.transitionIds.includes('c1-enter-seat')
+    || after.belly !== before.belly
+    || after.activeRun != null
+    || after.playerScriptCount !== 1
+    || after.playerStyleCount !== 1
+    || !after.health?.ok
+    || after.health.sceneId !== 'return-light') {
+    throw new Error(`runtime video lazy entry failed: ${JSON.stringify({ before, after })}`);
+  }
+  return { entryLabel, before, after };
+}
+
+async function waitForRuntimeMotionCompletion(page, motion, mode, startedAt) {
+  await page.waitForFunction(({ sceneIndex, sceneId }) => {
+    const health = window.MoguriaStoryChapter01?.getHealth?.();
+    return health?.ok === true
+      && health.replay === true
+      && health.sceneIndex === sceneIndex
+      && health.sceneId === sceneId
+      && health.completed === true;
+  }, motion, { timeout:STORY_RUNTIME_VIDEO_CONTRACT.completionTimeoutMs });
+  const checkpoint = await page.evaluate(() => {
+    const health = window.MoguriaStoryChapter01.getHealth();
+    const section = document.getElementById('storyChapter01');
+    const next = document.getElementById('storyChapter01Next');
+    return {
+      health,
+      domScene:section?.dataset?.storyScene || '',
+      domState:section?.dataset?.storyState || '',
+      nextVisible:Boolean(next && !next.hidden && !next.disabled)
+    };
+  });
+  const clockMs = motion.sceneIndex === 2
+    ? checkpoint.health.postTimeMs
+    : checkpoint.health.sceneTimeMs;
+  if (checkpoint.health.reducedMotion !== mode.reducedMotion
+    || checkpoint.domScene !== motion.sceneId
+    || checkpoint.domState !== 'running'
+    || !checkpoint.nextVisible
+    || clockMs < motion.durationMs) {
+    throw new Error(`runtime video motion did not complete at 1x: ${JSON.stringify({ motion, mode, checkpoint })}`);
+  }
+  return {
+    sceneIndex:motion.sceneIndex,
+    sceneId:motion.sceneId,
+    motionId:motion.motionId,
+    sceneTimeMs:checkpoint.health.sceneTimeMs,
+    postTimeMs:checkpoint.health.postTimeMs,
+    wallDurationMs:Date.now() - startedAt,
+    replay:checkpoint.health.replay,
+    reducedMotion:checkpoint.health.reducedMotion
+  };
+}
+
+async function exerciseStoryPauseResume(page) {
+  await page.waitForFunction((minimumSceneTimeMs) => {
+    const health = window.MoguriaStoryChapter01?.getHealth?.();
+    return health?.sceneIndex === 0
+      && health.completed === false
+      && health.sceneTimeMs >= minimumSceneTimeMs;
+  }, 900, { timeout:10000 });
+  const before = await page.evaluate(() => {
+    const health = window.MoguriaStoryChapter01.getHealth();
+    const section = document.getElementById('storyChapter01');
+    const button = document.getElementById('storyChapter01Pause');
+    return {
+      sceneId:health.sceneId,
+      sceneTimeMs:health.sceneTimeMs,
+      completed:health.completed,
+      domPaused:section?.dataset?.storyPaused,
+      ariaPressed:button?.getAttribute?.('aria-pressed')
+    };
+  });
+  if (before.sceneId !== 'return-light'
+    || before.completed
+    || before.domPaused !== 'false'
+    || before.ariaPressed !== 'false') {
+    throw new Error(`Story pause precondition failed: ${JSON.stringify(before)}`);
+  }
+  const pauseButton = page.locator('#storyChapter01Pause');
+  await pauseButton.click();
+  await page.waitForFunction(() => {
+    const section = document.getElementById('storyChapter01');
+    const button = document.getElementById('storyChapter01Pause');
+    return section?.dataset?.storyPaused === 'true'
+      && button?.getAttribute?.('aria-pressed') === 'true';
+  }, null, { timeout:3000 });
+  const pausedAt = await page.evaluate(() => window.MoguriaStoryChapter01.getHealth().sceneTimeMs);
+  await page.waitForTimeout(STORY_RUNTIME_VIDEO_CONTRACT.lifecycleFreezeWallMs);
+  const frozen = await page.evaluate(() => window.MoguriaStoryChapter01.getHealth());
+  const frozenAt = frozen.sceneTimeMs;
+  const frozenDeltaMs = Math.abs(frozenAt - pausedAt);
+  if (frozen.sceneId !== 'return-light'
+    || frozen.completed
+    || frozenDeltaMs > STORY_RUNTIME_VIDEO_CONTRACT.lifecycleClockToleranceMs) {
+    throw new Error(`Story pause did not freeze the production clock: ${JSON.stringify({ pausedAt, frozenAt, frozenDeltaMs })}`);
+  }
+
+  await pauseButton.click();
+  await page.waitForFunction(() => {
+    const section = document.getElementById('storyChapter01');
+    const button = document.getElementById('storyChapter01Pause');
+    return section?.dataset?.storyPaused === 'false'
+      && button?.getAttribute?.('aria-pressed') === 'false';
+  }, null, { timeout:3000 });
+  await page.waitForFunction(({ baseline, advance }) => (
+    window.MoguriaStoryChapter01?.getHealth?.()?.sceneTimeMs >= baseline + advance
+  ), {
+    baseline:frozenAt,
+    advance:STORY_RUNTIME_VIDEO_CONTRACT.lifecycleResumeAdvanceMs
+  }, { timeout:3000 });
+  const resumedAt = await page.evaluate(() => window.MoguriaStoryChapter01.getHealth().sceneTimeMs);
+  return {
+    passed:true,
+    pauseControl:'storyChapter01Pause',
+    before,
+    pausedAtMs:pausedAt,
+    frozenAtMs:frozenAt,
+    frozenWallMs:STORY_RUNTIME_VIDEO_CONTRACT.lifecycleFreezeWallMs,
+    frozenDeltaMs,
+    resumedAtMs:resumedAt,
+    resumedAdvanceMs:resumedAt - frozenAt
+  };
+}
+
+async function waitForActualPageVisibility(page, expectedHidden, timeoutMs = 5000) {
+  const deadline = Date.now() + timeoutMs;
+  let latest = null;
+  while (Date.now() < deadline) {
+    latest = await page.evaluate(() => ({
+      hidden:document.hidden,
+      visibilityState:document.visibilityState
+    }));
+    if (latest.hidden === expectedHidden
+      && latest.visibilityState === (expectedHidden ? 'hidden' : 'visible')) return latest;
+    await page.waitForTimeout(100);
+  }
+  throw new Error(`real page visibility transition was not observed: ${JSON.stringify({ expectedHidden, latest })}`);
+}
+
+async function exerciseStoryVisibilityResume(context, page) {
+  await page.waitForFunction((minimumSceneTimeMs) => {
+    const health = window.MoguriaStoryChapter01?.getHealth?.();
+    return health?.sceneIndex === 1
+      && health.completed === false
+      && health.sceneTimeMs >= minimumSceneTimeMs;
+  }, 1000, { timeout:10000 });
+  let coverPage = null;
+  let coverVideo = null;
+  let restored = false;
+  try {
+    const before = await page.evaluate(() => {
+      const health = window.MoguriaStoryChapter01.getHealth();
+      const section = document.getElementById('storyChapter01');
+      const prior = document.__moguriaQaVisibilityEvidence;
+      if (prior?.handler) document.removeEventListener('visibilitychange', prior.handler);
+      const evidence = { events:[], handler:null };
+      evidence.handler = () => evidence.events.push({
+        hidden:document.hidden,
+        visibilityState:document.visibilityState,
+        sceneTimeMs:window.MoguriaStoryChapter01.getHealth().sceneTimeMs
+      });
+      document.__moguriaQaVisibilityEvidence = evidence;
+      document.addEventListener('visibilitychange', evidence.handler);
+      return {
+        hidden:document.hidden,
+        visibilityState:document.visibilityState,
+        sceneId:health.sceneId,
+        sceneTimeMs:health.sceneTimeMs,
+        completed:health.completed,
+        domPaused:section?.dataset?.storyPaused
+      };
+    });
+    if (before.hidden
+      || before.visibilityState !== 'visible'
+      || before.sceneId !== 'reverse-rescue'
+      || before.completed
+      || before.domPaused !== 'false') {
+      throw new Error(`Story visibility precondition failed: ${JSON.stringify(before)}`);
+    }
+    coverPage = await context.newPage();
+    coverVideo = coverPage.video();
+    await coverPage.goto('about:blank');
+    await coverPage.bringToFront();
+    await waitForActualPageVisibility(page, true);
+    const hiddenAt = await page.evaluate(() => ({
+      hidden:document.hidden,
+      visibilityState:document.visibilityState,
+      sceneId:window.MoguriaStoryChapter01.getHealth().sceneId,
+      sceneTimeMs:window.MoguriaStoryChapter01.getHealth().sceneTimeMs,
+      completed:window.MoguriaStoryChapter01.getHealth().completed
+    }));
+    await page.waitForTimeout(STORY_RUNTIME_VIDEO_CONTRACT.lifecycleFreezeWallMs);
+    const frozenAt = await page.evaluate(() => ({
+      hidden:document.hidden,
+      visibilityState:document.visibilityState,
+      sceneId:window.MoguriaStoryChapter01.getHealth().sceneId,
+      sceneTimeMs:window.MoguriaStoryChapter01.getHealth().sceneTimeMs,
+      completed:window.MoguriaStoryChapter01.getHealth().completed
+    }));
+    const frozenDeltaMs = Math.abs(frozenAt.sceneTimeMs - hiddenAt.sceneTimeMs);
+    if (!hiddenAt.hidden
+      || hiddenAt.visibilityState !== 'hidden'
+      || hiddenAt.sceneId !== 'reverse-rescue'
+      || hiddenAt.completed
+      || !frozenAt.hidden
+      || frozenAt.visibilityState !== 'hidden'
+      || frozenAt.sceneId !== 'reverse-rescue'
+      || frozenAt.completed
+      || frozenDeltaMs > STORY_RUNTIME_VIDEO_CONTRACT.lifecycleClockToleranceMs) {
+      throw new Error(`Story visibility hide did not freeze the production clock: ${JSON.stringify({ hiddenAt, frozenAt, frozenDeltaMs })}`);
+    }
+
+    await page.bringToFront();
+    await waitForActualPageVisibility(page, false);
+    await page.waitForFunction(({ baseline, advance }) => (
+      window.MoguriaStoryChapter01?.getHealth?.()?.sceneTimeMs >= baseline + advance
+    ), {
+      baseline:frozenAt.sceneTimeMs,
+      advance:STORY_RUNTIME_VIDEO_CONTRACT.lifecycleResumeAdvanceMs
+    }, { timeout:3000 });
+    restored = true;
+    const resumedAt = await page.evaluate(() => ({
+      hidden:document.hidden,
+      visibilityState:document.visibilityState,
+      sceneId:window.MoguriaStoryChapter01.getHealth().sceneId,
+      sceneTimeMs:window.MoguriaStoryChapter01.getHealth().sceneTimeMs,
+      completed:window.MoguriaStoryChapter01.getHealth().completed
+    }));
+    if (resumedAt.hidden
+      || resumedAt.visibilityState !== 'visible'
+      || resumedAt.sceneId !== 'reverse-rescue'
+      || resumedAt.completed) {
+      throw new Error(`Story visibility resume did not restore the same motion: ${JSON.stringify(resumedAt)}`);
+    }
+    const visibilityEvents = await page.evaluate(() => {
+      const evidence = document.__moguriaQaVisibilityEvidence;
+      const events = Array.from(evidence?.events || []);
+      if (evidence?.handler) document.removeEventListener('visibilitychange', evidence.handler);
+      delete document.__moguriaQaVisibilityEvidence;
+      return events;
+    });
+    const hiddenEventIndex = visibilityEvents.findIndex((event) => (
+      event.hidden === true && event.visibilityState === 'hidden'
+    ));
+    const visibleEventIndex = visibilityEvents.findIndex((event, index) => (
+      index > hiddenEventIndex && event.hidden === false && event.visibilityState === 'visible'
+    ));
+    if (hiddenEventIndex < 0 || visibleEventIndex < 0) {
+      throw new Error(`ordered visibilitychange events were not observed: ${JSON.stringify(visibilityEvents)}`);
+    }
+    return {
+      passed:true,
+      mechanism:'real-tab-visibility',
+      before,
+      hiddenAt,
+      frozenAt,
+      frozenWallMs:STORY_RUNTIME_VIDEO_CONTRACT.lifecycleFreezeWallMs,
+      frozenDeltaMs,
+      resumedAt,
+      resumedAdvanceMs:resumedAt.sceneTimeMs - frozenAt.sceneTimeMs,
+      visibilityEvents
+    };
+  } finally {
+    if (!restored) {
+      try { await page.bringToFront(); } catch {}
+    }
+    if (coverPage && !coverPage.isClosed()) {
+      try { await coverPage.close(); } catch {}
+    }
+    if (coverVideo) {
+      try { await coverVideo.delete(); } catch {}
+    }
+    try {
+      await page.evaluate(() => {
+        const evidence = document.__moguriaQaVisibilityEvidence;
+        if (evidence?.handler) document.removeEventListener('visibilitychange', evidence.handler);
+        delete document.__moguriaQaVisibilityEvidence;
+      });
+    } catch {}
+  }
+}
+
+async function captureStoryPivotOverlay(page, viewport, output, mode) {
+  const atlasIds = STORY_PIVOT_ATLASES.map((atlas) => atlas.id);
+  const packIds = [...new Set(STORY_PIVOT_ATLASES.map((atlas) => atlas.packId))];
+  const result = await page.evaluate(async ({ expectedAtlasIds, requiredPackIds }) => {
+    const assets = window.MoguriaAssets;
+    const loadedPackIds = [];
+    try {
+      for (const packId of requiredPackIds) {
+        const loaded = await assets.loadPack(packId);
+        if (!loaded?.ok) throw new Error(`pivot overlay pack failed: ${packId}`);
+        loadedPackIds.push(packId);
+      }
+      const projection = assets.getJson('story_ch01_animation_manifest');
+      if (!projection?.poseAtlases) throw new Error('runtime Story projection is unavailable');
+
+      const canvas = document.createElement('canvas');
+      canvas.width = 1200;
+      canvas.height = 900;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('pivot overlay canvas context is unavailable');
+      ctx.fillStyle = '#070816';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.font = '600 18px system-ui, sans-serif';
+      ctx.textBaseline = 'middle';
+      const metadata = [];
+
+      for (const [atlasIndex, atlasId] of expectedAtlasIds.entries()) {
+        const definition = projection.poseAtlases[atlasId];
+        const image = assets.getImage(definition?.assetId);
+        if (!definition || !image) throw new Error(`runtime pose atlas is unavailable: ${atlasId}`);
+        if (typeof image.decode === 'function') await image.decode();
+        if (image.naturalWidth !== definition.width || image.naturalHeight !== definition.height) {
+          throw new Error(`runtime pose atlas dimensions differ: ${atlasId}`);
+        }
+        if (definition.width !== definition.columns * definition.cell.width
+          || definition.height !== definition.rows * definition.cell.height
+          || definition.pivot?.space !== 'cell-normalized'
+          || definition.frameOrder !== 'row-major'
+          || definition.cellOrigin !== 'top-left'
+          || definition.noAutoCrop !== true) {
+          throw new Error(`runtime fixed-cell projection differs: ${atlasId}`);
+        }
+
+        const column = atlasIndex % 2;
+        const row = Math.floor(atlasIndex / 2);
+        const panelX = 20 + column * 590;
+        const panelY = 20 + row * 440;
+        const imageX = panelX + 20;
+        const imageY = panelY + 48;
+        const imageWidth = 540;
+        const imageHeight = 360;
+        const scaleX = imageWidth / definition.width;
+        const scaleY = imageHeight / definition.height;
+
+        ctx.fillStyle = '#11152b';
+        ctx.fillRect(panelX, panelY, 570, 420);
+        ctx.strokeStyle = '#3f466d';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(panelX + 1, panelY + 1, 568, 418);
+        ctx.fillStyle = '#f4e7b8';
+        ctx.fillText(`${atlasId} · ${definition.columns}×${definition.rows} · pivot ${definition.pivot.x}, ${definition.pivot.y}`, panelX + 18, panelY + 24);
+        for (let y = 0; y < imageHeight; y += 18) {
+          for (let x = 0; x < imageWidth; x += 18) {
+            ctx.fillStyle = ((x / 18 + y / 18) % 2) ? '#181b30' : '#242941';
+            ctx.fillRect(imageX + x, imageY + y, 18, 18);
+          }
+        }
+        ctx.drawImage(image, imageX, imageY, imageWidth, imageHeight);
+
+        const stateByIndex = Object.fromEntries(
+          Object.entries(definition.states || {}).map(([name, index]) => [index, name])
+        );
+        const frameCount = definition.columns * definition.rows;
+        for (let frame = 0; frame < frameCount; frame += 1) {
+          const frameColumn = frame % definition.columns;
+          const frameRow = Math.floor(frame / definition.columns);
+          const cellX = imageX + frameColumn * definition.cell.width * scaleX;
+          const cellY = imageY + frameRow * definition.cell.height * scaleY;
+          const cellWidth = definition.cell.width * scaleX;
+          const cellHeight = definition.cell.height * scaleY;
+          const pivotX = cellX + definition.pivot.x * cellWidth;
+          const pivotY = cellY + definition.pivot.y * cellHeight;
+          ctx.strokeStyle = 'rgba(111, 221, 255, .92)';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(cellX, cellY, cellWidth, cellHeight);
+          ctx.strokeStyle = '#ff597f';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(pivotX - 10, pivotY);
+          ctx.lineTo(pivotX + 10, pivotY);
+          ctx.moveTo(pivotX, pivotY - 10);
+          ctx.lineTo(pivotX, pivotY + 10);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.arc(pivotX, pivotY, 4, 0, Math.PI * 2);
+          ctx.fillStyle = '#fff6b7';
+          ctx.fill();
+          ctx.font = '600 13px system-ui, sans-serif';
+          const frameName = stateByIndex[frame]
+            || (definition.emptyFrames?.includes(frame) ? 'empty' : `frame-${frame}`);
+          ctx.fillStyle = 'rgba(5, 7, 19, .78)';
+          ctx.fillRect(cellX + 4, cellY + 4, Math.min(cellWidth - 8, 142), 22);
+          ctx.fillStyle = '#ffffff';
+          ctx.fillText(`${frame}: ${frameName}`, cellX + 9, cellY + 15);
+          ctx.font = '600 18px system-ui, sans-serif';
+        }
+        metadata.push({
+          id:atlasId,
+          assetId:definition.assetId,
+          naturalWidth:image.naturalWidth,
+          naturalHeight:image.naturalHeight,
+          columns:definition.columns,
+          rows:definition.rows,
+          cell:{ width:definition.cell.width, height:definition.cell.height },
+          pivot:{ x:definition.pivot.x, y:definition.pivot.y },
+          frameCount
+        });
+      }
+      return { dataUrl:canvas.toDataURL('image/png'), width:canvas.width, height:canvas.height, atlases:metadata };
+    } finally {
+      for (const packId of loadedPackIds.reverse()) assets.releasePack(packId);
+    }
+  }, { expectedAtlasIds:atlasIds, requiredPackIds:packIds });
+
+  if (!result?.dataUrl?.startsWith('data:image/png;base64,')) {
+    throw new Error('runtime pivot overlay did not yield a PNG');
+  }
+  const contractsMatch = result.atlases?.length === STORY_PIVOT_ATLASES.length
+    && result.atlases.every((actual, index) => {
+      const expected = STORY_PIVOT_ATLASES[index];
+      return actual.id === expected.id
+        && actual.assetId === expected.assetId
+        && actual.naturalWidth === expected.width
+        && actual.naturalHeight === expected.height
+        && actual.columns === expected.columns
+        && actual.rows === expected.rows
+        && actual.cell.width === expected.cell.width
+        && actual.cell.height === expected.cell.height
+        && actual.pivot.x === expected.pivot.x
+        && actual.pivot.y === expected.pivot.y;
+    });
+  const buffer = Buffer.from(result.dataUrl.slice(result.dataUrl.indexOf(',') + 1), 'base64');
+  const modeSuffix = mode.id === 'normal' ? '' : `--${mode.id}`;
+  const fileName = `${viewport.id}--story-pose-atlas-pivots${modeSuffix}.png`;
+  const filePath = path.join(output, 'screenshots', fileName);
+  fs.writeFileSync(filePath, buffer);
+  const visual = pngVisualStats(buffer);
+  const passed = contractsMatch
+    && result.width === 1200
+    && result.height === 900
+    && !visual.nearBlank
+    && visual.standardDeviation >= STORY_CANVAS_PROBE.minStandardDeviation
+    && visual.colorBuckets >= STORY_CANVAS_PROBE.minColorBuckets;
+  if (!passed) {
+    throw new Error(`runtime pivot overlay is incomplete or blank: ${JSON.stringify({ contractsMatch, result, visual })}`);
+  }
+  return {
+    passed,
+    screenshot:path.posix.join('screenshots', fileName),
+    width:result.width,
+    height:result.height,
+    atlases:result.atlases,
+    visual
+  };
+}
+
+async function inspectStoryVideoArtifact(browser, filePath, expectedVideoSize) {
+  if (!fs.existsSync(filePath)) return { passed:false, bytes:0, container:'missing', decode:null };
+  const bytes = fs.statSync(filePath).size;
+  if (bytes > STORY_RUNTIME_VIDEO_CONTRACT.maximumVideoBytes) {
+    return { passed:false, bytes, container:'oversize', decode:null };
+  }
+  const buffer = fs.readFileSync(filePath);
+  const headerHex = buffer.subarray(0, 4).toString('hex');
+  const webm = headerHex === '1a45dfa3';
+  const base = {
+    passed:false,
+    bytes,
+    container:webm ? 'webm' : headerHex || 'empty',
+    expectedWidth:expectedVideoSize.width,
+    expectedHeight:expectedVideoSize.height,
+    decode:null
+  };
+  if (!webm || bytes < STORY_RUNTIME_VIDEO_CONTRACT.minimumVideoBytes) return base;
+
+  let auditContext = null;
+  let result = base;
+  try {
+    auditContext = await browser.newContext({
+      viewport:{ width:expectedVideoSize.width, height:expectedVideoSize.height },
+      serviceWorkers:'block'
+    });
+    const auditPage = await auditContext.newPage();
+    const decode = await auditPage.evaluate(async ({ base64, sampleFractions }) => {
+      const binary = atob(base64);
+      const bytes = new Uint8Array(binary.length);
+      for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+      const url = URL.createObjectURL(new Blob([bytes], { type:'video/webm' }));
+      const video = document.createElement('video');
+      video.muted = true;
+      video.playsInline = true;
+      video.preload = 'auto';
+      video.src = url;
+      document.body.append(video);
+      const canPlayType = video.canPlayType('video/webm; codecs="vp8"');
+
+      const waitFor = (eventName, timeoutMs) => new Promise((resolve, reject) => {
+        const timer = setTimeout(() => {
+          cleanup();
+          reject(new Error(`video ${eventName} timed out`));
+        }, timeoutMs);
+        const onEvent = () => {
+          cleanup();
+          resolve();
+        };
+        const onError = () => {
+          cleanup();
+          reject(new Error(`video decode failed (${video.error?.code || 'unknown'})`));
+        };
+        const cleanup = () => {
+          clearTimeout(timer);
+          video.removeEventListener(eventName, onEvent);
+          video.removeEventListener('error', onError);
+        };
+        video.addEventListener(eventName, onEvent, { once:true });
+        video.addEventListener('error', onError, { once:true });
+      });
+      const afterPaint = () => new Promise((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(resolve));
+      });
+
+      try {
+        if (video.readyState < HTMLMediaElement.HAVE_METADATA) {
+          const metadataReady = waitFor('loadedmetadata', 10000);
+          video.load();
+          await metadataReady;
+        }
+        if (!Number.isFinite(video.duration) || video.duration <= 0 || !video.videoWidth || !video.videoHeight) {
+          throw new Error('decoded WebM metadata is incomplete');
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.min(128, video.videoWidth);
+        canvas.height = Math.max(1, Math.round(canvas.width * video.videoHeight / video.videoWidth));
+        const context = canvas.getContext('2d', { willReadFrequently:true });
+        if (!context) throw new Error('video audit canvas is unavailable');
+        const luminanceVectors = [];
+        const samples = [];
+        for (const fraction of sampleFractions) {
+          const targetSeconds = Math.min(
+            Math.max(0.05, video.duration * fraction),
+            Math.max(0.05, video.duration - 0.05)
+          );
+          if (Math.abs(video.currentTime - targetSeconds) > 0.01) {
+            const seeked = waitFor('seeked', 10000);
+            video.currentTime = targetSeconds;
+            await seeked;
+          }
+          await afterPaint();
+          context.drawImage(video, 0, 0, canvas.width, canvas.height);
+          const rgba = context.getImageData(0, 0, canvas.width, canvas.height).data;
+          const luminanceVector = new Uint8Array(canvas.width * canvas.height);
+          const buckets = new Set();
+          let sum = 0;
+          let sumSquares = 0;
+          let darkPixels = 0;
+          let lightPixels = 0;
+          let hash = 2166136261;
+          let vectorIndex = 0;
+          for (let pixel = 0; pixel < rgba.length; pixel += 4) {
+            const red = rgba[pixel];
+            const green = rgba[pixel + 1];
+            const blue = rgba[pixel + 2];
+            const luminance = Math.round(red * 0.2126 + green * 0.7152 + blue * 0.0722);
+            sum += luminance;
+            sumSquares += luminance * luminance;
+            if (luminance < 8) darkPixels += 1;
+            if (luminance > 247) lightPixels += 1;
+            buckets.add(`${red >> 4}:${green >> 4}:${blue >> 4}`);
+            luminanceVector[vectorIndex++] = luminance;
+            hash ^= luminance >> 4;
+            hash = Math.imul(hash, 16777619) >>> 0;
+          }
+          const pixelCount = canvas.width * canvas.height;
+          const mean = sum / pixelCount;
+          const standardDeviation = Math.sqrt(Math.max(0, sumSquares / pixelCount - mean * mean));
+          const darkRatio = darkPixels / pixelCount;
+          const lightRatio = lightPixels / pixelCount;
+          luminanceVectors.push(luminanceVector);
+          samples.push({
+            fraction,
+            targetSeconds,
+            standardDeviation,
+            colorBuckets:buckets.size,
+            darkRatio,
+            lightRatio,
+            frameHash:hash.toString(16).padStart(8, '0')
+          });
+        }
+        const adjacentDifferences = [];
+        for (let index = 1; index < luminanceVectors.length; index += 1) {
+          let totalDifference = 0;
+          let changedPixels = 0;
+          const previous = luminanceVectors[index - 1];
+          const current = luminanceVectors[index];
+          for (let pixel = 0; pixel < current.length; pixel += 1) {
+            const difference = Math.abs(previous[pixel] - current[pixel]);
+            totalDifference += difference;
+            if (difference >= 8) changedPixels += 1;
+          }
+          adjacentDifferences.push({
+            fromFraction:sampleFractions[index - 1],
+            toFraction:sampleFractions[index],
+            meanAbsoluteDifference:totalDifference / current.length,
+            changedPixelRatio:changedPixels / current.length
+          });
+        }
+        return {
+          canPlayType,
+          durationSeconds:video.duration,
+          width:video.videoWidth,
+          height:video.videoHeight,
+          sampleCanvas:{ width:canvas.width, height:canvas.height },
+          samples,
+          adjacentDifferences,
+          uniqueFrameHashes:new Set(samples.map((sample) => sample.frameHash)).size
+        };
+      } finally {
+        video.removeAttribute('src');
+        video.load();
+        video.remove();
+        URL.revokeObjectURL(url);
+      }
+    }, {
+      base64:buffer.toString('base64'),
+      sampleFractions:STORY_RUNTIME_VIDEO_CONTRACT.videoSampleFractions
+    });
+    const samplingComplete = decode.samples.length === STORY_RUNTIME_VIDEO_CONTRACT.videoSampleFractions.length
+      && decode.samples.every((sample, index) => (
+        sample.fraction === STORY_RUNTIME_VIDEO_CONTRACT.videoSampleFractions[index]
+      ));
+    const nonBlankSamples = decode.samples.filter((sample) => (
+      sample.standardDeviation >= STORY_RUNTIME_VIDEO_CONTRACT.minimumDecodedStandardDeviation
+        && sample.colorBuckets >= STORY_RUNTIME_VIDEO_CONTRACT.minimumDecodedColorBuckets
+        && !((sample.darkRatio > 0.998 || sample.lightRatio > 0.998) && sample.standardDeviation < 7)
+    )).length;
+    const changedPairs = decode.adjacentDifferences.filter((difference) => (
+      difference.meanAbsoluteDifference >= STORY_RUNTIME_VIDEO_CONTRACT.minimumDecodedMeanDifference
+        && difference.changedPixelRatio >= STORY_RUNTIME_VIDEO_CONTRACT.minimumDecodedChangedPixelRatio
+    )).length;
+    const passed = decode.durationSeconds >= STORY_RUNTIME_VIDEO_CONTRACT.minimumVideoDurationSeconds
+      && decode.width === expectedVideoSize.width
+      && decode.height === expectedVideoSize.height
+      && samplingComplete
+      && nonBlankSamples >= STORY_RUNTIME_VIDEO_CONTRACT.minimumDecodedNonBlankSamples
+      && changedPairs >= STORY_RUNTIME_VIDEO_CONTRACT.minimumDecodedChangedPairs
+      && decode.uniqueFrameHashes >= STORY_RUNTIME_VIDEO_CONTRACT.minimumDecodedUniqueFrames;
+    result = {
+      ...base,
+      passed,
+      decode:{ ...decode, samplingComplete, nonBlankSamples, changedPairs }
+    };
+  } catch (error) {
+    result = { ...base, decode:{ passed:false, error:error?.message || String(error) } };
+  } finally {
+    if (auditContext) {
+      try { await auditContext.close(); }
+      catch (error) {
+        result = {
+          ...result,
+          passed:false,
+          decode:{ ...result.decode, closeError:error?.message || String(error) }
+        };
+      }
+    }
+  }
+  return result;
+}
+
+async function runStoryRuntimeEvidence(browser, baseUrl, browserName, viewport, output, mode) {
+  const record = {
+    browser:browserName,
+    viewport:viewport.id,
+    dimensions:`${viewport.width}x${viewport.height}@${viewport.deviceScaleFactor}`,
+    mode:mode.id,
+    reducedMotion:mode.reducedMotion,
+    holdTiming:mode.holdTiming,
+    status:'failed',
+    logicalTiming:STORY_RUNTIME_VIDEO_CONTRACT.logicalTiming,
+    failures:[],
+    ignoredDiagnostics:{ speculativeWarmAborts:[] },
+    diagnostics:{ consoleErrors:[], pageErrors:[], requestFailures:[], responseErrors:[] },
+    lifecycle:null,
+    motions:[]
+  };
+  const evidenceSuffix = mode.id === 'normal' ? '' : `--${mode.id}`;
+  const captureDirectory = path.join(output, 'videos', '.capture', viewport.id, mode.id);
+  const videoName = `${viewport.id}--story-four-motions${evidenceSuffix}.webm`;
+  const videoPath = path.join(output, 'videos', videoName);
+  const videoSize = { width:viewport.width & ~1, height:viewport.height & ~1 };
+  record.video = path.posix.join('videos', videoName);
+  record.videoDimensions = `${videoSize.width}x${videoSize.height}`;
+  let context = null;
+  let page = null;
+  let video = null;
+  try {
+    context = await browser.newContext({
+      viewport:{ width:viewport.width, height:viewport.height },
+      deviceScaleFactor:viewport.deviceScaleFactor,
+      hasTouch:true,
+      isMobile:true,
+      locale:'ja-JP',
+      timezoneId:'Asia/Tokyo',
+      colorScheme:'dark',
+      reducedMotion:mode.reducedMotion ? 'reduce' : 'no-preference',
+      serviceWorkers:'block',
+      recordVideo:{ dir:captureDirectory, size:videoSize },
+      ...(browserName === 'webkit' ? {
+        userAgent:'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1'
+      } : {})
+    });
+    page = await context.newPage();
+    video = page.video();
+    attachRuntimeEvidenceDiagnostics(page, record, baseUrl);
+    if (!video) throw new Error('Playwright did not attach a video artifact to the evidence page');
+    await page.goto(baseUrl, { waitUntil:'domcontentloaded', timeout:45000 });
+    await waitForAppReady(page);
+    record.lazyEntry = await openFreshStoryRuntimeEntry(page);
+    const replaySetup = await page.evaluate(async () => {
+      const player = window.MoguriaStoryChapter01;
+      const beforeReplay = JSON.stringify(window.MoguriaSave.load());
+      const closed = await player.close();
+      const opened = await player.open({ replay:true, currentNodeId:'c1_available' });
+      return { closed, opened, beforeReplay, health:player.getHealth() };
+    });
+    if (!replaySetup.closed?.ok
+      || !replaySetup.opened?.ok
+      || !replaySetup.health?.ok
+      || replaySetup.health.sceneIndex !== 0
+      || replaySetup.health.sceneId !== 'return-light'
+      || replaySetup.health.replay !== true
+      || replaySetup.health.reducedMotion !== mode.reducedMotion) {
+      throw new Error(`runtime replay did not start at scene zero: ${JSON.stringify(replaySetup)}`);
+    }
+
+    const replayStartedAt = Date.now();
+    for (const motion of STORY_RUNTIME_VIDEO_CONTRACT.motions) {
+      await page.waitForFunction(({ sceneIndex, sceneId }) => {
+        const health = window.MoguriaStoryChapter01?.getHealth?.();
+        return health?.ok === true
+          && health.replay === true
+          && health.sceneIndex === sceneIndex
+          && health.sceneId === sceneId
+          && health.completed === false;
+      }, motion, { timeout:10000 });
+      const motionStartedAt = Date.now();
+      if (mode.exerciseLifecycle && motion.sceneIndex === 0) {
+        record.lifecycle = { pauseResume:await exerciseStoryPauseResume(page) };
+      }
+      if (mode.exerciseLifecycle && motion.sceneIndex === 1) {
+        record.lifecycle.visibilityResume = await exerciseStoryVisibilityResume(context, page);
+      }
+      let holdWallDurationMs = null;
+      if (motion.sceneIndex === 2) {
+        await page.waitForFunction((preCommitMs) => {
+          const health = window.MoguriaStoryChapter01?.getHealth?.();
+          return health?.sceneIndex === 2
+            && health.sceneTimeMs >= preCommitMs
+            && health.holdCommitted === false;
+        }, motion.preCommitMs, { timeout:10000 });
+        const boundaryReachedAt = Date.now();
+        const hold = page.locator('#storyChapter01Hold');
+        await hold.waitFor({ state:'visible', timeout:5000 });
+        const boundary = await page.evaluate(() => {
+          const health = window.MoguriaStoryChapter01.getHealth();
+          const section = document.getElementById('storyChapter01');
+          const holdControl = document.getElementById('storyChapter01Hold');
+          return {
+            ...health,
+            documentHidden:document.hidden,
+            domPaused:section?.dataset?.storyPaused,
+            holdVisible:Boolean(holdControl && !holdControl.hidden),
+            holdPressed:holdControl?.getAttribute?.('aria-pressed')
+          };
+        });
+        if (boundary.sceneTimeMs !== motion.preCommitMs
+          || boundary.postTimeMs !== 0
+          || boundary.holding
+          || boundary.holdCommitted
+          || boundary.documentHidden
+          || boundary.domPaused !== 'false'
+          || !boundary.holdVisible
+          || boundary.holdPressed !== 'false') {
+          throw new Error(`Story fragment hold boundary is invalid: ${JSON.stringify(boundary)}`);
+        }
+        await hold.focus();
+        let delayedBoundary = null;
+        if (mode.holdTiming === 'delayed') {
+          await page.waitForTimeout(STORY_RUNTIME_VIDEO_CONTRACT.delayedHoldWaitMs);
+          delayedBoundary = await page.evaluate(() => {
+            const health = window.MoguriaStoryChapter01.getHealth();
+            const holdControl = document.getElementById('storyChapter01Hold');
+            return {
+              ...health,
+              documentHidden:document.hidden,
+              domPaused:document.getElementById('storyChapter01')?.dataset?.storyPaused,
+              holdVisible:Boolean(holdControl && !holdControl.hidden),
+              holdPressed:holdControl?.getAttribute?.('aria-pressed')
+            };
+          });
+          const boundaryClockDeltaMs = Math.abs(delayedBoundary.sceneTimeMs - boundary.sceneTimeMs);
+          if (delayedBoundary.sceneTimeMs !== motion.preCommitMs
+            || delayedBoundary.postTimeMs !== 0
+            || delayedBoundary.holdCommitted
+            || delayedBoundary.holding
+            || delayedBoundary.documentHidden
+            || delayedBoundary.domPaused !== 'false'
+            || !delayedBoundary.holdVisible
+            || delayedBoundary.holdPressed !== 'false'
+            || boundaryClockDeltaMs > STORY_RUNTIME_VIDEO_CONTRACT.lifecycleClockToleranceMs) {
+            throw new Error(`Story delayed hold boundary was not stable: ${JSON.stringify({ boundary, delayedBoundary, boundaryClockDeltaMs })}`);
+          }
+        }
+        const holdStartedAt = Date.now();
+        const holdStartDelayMs = holdStartedAt - boundaryReachedAt;
+        if (mode.holdTiming === 'early'
+          && holdStartDelayMs > STORY_RUNTIME_VIDEO_CONTRACT.earlyHoldMaximumDelayMs) {
+          throw new Error(`Story early hold began too late: ${holdStartDelayMs} ms`);
+        }
+        if (mode.holdTiming === 'delayed'
+          && holdStartDelayMs < STORY_RUNTIME_VIDEO_CONTRACT.delayedHoldWaitMs) {
+          throw new Error(`Story delayed hold did not wait at the fragment boundary: ${holdStartDelayMs} ms`);
+        }
+        await page.keyboard.down('Space');
+        try {
+          const activeHold = await page.evaluate(() => {
+            const health = window.MoguriaStoryChapter01.getHealth();
+            const holdControl = document.getElementById('storyChapter01Hold');
+            return {
+              holding:health.holding,
+              holdCommitted:health.holdCommitted,
+              domHolding:holdControl?.dataset?.holding,
+              holdPressed:holdControl?.getAttribute?.('aria-pressed')
+            };
+          });
+          if (!activeHold.holding
+            || activeHold.holdCommitted
+            || activeHold.domHolding !== 'true'
+            || activeHold.holdPressed !== 'true') {
+            throw new Error(`Story hold did not begin through the real keyboard control: ${JSON.stringify(activeHold)}`);
+          }
+          await page.waitForFunction(() => window.MoguriaStoryChapter01?.getHealth?.()?.holdCommitted === true,
+            null, { timeout:STORY_RUNTIME_VIDEO_CONTRACT.holdTimeoutMs });
+        } finally {
+          await page.keyboard.up('Space');
+        }
+        holdWallDurationMs = Date.now() - holdStartedAt;
+        const committedHold = await page.evaluate(() => window.MoguriaStoryChapter01.getHealth());
+        if (!committedHold.holdCommitted
+          || committedHold.holding
+          || holdWallDurationMs < STORY_RUNTIME_VIDEO_CONTRACT.minimumHoldWallMs) {
+          throw new Error(`Story hold did not reach a real committed duration: ${JSON.stringify({ committedHold, holdWallDurationMs })}`);
+        }
+        record.fragmentHold = {
+          passed:true,
+          timing:mode.holdTiming,
+          boundarySceneTimeMs:boundary.sceneTimeMs,
+          delayedBoundarySceneTimeMs:delayedBoundary?.sceneTimeMs ?? null,
+          boundaryWaitMs:holdStartDelayMs,
+          holdWallDurationMs
+        };
+      }
+      const checkpoint = await waitForRuntimeMotionCompletion(page, motion, mode, motionStartedAt);
+      if (holdWallDurationMs != null) checkpoint.holdWallDurationMs = holdWallDurationMs;
+      record.motions.push(checkpoint);
+      if (motion.sceneIndex < STORY_RUNTIME_VIDEO_CONTRACT.motions.length - 1) {
+        await page.locator('#storyChapter01Next').click();
+      }
+    }
+    record.runtimeWallDurationMs = Date.now() - replayStartedAt;
+    await page.waitForTimeout(300);
+    record.pivotOverlay = await captureStoryPivotOverlay(page, viewport, output, mode);
+    record.replayIntegrity = await page.evaluate((beforeReplay) => ({
+      unchanged:JSON.stringify(window.MoguriaSave.load()) === beforeReplay,
+      health:window.MoguriaStoryChapter01.getHealth(),
+      resultActive:document.getElementById('result')?.classList?.contains('active') || false,
+      assetErrors:window.MoguriaAssets?.stats?.().errors || []
+    }), replaySetup.beforeReplay);
+    if (!record.replayIntegrity.unchanged
+      || record.replayIntegrity.resultActive
+      || record.replayIntegrity.assetErrors.length
+      || record.runtimeWallDurationMs < STORY_RUNTIME_VIDEO_CONTRACT.minimumRuntimeWallMs
+      || record.motions.length !== STORY_RUNTIME_VIDEO_CONTRACT.motions.length
+      || (mode.exerciseLifecycle && (
+        !record.lifecycle?.pauseResume?.passed
+          || !record.lifecycle?.visibilityResume?.passed
+      ))
+      || !record.fragmentHold?.passed
+      || record.fragmentHold.timing !== mode.holdTiming) {
+      throw new Error(`runtime replay evidence integrity failed: ${JSON.stringify({
+        ...record.replayIntegrity,
+        runtimeWallDurationMs:record.runtimeWallDurationMs,
+        motionCount:record.motions.length
+      })}`);
+    }
+  } catch (error) {
+    record.failures.push(error?.stack || error?.message || String(error));
+  } finally {
+    for (const [kind, items] of Object.entries(record.diagnostics)) {
+      if (items.length) record.failures.push(`${kind}: ${items.join(' | ')}`);
+    }
+    if (context) {
+      try { await context.close(); }
+      catch (error) { record.failures.push(`video context close failed: ${error?.message || error}`); }
+    }
+    if (video) {
+      try {
+        await video.saveAs(videoPath);
+        await video.delete();
+      } catch (error) {
+        record.failures.push(`video finalization failed: ${error?.message || error}`);
+      }
+    }
+    record.videoArtifact = await inspectStoryVideoArtifact(browser, videoPath, videoSize);
+    if (!record.videoArtifact.passed) {
+      record.failures.push(`runtime Story video is missing or invalid: ${JSON.stringify(record.videoArtifact)}`);
+    }
+    if (!record.pivotOverlay?.passed
+      || !fs.existsSync(path.join(output, record.pivotOverlay.screenshot || ''))) {
+      record.failures.push('runtime Story pivot overlay is missing or invalid');
+    }
+    record.status = record.failures.length ? 'failed' : 'passed';
+  }
+  return record;
+}
+
 function summaryMarkdown(summary) {
   const lines = [
     '# Moguria browser visual QA',
@@ -1786,7 +3397,8 @@ function summaryMarkdown(summary) {
     `- Playwright: ${summary.playwrightVersion}`,
     `- Seed: ${summary.seed}`,
     `- Result: ${summary.passed ? 'PASS' : 'FAIL'}`,
-    `- Checks: ${summary.passedCount}/${summary.records.length} passed`,
+    `- Screen checks: ${summary.passedCount}/${summary.records.length} passed`,
+    `- Continuous runtime evidence: ${summary.evidencePassedCount}/${summary.storyRuntimeEvidence.length} passed`,
     '',
     '| Viewport | Screen | Result | Screenshot |',
     '| --- | --- | --- | --- |'
@@ -1794,11 +3406,55 @@ function summaryMarkdown(summary) {
   for (const record of summary.records) {
     lines.push(`| ${record.dimensions} | ${record.screen} | ${record.status.toUpperCase()} | ${record.screenshot} |`);
   }
+  lines.push('', '## Story continuous runtime evidence', '',
+    '| Viewport | Mode | Timing | Result | Four-motion video | Decoded duration / dimensions | Pose-atlas pivot overlay |',
+    '| --- | --- | --- | --- | --- | --- | --- |');
+  for (const record of summary.storyRuntimeEvidence) {
+    const timing = record.runtimeWallDurationMs
+      ? `${record.logicalTiming} (${record.runtimeWallDurationMs} ms)`
+      : record.logicalTiming;
+    const decode = record.videoArtifact?.decode;
+    const decoded = Number.isFinite(decode?.durationSeconds)
+      ? `${decode.durationSeconds.toFixed(2)} s / ${decode.width}x${decode.height}; nonblank ${decode.nonBlankSamples}/${decode.samples.length}; changed ${decode.changedPairs}/${decode.adjacentDifferences.length}`
+      : `(failed: ${decode?.error || 'missing'})`;
+    lines.push(`| ${record.dimensions} (video ${record.videoDimensions}) | ${record.mode} | ${timing} | ${record.status.toUpperCase()} | ${record.video} | ${decoded} | ${record.pivotOverlay?.screenshot || '(missing)'} |`);
+  }
+  for (const record of summary.storyRuntimeEvidence.filter((item) => item.motions.length)) {
+    lines.push('', `### ${record.viewport} / ${record.mode} motion checkpoints`, '',
+      '| Motion | Scene clock | Post-commit clock | Wall time |',
+      '| --- | ---: | ---: | ---: |');
+    for (const motion of record.motions) {
+      lines.push(`| ${motion.motionId} | ${motion.sceneTimeMs} ms | ${motion.postTimeMs} ms | ${motion.wallDurationMs} ms |`);
+    }
+  }
+  const motionRecords = summary.records.filter((record) => record.storyMotionEvidence?.frames?.length);
+  if (motionRecords.length) {
+    lines.push('', '## Story motion marker evidence', '',
+      '| Viewport | Motion | Marker frame | Logical time | Screenshot |',
+      '| --- | --- | --- | --- | --- |');
+    for (const record of motionRecords) {
+      for (const frame of record.storyMotionEvidence.frames) {
+        const time = frame.postTimeMs
+          ? `scene ${frame.sceneTimeMs} ms / post ${frame.postTimeMs} ms`
+          : `scene ${frame.sceneTimeMs} ms`;
+        lines.push(`| ${record.dimensions} | ${record.storyMotionEvidence.motionId} | ${frame.label} | ${time} | ${frame.screenshot} |`);
+      }
+    }
+  }
   const failures = summary.records.filter((record) => record.failures.length);
   if (failures.length) {
     lines.push('', '## Failures', '');
     for (const record of failures) {
       lines.push(`### ${record.viewport} / ${record.screen}`, '');
+      for (const failure of record.failures) lines.push(`- ${String(failure).replace(/\s+/g, ' ').trim()}`);
+      lines.push('');
+    }
+  }
+  const evidenceFailures = summary.storyRuntimeEvidence.filter((record) => record.failures.length);
+  if (evidenceFailures.length) {
+    lines.push('', '## Runtime evidence failures', '');
+    for (const record of evidenceFailures) {
+      lines.push(`### ${record.viewport} / ${record.mode} Story continuous replay`, '');
       for (const failure of record.failures) lines.push(`- ${String(failure).replace(/\s+/g, ' ').trim()}`);
       lines.push('');
     }
@@ -1821,6 +3477,7 @@ async function main() {
   }
   fs.rmSync(options.output, { recursive: true, force: true });
   fs.mkdirSync(path.join(options.output, 'screenshots'), { recursive: true });
+  fs.mkdirSync(path.join(options.output, 'videos'), { recursive: true });
   const packageJson = JSON.parse(fs.readFileSync(path.join(ROOT, 'node_modules/playwright/package.json'), 'utf8'));
   if (packageJson.version !== PLAYWRIGHT_VERSION) {
     throw new Error(`Playwright ${PLAYWRIGHT_VERSION} is required; installed ${packageJson.version}`);
@@ -1834,12 +3491,21 @@ async function main() {
     ({ server, baseUrl: options.baseUrl } = await startStaticServer());
     browser = await browserType.launch({ headless: !options.headed });
     const records = [];
+    const storyRuntimeEvidence = [];
     for (const viewport of VIEWPORTS) {
       for (const screenId of SCREEN_IDS) {
         process.stdout.write(`[${options.browser}] ${viewport.id} / ${screenId} ... `);
         const record = await runScreen(browser, options.baseUrl, options.browser, viewport, screenId, options.output);
         records.push(record);
         console.log(record.status.toUpperCase());
+      }
+      for (const mode of STORY_RUNTIME_EVIDENCE_MODES) {
+        process.stdout.write(`[${options.browser}] ${viewport.id} / Story runtime evidence (${mode.id}) ... `);
+        const evidence = await runStoryRuntimeEvidence(
+          browser, options.baseUrl, options.browser, viewport, options.output, mode
+        );
+        storyRuntimeEvidence.push(evidence);
+        console.log(evidence.status.toUpperCase());
       }
     }
     const summary = {
@@ -1855,8 +3521,11 @@ async function main() {
       timezone: 'Asia/Tokyo',
       mobileEmulation: true,
       realDevice: false,
-      passed: records.every((record) => record.status === 'passed'),
+      passed: records.every((record) => record.status === 'passed')
+        && storyRuntimeEvidence.every((record) => record.status === 'passed'),
       passedCount: records.filter((record) => record.status === 'passed').length,
+      evidencePassedCount:storyRuntimeEvidence.filter((record) => record.status === 'passed').length,
+      storyRuntimeEvidence,
       records
     };
     fs.writeFileSync(path.join(options.output, 'qa-summary.json'), JSON.stringify(summary, null, 2) + '\n');

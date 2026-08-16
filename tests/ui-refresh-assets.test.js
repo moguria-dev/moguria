@@ -71,7 +71,7 @@ test('all 50 production WebPs are present once and governed by the canonical/run
 
   assert.ok(uiPack, 'canonical UI refresh pack is missing');
   assert.ok(runtimePack, 'runtime UI refresh pack is missing');
-  assert.equal(source.runtimeManifest.version, '3.3.2-loading-child');
+  assert.equal(source.runtimeManifest.version, '3.4.0-story-ch01');
   assert.equal(runtime.version, source.runtimeManifest.version);
   assert.deepEqual(uiPack.assets.map(asset => asset.id).sort(), expectedIds);
   assert.deepEqual(uiPack.assets.map(asset => asset.src).sort(), expectedPaths);
@@ -105,7 +105,7 @@ test('the shared registry is loaded before every definition that consumes it', (
   assert.ok(registry>=0);
   assert.ok(registry<html.indexOf('js/meta.js'));
   assert.ok(registry<html.indexOf('js/skills.js'));
-  assert.match(html,/js\/config\.js\?v=20260814-ui-consistency-1/);
+  assert.match(html,/js\/config\.js\?v=20260816-story-ch01-1/);
   assert.match(html,/moguria-meta-ui\.css\?v=20260814-ui-consistency-1/);
 });
 

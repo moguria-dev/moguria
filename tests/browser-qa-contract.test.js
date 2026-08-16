@@ -53,14 +53,103 @@ test('runner contract covers both mobile viewports and every approved screen', a
     runner.VIEWPORTS.map(({ width, height, deviceScaleFactor }) => [width, height, deviceScaleFactor]),
     [[390, 844, 3], [375, 667, 2]]
   );
+  assert.deepStrictEqual(runner.STORY_SCENE_FIXTURES, {
+    'story-return-light': {
+      sceneIndex: 0, sceneId: 'return-light', sceneTimeMs: 2860, postTimeMs: 0,
+      holdCommitted: false, reducedMotion: false, holdVisible: false, closeDisabled: false
+    },
+    'story-rescue': {
+      sceneIndex: 1, sceneId: 'reverse-rescue', sceneTimeMs: 4050, postTimeMs: 0,
+      holdCommitted: false, reducedMotion: false, holdVisible: false, closeDisabled: true
+    },
+    'story-fragment-hold': {
+      sceneIndex: 2, sceneId: 'fragment-chamber', sceneTimeMs: 700, postTimeMs: 0,
+      holdCommitted: false, reducedMotion: false, holdVisible: true, closeDisabled: false
+    },
+    'story-fragment-postcommit': {
+      sceneIndex: 2, sceneId: 'fragment-chamber', sceneTimeMs: 700, postTimeMs: 2600,
+      holdCommitted: true, reducedMotion: false, holdVisible: false, closeDisabled: true
+    },
+    'story-ledger': {
+      sceneIndex: 3, sceneId: 'archive-ledger', sceneTimeMs: 2940, postTimeMs: 0,
+      holdCommitted: false, reducedMotion: false, holdVisible: false, closeDisabled: true
+    },
+    'story-fragment-reduced': {
+      sceneIndex: 2, sceneId: 'fragment-chamber', sceneTimeMs: 700, postTimeMs: 2600,
+      holdCommitted: true, reducedMotion: true, holdVisible: false, closeDisabled: true
+    }
+  });
+  assert.deepStrictEqual(runner.STORY_CANVAS_PROBE, {
+    minStandardDeviation: 8,
+    minColorBuckets: 80
+  });
+  assert.equal(runner.STORY_LIFECYCLE_SCREEN_ID, 'story-ledger');
+  assert.deepStrictEqual(
+    Object.fromEntries(Object.entries(runner.STORY_MOTION_EVIDENCE).map(([screenId, contract]) => [screenId, {
+      motionId: contract.motionId,
+      frames: contract.frames.map(({ label, sceneTimeMs, postTimeMs }) => [label, sceneTimeMs, postTimeMs])
+    }])),
+    {
+      'story-return-light': {
+        motionId:'returnLightFlicker',
+        frames:[['before-weakening',2240,0],['minimum-not-off',2880,0],['unstable-recovery',4400,0]]
+      },
+      'story-rescue': {
+        motionId:'reverseCrackRescue',
+        frames:[['reverse-before-crack',1200,0],['crack-after-reverse',1600,0],['guardian-contact',3700,0]]
+      },
+      'story-fragment-postcommit': {
+        motionId:'fragmentConsumeStumble',
+        frames:[['lamp-before-interference',700,1100],['body-interference',700,1550],['stumble',700,2200],['companion-approach',700,2500]]
+      },
+      'story-ledger': {
+        motionId:'ledgerBrokenPulse',
+        frames:[['pulse-before-gap',2300,0],['inside-320ms-gap',2500,0],['pulse-after-gap',2700,0],['silence',4250,0]]
+      }
+    }
+  );
+  const storyAnimations = json('assets/animations/story-ch01.json').storyAnimations;
+  const marker = (animation, id) => animation.eventMarkers.find((item) => item.id === id).atMs;
+  const returnFrames = runner.STORY_MOTION_EVIDENCE['story-return-light'].frames.map((frame) => frame.sceneTimeMs);
+  assert.ok(returnFrames[0] < storyAnimations.returnLightFlicker.phases.find((phase) => phase.id === 'weaken-once').startMs);
+  assert.ok(returnFrames[1] >= storyAnimations.returnLightFlicker.phases.find((phase) => phase.id === 'minimum-not-off').startMs);
+  assert.ok(returnFrames[2] >= storyAnimations.returnLightFlicker.phases.find((phase) => phase.id === 'unstable-recovery').startMs);
+  const rescueFrames = runner.STORY_MOTION_EVIDENCE['story-rescue'].frames.map((frame) => frame.sceneTimeMs);
+  assert.ok(rescueFrames[0] >= marker(storyAnimations.reverseCrackRescue, 'reverse_begin')
+    && rescueFrames[0] < marker(storyAnimations.reverseCrackRescue, 'crack_begin'));
+  assert.ok(rescueFrames[1] >= marker(storyAnimations.reverseCrackRescue, 'crack_begin'));
+  assert.ok(rescueFrames[2] >= marker(storyAnimations.reverseCrackRescue, 'guardian_contact'));
+  const fragmentFrames = runner.STORY_MOTION_EVIDENCE['story-fragment-postcommit'].frames.map((frame) => frame.postTimeMs);
+  assert.ok(fragmentFrames[0] >= marker(storyAnimations.fragmentConsumeStumble, 'community_light_restored')
+    && fragmentFrames[0] < marker(storyAnimations.fragmentConsumeStumble, 'body_interference'));
+  assert.ok(fragmentFrames[1] >= marker(storyAnimations.fragmentConsumeStumble, 'body_interference'));
+  assert.ok(fragmentFrames[2] >= marker(storyAnimations.fragmentConsumeStumble, 'stumble'));
+  assert.ok(fragmentFrames[3] >= marker(storyAnimations.fragmentConsumeStumble, 'companion_approach'));
+  const ledgerFrames = runner.STORY_MOTION_EVIDENCE['story-ledger'].frames.map((frame) => frame.sceneTimeMs);
+  const gapBegin = marker(storyAnimations.ledgerBrokenPulse, 'gap_begin');
+  const gapEnd = marker(storyAnimations.ledgerBrokenPulse, 'gap_end');
+  assert.equal(gapEnd - gapBegin, 320);
+  assert.ok(ledgerFrames[0] < gapBegin);
+  assert.ok(ledgerFrames[1] >= gapBegin && ledgerFrames[1] < gapEnd);
+  assert.ok(ledgerFrames[2] >= gapEnd);
+  assert.ok(ledgerFrames[3] >= marker(storyAnimations.ledgerBrokenPulse, 'silence'));
   assert.deepStrictEqual(runner.SCREEN_IDS, [
-    'startup-loading', 'home', 'dex', 'logs', 'equipment', 'gacha', 'outing', 'adventure-loading',
+    'startup-loading', 'home',
+    'story-return-light', 'story-rescue', 'story-fragment-hold', 'story-fragment-postcommit',
+    'story-ledger', 'story-fragment-reduced',
+    'dex', 'logs', 'equipment', 'gacha', 'outing', 'adventure-loading',
     'battle-hud', 'battle-vfx-lv1', 'battle-vfx-lv3', 'battle-vfx-lv5', 'battle-vfx-lv5-reduced', 'battle-vfx-lv5-low',
     'skill-choice', 'artifact-choice', 'pause', 'result'
   ]);
   assert.deepStrictEqual(runner.VISUAL_SCROLL_ROOTS, {
     'startup-loading': [],
     home: [],
+    'story-return-light': [],
+    'story-rescue': [],
+    'story-fragment-hold': [],
+    'story-fragment-postcommit': [],
+    'story-ledger': [],
+    'story-fragment-reduced': [],
     dex: ['#overlayBody'],
     logs: ['#overlayBody'],
     equipment: ['#overlayBody'],
@@ -80,7 +169,10 @@ test('runner contract covers both mobile viewports and every approved screen', a
   });
   assert.deepStrictEqual(runner.GLOBAL_VISUAL_SCROLL_ROOTS, ['html', 'body', '#app', '#overlay']);
   assert.deepStrictEqual(runner.VIEWPORT_SURFACE_SCREENS, [
-    'startup-loading', 'home', 'dex', 'logs', 'equipment', 'gacha', 'outing', 'adventure-loading',
+    'startup-loading', 'home',
+    'story-return-light', 'story-rescue', 'story-fragment-hold', 'story-fragment-postcommit',
+    'story-ledger', 'story-fragment-reduced',
+    'dex', 'logs', 'equipment', 'gacha', 'outing', 'adventure-loading',
     'battle-hud', 'battle-vfx-lv1', 'battle-vfx-lv3', 'battle-vfx-lv5', 'battle-vfx-lv5-reduced', 'battle-vfx-lv5-low', 'result'
   ]);
   assert.deepStrictEqual(runner.TRANSIENT_ABSENCE, {
@@ -209,6 +301,26 @@ test('runner contract covers both mobile viewports and every approved screen', a
     'cardFitsViewport',
     "await page.emulateMedia({ reducedMotion:'no-preference' })",
     "await page.emulateMedia({ reducedMotion:'reduce' })",
+    'prepareStoryFixture',
+    'openFreshStoryEntry',
+    'exerciseStoryLifecycle',
+    'fresh-save story entry is not the Home primary action',
+    'Chapter 1 production lifecycle did not reach the ledger',
+    'MoguriaMeta.awardFromRun(run)',
+    'storyPlayer.resumeAfterRun({ run, settlement })',
+    'seekForVerification(options)',
+    'getVerification?.()',
+    "canvas.toDataURL('image/png')",
+    'captureStoryMotionEvidence',
+    'Chapter 1 marker evidence did not settle',
+    'Story motion marker evidence',
+    "scale: 'css'",
+    'Chapter 1 canvas is blank, undersized, or displaced',
+    'Chapter 1 DOM copy is blank or inconsistent',
+    'Chapter 1 deliberate-hold progress semantics differ',
+    'Object.hasOwn(STORY_SCENE_FIXTURES, screenId)',
+    "'story-fragment-postcommit'",
+    "'story-fragment-reduced'",
     "style[data-moguria-qa-freeze]",
     'style.sheet.disabled = !enabled',
     'animation.currentTime = 0',
@@ -217,6 +329,27 @@ test('runner contract covers both mobile viewports and every approved screen', a
     'insideBusyProgress',
     'insideBusyRegion'
   ]) assert.ok(source.includes(contract), `runner must preserve ${contract}`);
+  const lifecycleSource = source.slice(
+    source.indexOf('async function openFreshStoryEntry'),
+    source.indexOf('async function prepareStoryFixture')
+  );
+  for (const productionCall of [
+    'window.MoguriaSave.clear()',
+    "saveApi.transitionStory('c1_investigation_ready')",
+    'saveApi.startRun({ runId, profileId })',
+    'window.MoguriaMeta.awardFromRun(run)',
+    'storyPlayer.resumeAfterRun({ run, settlement })'
+  ]) assert.ok(lifecycleSource.includes(productionCall), `Story lifecycle must use ${productionCall}`);
+  assert.doesNotMatch(lifecycleSource, /localStorage\.(?:setItem|removeItem)|MoguriaSave\.save\(|MoguriaGame\.dev\w+|window\.Moguria\w+\s*=/,
+    'Story lifecycle must not install a QA route, mutate a production API, or forge storage directly');
+  const motionEvidenceSource = source.slice(
+    source.indexOf('async function captureStoryMotionEvidence'),
+    source.indexOf('async function auditStoryDom')
+  );
+  assert.match(motionEvidenceSource, /STORY_MOTION_EVIDENCE\[screenId\]/);
+  assert.match(motionEvidenceSource, /locator\('#storyChapter01Canvas'\)\.screenshot/);
+  assert.match(motionEvidenceSource, /const stable = STORY_SCENE_FIXTURES\[screenId\]/,
+    'marker evidence must restore the approved stable screenshot state');
   assert.doesNotMatch(source, /assets\/images\/home-v2\/expedition_mogu\.png/,
     'loading QA must not regress to the protagonist-sized expedition Mogu');
   for (const fixture of [
@@ -236,6 +369,206 @@ test('runner contract covers both mobile viewports and every approved screen', a
   assert.match(probeSource, /result\.unassisted\.every\(\(item\) => item\.passed\)/);
   assert.ok(probeSource.indexOf("'css-diagnostic'") < probeSource.indexOf('recoverBattleCanvas(page)'),
     'CSS-scale diagnosis must run before any renderer intervention');
+});
+
+test('Story runtime evidence records all four motions continuously and projects fixed-cell pivots', async () => {
+  const runner = await import('../scripts/run-browser-qa.mjs');
+  const projection = json('assets/animations/story-ch01.json');
+  assert.deepStrictEqual(runner.STORY_RUNTIME_VIDEO_CONTRACT, {
+    logicalTiming:'runtime-1x-no-seek',
+    holdTimeoutMs:3000,
+    completionTimeoutMs:15000,
+    minimumRuntimeWallMs:20000,
+    minimumVideoBytes:65536,
+    maximumVideoBytes:134217728,
+    minimumVideoDurationSeconds:20,
+    lifecycleFreezeWallMs:600,
+    lifecycleClockToleranceMs:34,
+    lifecycleResumeAdvanceMs:120,
+    delayedHoldWaitMs:1200,
+    earlyHoldMaximumDelayMs:750,
+    minimumHoldWallMs:700,
+    videoSampleFractions:[0.08, 0.2, 0.32, 0.44, 0.56, 0.68, 0.8, 0.92],
+    minimumDecodedStandardDeviation:3,
+    minimumDecodedColorBuckets:8,
+    minimumDecodedNonBlankSamples:7,
+    minimumDecodedChangedPairs:3,
+    minimumDecodedUniqueFrames:4,
+    minimumDecodedMeanDifference:2,
+    minimumDecodedChangedPixelRatio:0.02,
+    motions:[
+      { sceneIndex:0, sceneId:'return-light', motionId:'returnLightFlicker', durationMs:5400 },
+      { sceneIndex:1, sceneId:'reverse-rescue', motionId:'reverseCrackRescue', durationMs:6400 },
+      { sceneIndex:2, sceneId:'fragment-chamber', motionId:'fragmentConsumeStumble', preCommitMs:700, durationMs:5250 },
+      { sceneIndex:3, sceneId:'archive-ledger', motionId:'ledgerBrokenPulse', durationMs:5400 }
+    ]
+  });
+  assert.deepStrictEqual(runner.STORY_RUNTIME_EVIDENCE_MODES, [
+    { id:'normal', reducedMotion:false, exerciseLifecycle:false, holdTiming:'early' },
+    { id:'reduced-lifecycle-delayed', reducedMotion:true, exerciseLifecycle:true, holdTiming:'delayed' }
+  ]);
+  assert.deepStrictEqual(
+    runner.STORY_RUNTIME_VIDEO_CONTRACT.motions.map((motion) => motion.motionId),
+    Object.keys(projection.storyAnimations)
+  );
+
+  const manifest = json('assets/manifest.json');
+  const atlasIds = ['currentMogu', 'youngMogu', 'starGuardianCandidate', 'starCompanion'];
+  const expectedAtlases = atlasIds.map((id) => {
+    const atlas = projection.poseAtlases[id];
+    const pack = manifest.packs.find((candidate) => candidate.assets.some((asset) => asset.id === atlas.assetId));
+    assert.equal(atlas.noAutoCrop, true);
+    assert.equal(atlas.frameOrder, 'row-major');
+    assert.equal(atlas.cellOrigin, 'top-left');
+    assert.equal(atlas.pivot.space, 'cell-normalized');
+    assert.equal(atlas.width, atlas.columns * atlas.cell.width);
+    assert.equal(atlas.height, atlas.rows * atlas.cell.height);
+    assert.ok(pack, `runtime pack is required for ${atlas.assetId}`);
+    return {
+      id,
+      assetId:atlas.assetId,
+      packId:pack.id,
+      width:atlas.width,
+      height:atlas.height,
+      columns:atlas.columns,
+      rows:atlas.rows,
+      cell:{ width:atlas.cell.width, height:atlas.cell.height },
+      pivot:{ x:atlas.pivot.x, y:atlas.pivot.y }
+    };
+  });
+  assert.deepStrictEqual(runner.STORY_PIVOT_ATLASES, expectedAtlases);
+
+  const source = read('scripts/run-browser-qa.mjs');
+  const evidenceSource = source.slice(
+    source.indexOf('async function openFreshStoryRuntimeEntry'),
+    source.indexOf('function summaryMarkdown')
+  );
+  assert.ok(evidenceSource.length > 0, 'continuous runtime evidence implementation must be present');
+  for (const productionContract of [
+    'window.MoguriaSave.clear()',
+    "locator('#startBtn')",
+    'window.MoguriaStoryChapter01?.open',
+    "player.open({ replay:true, currentNodeId:'c1_available' })",
+    "locator('#storyChapter01Next').click()",
+    "page.keyboard.down('Space')",
+    "page.keyboard.up('Space')",
+    'timeout:STORY_RUNTIME_VIDEO_CONTRACT.holdTimeoutMs',
+    'waitForRuntimeMotionCompletion(page, motion, mode, motionStartedAt)',
+    'record.runtimeWallDurationMs = Date.now() - replayStartedAt',
+    'record.runtimeWallDurationMs < STORY_RUNTIME_VIDEO_CONTRACT.minimumRuntimeWallMs',
+    'JSON.stringify(window.MoguriaSave.load()) === beforeReplay',
+    "reducedMotion:mode.reducedMotion ? 'reduce' : 'no-preference'",
+    'const videoSize = { width:viewport.width & ~1, height:viewport.height & ~1 }',
+    'recordVideo:{ dir:captureDirectory, size:videoSize }',
+    'video = page.video()',
+    'await context.close()',
+    'await video.saveAs(videoPath)',
+    'await video.delete()',
+    'await inspectStoryVideoArtifact(browser, videoPath, videoSize)',
+    "headerHex === '1a45dfa3'"
+  ]) assert.ok(evidenceSource.includes(productionContract), `runtime evidence must preserve ${productionContract}`);
+  assert.doesNotMatch(evidenceSource,
+    /seekForVerification|getVerification|addInitScript|Math\.random\s*=|localStorage\.(?:setItem|removeItem)|MoguriaSave\.save\(|MoguriaGame\.dev\w+|(?:Date|performance)\.now\s*=|requestAnimationFrame\s*=|window\.Moguria\w+\s*=/,
+    'continuous video must use the real replay clock and production APIs without installing a QA route');
+
+  const lifecycleSource = source.slice(
+    source.indexOf('async function exerciseStoryPauseResume'),
+    source.indexOf('async function captureStoryPivotOverlay')
+  );
+  for (const lifecycleContract of [
+    "locator('#storyChapter01Pause')",
+    "dataset?.storyPaused === 'true'",
+    'lifecycleFreezeWallMs',
+    'lifecycleResumeAdvanceMs',
+    'context.newPage()',
+    "coverPage.goto('about:blank')",
+    'coverPage.bringToFront()',
+    'waitForActualPageVisibility(page, true)',
+    'page.bringToFront()',
+    'waitForActualPageVisibility(page, false)',
+    "document.addEventListener('visibilitychange', evidence.handler)",
+    "event.hidden === true && event.visibilityState === 'hidden'",
+    "event.hidden === false && event.visibilityState === 'visible'"
+  ]) assert.ok(lifecycleSource.includes(lifecycleContract), `runtime lifecycle evidence must use ${lifecycleContract}`);
+  assert.doesNotMatch(lifecycleSource,
+    /dispatchEvent|Object\.defineProperty|emulateMedia|newCDPSession|_channel|player\.(?:pause|resume)\(/,
+    'runtime lifecycle evidence must observe real browser/UI events without emulation or private APIs');
+
+  const pivotSource = source.slice(
+    source.indexOf('async function captureStoryPivotOverlay'),
+    source.indexOf('function inspectStoryVideoArtifact')
+  );
+  for (const projectionContract of [
+    "assets.getJson('story_ch01_animation_manifest')",
+    'assets.getImage(definition?.assetId)',
+    'definition.cell.width',
+    'definition.cell.height',
+    'definition.pivot.x',
+    'definition.pivot.y',
+    "canvas.toDataURL('image/png')",
+    'story-pose-atlas-pivots${modeSuffix}.png'
+  ]) assert.ok(pivotSource.includes(projectionContract), `pivot evidence must use ${projectionContract}`);
+
+  const runtimeFunction = source.slice(
+    source.indexOf('async function runStoryRuntimeEvidence'),
+    source.indexOf('function summaryMarkdown')
+  );
+  assert.equal((runtimeFunction.match(/browser\.newContext\(/g) || []).length, 1);
+  assert.equal((runtimeFunction.match(/context\.newPage\(\)/g) || []).length, 1);
+  for (const holdContract of [
+    "mode.holdTiming === 'delayed'",
+    'page.waitForTimeout(STORY_RUNTIME_VIDEO_CONTRACT.delayedHoldWaitMs)',
+    'holdStartDelayMs > STORY_RUNTIME_VIDEO_CONTRACT.earlyHoldMaximumDelayMs',
+    'holdStartDelayMs < STORY_RUNTIME_VIDEO_CONTRACT.delayedHoldWaitMs',
+    "activeHold.domHolding !== 'true'",
+    'holdWallDurationMs < STORY_RUNTIME_VIDEO_CONTRACT.minimumHoldWallMs'
+  ]) assert.ok(runtimeFunction.includes(holdContract), `fragment hold evidence must enforce ${holdContract}`);
+  const mainSource = source.slice(source.indexOf('async function main'), source.indexOf("if (process.argv[1]"));
+  assert.equal((mainSource.match(/runStoryRuntimeEvidence\(/g) || []).length, 1,
+    'one runtime evidence context must be created inside each viewport iteration');
+  assert.match(mainSource, /for \(const viewport of VIEWPORTS\)[\s\S]*for \(const mode of STORY_RUNTIME_EVIDENCE_MODES\)[\s\S]*runStoryRuntimeEvidence\([\s\S]*storyRuntimeEvidence\.push\(evidence\)/);
+  assert.match(mainSource, /storyRuntimeEvidence\.every\(\(record\) => record\.status === 'passed'\)/,
+    'missing video or pivot evidence must fail the summary');
+  assert.match(source, /Story continuous runtime evidence/);
+  assert.match(source, /runtime Story video is missing or invalid/);
+  assert.match(source, /runtime Story pivot overlay is missing or invalid/);
+
+  const decodeSource = source.slice(
+    source.indexOf('async function inspectStoryVideoArtifact'),
+    source.indexOf('async function runStoryRuntimeEvidence')
+  );
+  for (const decodeContract of [
+    'maximumVideoBytes',
+    "new Blob([bytes], { type:'video/webm' })",
+    "video.canPlayType('video/webm; codecs=\"vp8\"')",
+    "waitFor('loadedmetadata', 10000)",
+    'video.duration',
+    'video.videoWidth',
+    'video.videoHeight',
+    "waitFor('seeked', 10000)",
+    'context.drawImage(video',
+    'context.getImageData(',
+    'standardDeviation',
+    'colorBuckets',
+    'adjacentDifferences',
+    'changedPixelRatio',
+    'uniqueFrameHashes',
+    'minimumDecodedNonBlankSamples',
+    'minimumDecodedChangedPairs',
+    'minimumDecodedUniqueFrames'
+  ]) assert.ok(decodeSource.includes(decodeContract), `WebM decode audit must enforce ${decodeContract}`);
+  assert.doesNotMatch(decodeSource, /ffprobe|child_process|newCDPSession|_channel/,
+    'WebM audit must use the generated browser and public web APIs only');
+  assert.ok(
+    runtimeFunction.indexOf('await context.close()')
+      < runtimeFunction.indexOf('await video.saveAs(videoPath)'),
+    'video context must close before the finalized WebM is saved'
+  );
+  assert.ok(
+    runtimeFunction.indexOf('await video.saveAs(videoPath)')
+      < runtimeFunction.indexOf('await inspectStoryVideoArtifact(browser, videoPath, videoSize)'),
+    'decode audit must run only after the finalized WebM is saved'
+  );
 });
 
 test('browser QA evidence and fixtures cannot enter the production Pages artifact', () => {

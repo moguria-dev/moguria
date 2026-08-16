@@ -1,3 +1,10 @@
+window.MoguriaRunProfiles = (() => {
+  const normal=Object.freeze({id:'normal-v1',kind:'normal',maxWave:12,midBossWaves:[7],bossWaves:[12],artifactWaves:[3,7],rewardMode:'normal',retryCost:'normal'});
+  const story=Object.freeze({id:'story-c1-investigation-v1',kind:'story',maxWave:4,midBossWaves:[],bossWaves:[],artifactWaves:[],rewardMode:'story-once',retryCost:0,objectiveId:'c1-return-with-anomaly-trace'});
+  const get=value=>(typeof value==='string'?value:value?.profileId||value?.id)===story.id?story:normal;
+  return {normal,story,get,NORMAL_ID:normal.id,STORY_C1_ID:story.id};
+})();
+
 window.MoguriaGame = (() => {
   let canvas, ctx, state;
   let fxSerial=0;
@@ -30,6 +37,10 @@ window.MoguriaGame = (() => {
     minTriggerRatio:Math.max(0,Math.min(1,Number(MoguriaConfig.collectAll?.minTriggerRatio)||.35)),
     maxTriggerRatio:Math.max(0,Math.min(1,Number(MoguriaConfig.collectAll?.maxTriggerRatio)||.70))
   });
+  const profileFor=value=>window.MoguriaRunProfiles.get(value);
+  const waveIn=(key,wave=state?.wave)=>Boolean(state?.runProfile?.[key]?.includes(Number(wave)));
+  const bossKind=wave=>waveIn('midBossWaves',wave)?'midBoss':waveIn('bossWaves',wave)?'boss':'';
+  const isStoryRun=()=>state?.runProfile?.kind==='story';
   function init(){
     canvas=document.getElementById('gameCanvas'); ctx=canvas.getContext('2d'); resize();
     setupStick(); document.getElementById('giveupBtn').onclick=()=>requestGiveup(false); document.getElementById('pauseBtn').onclick=()=>pauseRun(); document.getElementById('resumeBtn').onclick=()=>resumeRun(); document.getElementById('pauseGiveupBtn').onclick=()=>requestGiveup(true);
@@ -184,11 +195,12 @@ window.MoguriaGame = (() => {
     window.MoguriaBattleV3?.stop?.();
     window.MoguriaPerformance?.start?.();
     const checkpoint=options.activeRun?.checkpoint && typeof options.activeRun.checkpoint==='object' ? options.activeRun.checkpoint : null;
+    const runProfile=profileFor(options.profileId||options.activeRun);
     let player=MoguriaPlayer.create();
     if(checkpoint?.player) player=MoguriaPlayer.restore(checkpoint.player,player);
     else if(window.MoguriaMeta) MoguriaMeta.applyEquipmentToPlayer(player);
-    state={ mode:'run', runId:String(options.runId||options.activeRun?.runId||''), startedAt:Number(options.activeRun?.startedAt)||Date.now(), p:player, enemies:[], defeatedEnemies:[], bullets:[], enemyBullets:[], mines:[], fx:[], drops:[], companions:[], scheduled:[], dungeon:MoguriaDungeon.create(checkpoint?.dungeon?.seed||Date.now()), time:0, last:performance.now(), spawnCd:0, floor:1,
-      wave:0, maxWave:MoguriaConfig.run.maxWave, timeLimit:MoguriaConfig.run.timeLimit||480, waveState:'ready', waveSpawned:0, waveTarget:0, waveClearTimer:0, cleared:false, timeout:false, introTimer:2.15, bossAlertTimer:0, clearTimer:0, mobEvent:null,
+    state={ mode:'run', runId:String(options.runId||options.activeRun?.runId||''), profileId:runProfile.id, runProfile, startedAt:Number(options.activeRun?.startedAt)||Date.now(), p:player, enemies:[], defeatedEnemies:[], bullets:[], enemyBullets:[], mines:[], fx:[], drops:[], companions:[], scheduled:[], dungeon:MoguriaDungeon.create(checkpoint?.dungeon?.seed||Date.now()), time:0, last:performance.now(), spawnCd:0, floor:1,
+      wave:0, maxWave:runProfile.maxWave, timeLimit:MoguriaConfig.run.timeLimit||480, waveState:'ready', waveSpawned:0, waveTarget:0, waveClearTimer:0, cleared:false, timeout:false, introTimer:2.15, bossAlertTimer:0, clearTimer:0, mobEvent:null,
       stats:{kills:0,maxDamage:0,totalDamage:0,shots:0,crits:0,hitsTaken:0,dodges:0,explosions:0,poisonKills:0,rareKills:0,bossKills:0,combo:0,bestCombo:0}, rerolls:MoguriaConfig.run.rerolls, artifactRerolls:Math.max(0,Math.floor(Number(MoguriaConfig.run.artifactRerolls??3))), bans:2, bannedSkills:[], pendingChoice:null, levelUpCue:null, defeatCue:null, collectAllSchedule:null, shake:0, hitStop:0, flash:0, particles:[], comboTimer:0, awakenTimer:0, dangerPulse:0, nearMissCd:0, bossPhaseTimer:0, artifactWaves:{}, mapBounds:{...MoguriaConfig.map}, depthCueShown:false, criticalCueCd:0, chainCueCd:0, returnGlow:0, checkpointElapsed:0, hudAt:0, finalizing:false };
     if(checkpoint) restoreCheckpoint(checkpoint);
     else { state.p.x=0; state.p.y=0; state.p.hp=state.p.maxHp; state.collectAllSchedule=createCollectAllSchedule(0); }
@@ -202,8 +214,10 @@ window.MoguriaGame = (() => {
     if(state.pendingChoice) restorePendingChoice();
     MoguriaAudio?.play('start');
     pushFx({x:0,y:0,r:92,life:1.0,type:'startGlow'});
-    if(options.resume && checkpoint) bigToast('冒険を再開','続きから、もぐろう');
-    else bigToast('もぐ、いくよ','画面下をなぞって移動');
+    if(options.resume && checkpoint) bigToast(isStoryRun()?'物語調査を再開':'冒険を再開','続きから、もぐろう');
+    else bigToast(isStoryRun()?'帰り灯の外縁へ':'もぐ、いくよ',isStoryRun()?'異常な流れの痕跡をたどろう':'画面下をなぞって移動');
+    const waveTotal=document.querySelector?.('.play-hud__wave i'); if(waveTotal) waveTotal.textContent=`/${state.maxWave}`;
+    const giveup=document.getElementById('giveupBtn'); if(giveup) giveup.textContent=isStoryRun()?'あとで続ける':'帰る';
     updateHud(true);
     const renderer=window.MoguriaBattleV3;
     if(!renderer?.start) return failStartAfterSession('戦闘画面を開始できませんでした。');
@@ -411,7 +425,7 @@ window.MoguriaGame = (() => {
   function inferLegacyPendingChoice(checkpoint,savedWave){
     // v3 checkpoints created before pendingChoice existed can still be repaired.
     // At each artifact gate the old code marked the wave before the player chose.
-    const artifactTarget=savedWave===3?1:savedWave===7?2:0;
+    const artifactTarget=state.runProfile.artifactWaves.indexOf(savedWave)+1;
     if(artifactTarget && checkpoint.artifactWaves?.[savedWave] && (state.p.artifacts?.length||0)<artifactTarget){
       return normalizePendingChoice({type:'artifact',wave:savedWave});
     }
@@ -497,10 +511,10 @@ window.MoguriaGame = (() => {
     let accepted=false;
     try{
       accepted=await confirmAction({
-        eyebrow:'END ADVENTURE',
-        title:'冒険を終えて帰る？',
-        message:'この冒険はここで終了し、途中から再開できなくなります。\nここまでの記録と報酬を確定してホームへ帰ります。',
-        confirmLabel:'終了して帰る',
+        eyebrow:isStoryRun()?'STORY BREAK':'END ADVENTURE',
+        title:isStoryRun()?'調査を中断する？':'冒険を終えて帰る？',
+        message:isStoryRun()?'ここまでの調査を保存して、あとで同じ続きから再開できます。\nおなかは消費しません。':'この冒険はここで終了し、途中から再開できなくなります。\nここまでの記録と報酬を確定してホームへ帰ります。',
+        confirmLabel:isStoryRun()?'あとで続ける':'終了して帰る',
         cancelLabel:fromPause?'休憩帳に戻る':'冒険を続ける',
         tone:'danger'
       });
@@ -515,6 +529,13 @@ window.MoguriaGame = (() => {
       return false;
     }
     document.getElementById('pauseModal')?.classList.add('hidden');
+    if(isStoryRun()){
+      state.mode='pause';
+      window.MoguriaPerformance?.stop?.();
+      window.MoguriaBattleV3?.stop?.();
+      MoguriaUI?.show?.('home');
+      return true;
+    }
     endRun(true);
     return true;
   }
@@ -628,7 +649,7 @@ window.MoguriaGame = (() => {
     p.hurtSerial=Math.max(0,Math.floor(Number(p.hurtSerial)||0))+1;
     return dmg;
   }
-  function waveLabel(w){ if(w===7) return '中ボス'; if(w===12) return '大ボス'; return `Wave ${w}`; }
+  function waveLabel(w){ const kind=bossKind(w); return kind==='midBoss'?'中ボス':kind==='boss'?'大ボス':`Wave ${w}`; }
   function toast(text){
     const el=document.createElement('div'); el.className='wave-toast'; el.textContent=text; document.getElementById('game').appendChild(el); setTimeout(()=>el.remove(),1700);
   }
@@ -662,7 +683,7 @@ window.MoguriaGame = (() => {
     }
   }
   function chooseMobEvent(wave){
-    if(wave===7 || wave===12) return null;
+    if(bossKind(wave)) return null;
     if(Math.random()>0.34) return null;
     // 序盤はビルドがまだ固まっていないため、硬すぎる敵など進行困難になりやすいイベントは出さない。
     const pool=[
@@ -686,12 +707,13 @@ window.MoguriaGame = (() => {
       state.cleared=true; state.clearTimer=2.1; state.returnGlow=2.1; MoguriaAudio?.play('return'); state.flash=Math.max(state.flash,.28); sparkleBurst(state.p.x,state.p.y,42,'#fff0a6'); bigToast('ふわっと帰還！','Mogu、無事に帰れそう…'); return;
     }
     state.waveSpawned=0; state.spawnCd=.2; state.waveClearTimer=0; state.mobEvent=null;
-    if(state.wave===7 || state.wave===12){
+    const kind=bossKind(state.wave);
+    if(kind){
       state.waveState='bossAlert'; state.bossAlertTimer=1.75; state.waveTarget=1;
       beginCollectAllWave();
       MoguriaAudio?.play('boss');
       state.flash=Math.max(state.flash,.22); state.shake=Math.max(state.shake,6);
-      bigToast(state.wave===7?'何か大きい気配…':'森の奥がざわざわする…', state.wave===7?'中ボスが来るよ':'大ボスが来るよ');
+      bigToast(kind==='midBoss'?'何か大きい気配…':'森の奥がざわざわする…', kind==='midBoss'?'中ボスが来るよ':'大ボスが来るよ');
       return;
     }
     state.waveState='spawning';
@@ -720,11 +742,11 @@ window.MoguriaGame = (() => {
       state.bossAlertTimer-=dt;
       if(state.bossAlertTimer<=0){
         state.waveState='spawning';
-        spawnEnemySafe(state.wave,state.wave===7?{midBoss:true}:{boss:true});
+        spawnEnemySafe(state.wave,bossKind(state.wave)==='midBoss'?{midBoss:true}:{boss:true});
       }
       return;
     }
-    if(state.wave===7 || state.wave===12){
+    if(bossKind(state.wave)){
       if(state.enemies.length===0){ state.waveClearTimer+=dt; if(state.waveClearTimer>.9) afterWaveClear(); }
       return;
     }
@@ -760,7 +782,7 @@ window.MoguriaGame = (() => {
       if(collectedFinalDrops) persistCheckpoint('collect-all-final-clear');
     }
     pushFx({x:state.p.x,y:state.p.y,r:96,life:.72,type:'waveClear'}); sparkleBurst(state.p.x,state.p.y,20,'#fff0a6');
-    if((state.wave===3 || state.wave===7) && !state.artifactWaves[state.wave]){
+    if(waveIn('artifactWaves') && !state.artifactWaves[state.wave]){
       openArtifactChoice(state.wave);
       return;
     }
@@ -832,7 +854,7 @@ window.MoguriaGame = (() => {
     renderOwnedPowers('artifactOwnedSkills','artifactOwnedDetail',{skills:true,artifacts:true});
     renderChoices();
     const title=document.getElementById('artifactTitle');
-    if(title) title.textContent = wave===3 ? '前半のアーティファクト' : '中盤のアーティファクト';
+    if(title) title.textContent = state.runProfile.artifactWaves.indexOf(wave)===0 ? '前半のアーティファクト' : '中盤のアーティファクト';
     document.getElementById('artifactModal').classList.remove('hidden');
     window.requestAnimationFrame?.(()=>wrap.querySelector?.('.artifact-choice')?.focus?.());
     persistCheckpoint('artifact-choice');
@@ -1608,10 +1630,35 @@ window.MoguriaGame = (() => {
     if(!state || state.finalizing || state.mode==='ended') return;
     state.finalizing=true; state.mode='finalizing';
     const p=state.p, synergies=MoguriaSkills.detectSynergies(p);
-    const run={ runId:state.runId, startedAt:state.startedAt, date:Date.now(), floor:Math.min(state.maxWave,Math.max(1,state.floor||state.wave||1)), wave:Math.min(state.maxWave,Math.max(1,state.wave||1)), cleared:state.cleared, lv:p.lv, survived:Math.floor(state.time), kills:state.stats.kills, maxDamage:state.stats.maxDamage, totalDamage:Math.floor(state.stats.totalDamage), dps:Math.floor(state.stats.totalDamage/Math.max(1,state.time)), critRate:Math.floor((state.stats.crits/Math.max(1,state.stats.shots))*100), dodgeRate:Math.floor((state.stats.dodges/Math.max(1,state.stats.dodges+state.stats.hitsTaken))*100), explosions:state.stats.explosions, bestCombo:state.stats.bestCombo||0, timeout:state.timeout, skills:p.skills.map(s=>({id:s.id,name:s.name,tags:s.tags,rarity:s.rarity,level:p.skillLevels?.[s.id]||1,fusion:!!s.fusion})), artifacts:(p.artifacts||[]).map(a=>({id:a.id,name:a.name,tags:a.tags})), synergies, visual:p.visual, giveup };
+    const run={ runId:state.runId, profileId:state.profileId, runKind:state.runProfile.kind, rewardMode:state.runProfile.rewardMode, objectiveId:state.runProfile.objectiveId, startedAt:state.startedAt, date:Date.now(), floor:Math.min(state.maxWave,Math.max(1,state.floor||state.wave||1)), wave:Math.min(state.maxWave,Math.max(1,state.wave||1)), cleared:state.cleared, lv:p.lv, survived:Math.floor(state.time), kills:state.stats.kills, maxDamage:state.stats.maxDamage, totalDamage:Math.floor(state.stats.totalDamage), dps:Math.floor(state.stats.totalDamage/Math.max(1,state.time)), critRate:Math.floor((state.stats.crits/Math.max(1,state.stats.shots))*100), dodgeRate:Math.floor((state.stats.dodges/Math.max(1,state.stats.dodges+state.stats.hitsTaken))*100), explosions:state.stats.explosions, bestCombo:state.stats.bestCombo||0, timeout:state.timeout, skills:p.skills.map(s=>({id:s.id,name:s.name,tags:s.tags,rarity:s.rarity,level:p.skillLevels?.[s.id]||1,fusion:!!s.fusion})), artifacts:(p.artifacts||[]).map(a=>({id:a.id,name:a.name,tags:a.tags})), synergies, visual:p.visual, giveup };
     run.name=MoguriaResult.buildName(run); run.comment=giveup?'今日は無理せず帰ってきたね。こういう日も大事。':(run.timeout?'時間いっぱいまでよく潜ったね。次はもっと早く強くなれそう。':MoguriaResult.comment(run)); run.titles=MoguriaResult.titles(run);
     state.pendingRun=run;
+    if(isStoryRun()&&!state.cleared){
+      state.mode='storyRetry'; state.finalizing=false;
+      window.MoguriaPerformance?.stop?.(); window.MoguriaBattleV3?.stop?.({preserveFrame:true});
+      MoguriaUI?.showResult?.({...run,storyRetry:true,retry:retryStoryRun,later:()=>MoguriaUI?.show?.('home')});
+      return;
+    }
     settlePendingRun();
+  }
+  async function retryStoryRun(){
+    if(!state?.runId||!isStoryRun()) return false;
+    const runId=state.runId;
+    const reset=window.MoguriaSave?.updateCheckpoint?.(runId,{checkpoint:null,checkpointReason:'story-retry'});
+    if(!reset?.ok) return false;
+    MoguriaUI?.show?.('game');
+    return start({runId,activeRun:reset.activeRun,resume:false,profileId:state.profileId});
+  }
+  function recoverStoryHandoff(error){
+    console.error('[MoguriaGame] story handoff failed',error);
+    MoguriaUI?.show?.('home');
+    const notice=document.getElementById('homeNotice');
+    if(notice){
+      notice.textContent='帰還記録を開けませんでした。「物語の続き」から再開できます。';
+      notice.dataset.tone='error';
+      notice.setAttribute('role','alert');
+      notice.hidden=false;
+    }
   }
   function settlePendingRun(){
     if(!state?.pendingRun) return false;
@@ -1624,8 +1671,25 @@ window.MoguriaGame = (() => {
       const resume=document.getElementById('resumeBtn'); if(resume) resume.textContent='冒険に戻る';
       window.MoguriaPerformance?.stop?.();
       window.MoguriaBattleV3?.stop?.({preserveFrame:true});
-      MoguriaUI.showResult(state.pendingRun);
-      window.requestAnimationFrame?.(()=>document.getElementById('againBtn')?.focus?.());
+      if(isStoryRun()){
+        const detail={run:state.pendingRun,settlement:result};
+        const storyPlayer=window.MoguriaStoryChapter01;
+        const resume=storyPlayer?.resumeAfterRun;
+        if(typeof resume==='function'){
+          try{
+            Promise.resolve(resume.call(storyPlayer,detail)).catch(recoverStoryHandoff);
+          }catch(error){
+            recoverStoryHandoff(error);
+          }
+        }
+        else{
+          try{ if(typeof window.CustomEvent==='function') window.dispatchEvent?.(new CustomEvent('moguria:story-run-settled',{detail})); }catch(error){ console.warn('[MoguriaGame] story event failed',error); }
+          MoguriaUI?.show?.('home');
+        }
+      }else{
+        MoguriaUI.showResult(state.pendingRun);
+        window.requestAnimationFrame?.(()=>document.getElementById('againBtn')?.focus?.());
+      }
       return true;
     }
     state.mode='settlementError'; state.finalizing=false;
@@ -1652,7 +1716,9 @@ window.MoguriaGame = (() => {
     document.getElementById('timer').textContent=`${m}:${s}`;
     const waveEl=document.getElementById('wave');
     if(waveEl) waveEl.textContent=Math.max(1,state.wave);
-    document.getElementById('miniStats').innerHTML=`残り ${m}:${s}<br>最大DMG ${state.stats.maxDamage}<br>撃破 ${state.stats.kills}<br>爆発 ${state.stats.explosions}`;
+    document.getElementById('miniStats').innerHTML=isStoryRun()
+      ? `物語調査・帰り灯の痕跡をたどる<br>WAVE ${Math.max(1,state.wave)} / ${state.maxWave}<br>残り ${m}:${s}<br>撃破 ${state.stats.kills}`
+      : `残り ${m}:${s}<br>最大DMG ${state.stats.maxDamage}<br>撃破 ${state.stats.kills}<br>爆発 ${state.stats.explosions}`;
   }
   function draw(){
     const w=innerWidth,h=innerHeight,p=state.p; const camX=p.x-w/2,camY=p.y-h/2; const col=MoguriaDungeon.colorForTime(state.time);
@@ -1699,8 +1765,8 @@ window.MoguriaGame = (() => {
       if(document.body.classList.contains('kv-visual-refresh')) return;
       title='もぐ、いくよ'; sub='画面下をなぞって移動';
     }
-    else if(state.bossAlertTimer>0){ title=state.wave===12?'大きな足音…':'ざわざわ…'; sub=state.wave===12?'大ボスが近づいている':'中ボスが近づいている'; }
-    else if(state.clearTimer>0){ title='ただいま'; sub='ほしの光を抱えて、帰ろう'; }
+    else if(state.bossAlertTimer>0){ const kind=bossKind(state.wave); title=kind==='boss'?'大きな足音…':'ざわざわ…'; sub=kind==='boss'?'大ボスが近づいている':'中ボスが近づいている'; }
+    else if(state.clearTimer>0){ title=isStoryRun()?'帰り灯へ戻ろう':'ただいま'; sub=isStoryRun()?'調べた痕跡を、みんなのところへ':'ほしの光を抱えて、帰ろう'; }
     if(!title) return;
     ctx.save(); ctx.fillStyle='rgba(20,16,34,.10)'; ctx.fillRect(0,0,w,h);
     ctx.textAlign='center'; ctx.fillStyle='#fff4dc'; ctx.shadowColor='rgba(0,0,0,.28)'; ctx.shadowBlur=12;

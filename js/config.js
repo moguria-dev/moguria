@@ -2,8 +2,8 @@
   const freeze = Object.freeze;
 
   window.MoguriaConfig = freeze({
-    version: '3.3.0-ui-consistency',
-    saveVersion: 3,
+    version: '3.4.0-story-ch01',
+    saveVersion: 4,
     debug: false,
 
     performance: freeze({

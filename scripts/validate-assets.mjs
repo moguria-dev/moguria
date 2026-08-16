@@ -27,6 +27,38 @@ const REQUIRED_MOTION_FIELDS = [
   'pivot', 'origin', 'facing', 'noAutoCrop', 'transitions', 'interrupts',
   'eventMarkers', 'collisionSync', 'fallback', 'reducedMotion'
 ];
+const STORY_ASSET_IDS = [
+  'story_ch01_bg_return_hall',
+  'story_ch01_bg_fragment_chamber',
+  'story_ch01_bg_archive',
+  'story_ch01_return_light',
+  'story_ch01_damaged_fragment',
+  'story_ch01_community_lamp',
+  'story_ch01_return_ledger',
+  'story_ch01_current_mogu_pose_atlas',
+  'story_ch01_young_mogu_pose_atlas',
+  'story_ch01_star_guardian_candidate_pose_atlas',
+  'story_ch01_star_companion_pose_atlas'
+];
+const STORY_PACKS = {
+  'story-ch01-core': ['story_ch01_animation_manifest', 'story_ch01_return_light'],
+  'story-ch01-return-hall': [
+    'story_ch01_bg_return_hall',
+    'story_ch01_young_mogu_pose_atlas',
+    'story_ch01_star_guardian_candidate_pose_atlas'
+  ],
+  'story-ch01-fragment-chamber': [
+    'story_ch01_bg_fragment_chamber',
+    'story_ch01_damaged_fragment',
+    'story_ch01_community_lamp',
+    'story_ch01_current_mogu_pose_atlas',
+    'story_ch01_star_companion_pose_atlas'
+  ],
+  'story-ch01-archive': [
+    'story_ch01_bg_archive',
+    'story_ch01_return_ledger'
+  ]
+};
 
 function hasOwn(record, key) {
   return Object.prototype.hasOwnProperty.call(record, key);
@@ -222,6 +254,7 @@ export function validateLegacyUncatalogedReferences(referencedPaths, source, roo
 export function runtimeReferencedAssets(root, source, state) {
   const referenced = new Set();
   const generatedFile = stripUrlSuffix(source.generatedFile || '');
+  const storyGeneratedFile = stripUrlSuffix(state.validation.storyAnimationRuntimeOutput || '');
   const scanFiles = [state.runtime.entrypoint, 'style.css'];
   for (const directory of ['css', 'js']) {
     const base = repoPath(root, directory);
@@ -237,12 +270,12 @@ export function runtimeReferencedAssets(root, source, state) {
       // parity, not by the immutable legacy-media allowlist. Treating this JSON
       // output as a media asset makes every legitimate manifest update fail on
       // its previous SHA-256.
-      if (assetPath !== generatedFile) referenced.add(assetPath);
+      if (assetPath !== generatedFile && assetPath !== storyGeneratedFile) referenced.add(assetPath);
     }
   }
   for (const entry of allRuntimeEntries(source.runtimeManifest || {})) {
     const assetPath = stripUrlSuffix(entry.src);
-    if (assetPath !== generatedFile) referenced.add(assetPath);
+    if (assetPath !== generatedFile && assetPath !== storyGeneratedFile) referenced.add(assetPath);
   }
   return [...referenced].sort();
 }
@@ -380,7 +413,223 @@ function validateCatalog(root, source, report) {
   }
 }
 
-function validateAnimation(root, projectState, report) {
+function validateStoryAssetPacks(source, state, report) {
+  const catalogById = new Map((source.catalog || []).map((record) => [record.logicalId, record]));
+  const runtime = source.runtimeManifest || {};
+  const storyIds = new Set(STORY_ASSET_IDS);
+  const criticalIds = new Set((runtime.critical || []).map((entry) => entry.id));
+  const lazyIds = new Set((runtime.lazy || []).map((entry) => entry.id));
+  report.check((runtime.critical || []).length === 17, 'story assets must keep the startup critical set at 17 entries');
+  report.check(STORY_ASSET_IDS.every((id) => !criticalIds.has(id) && !lazyIds.has(id)),
+    'story images must remain scene-pack-only and outside critical/lazy');
+
+  for (const id of STORY_ASSET_IDS) {
+    const record = catalogById.get(id);
+    report.check(Boolean(record), `story asset lacks a catalog record: ${id}`);
+    if (!record) continue;
+    report.check(record.lifecycle?.status === 'active' && record.lifecycle?.deprecated === false,
+      `${id} must be active and non-deprecated`);
+    report.check(record.approval?.status === 'approved' && record.approval?.approvedAt === '2026-08-16',
+      `${id} must record the 2026-08-16 production approval`);
+    report.check(record.provenance?.approvedDate === '2026-08-16',
+      `${id} provenance must record the 2026-08-16 approval`);
+    report.check(runtime.images?.[id] === record.path, `${id} runtime image projection differs from catalog`);
+  }
+
+  const packedStoryIds = [];
+  for (const [packId, expectedIds] of Object.entries(STORY_PACKS)) {
+    const pack = (runtime.packs || []).find((entry) => entry.id === packId);
+    report.check(Boolean(pack), `story runtime pack is missing: ${packId}`);
+    if (!pack) continue;
+    const actualIds = (pack.assets || []).map((entry) => entry.id);
+    report.check(JSON.stringify(actualIds) === JSON.stringify(expectedIds),
+      `${packId} asset order or membership differs from the approved projection`);
+    packedStoryIds.push(...actualIds.filter((id) => storyIds.has(id)));
+  }
+  report.check(unique(packedStoryIds) && packedStoryIds.length === STORY_ASSET_IDS.length,
+    'every story image must occur exactly once across the four story packs');
+
+  const core = (runtime.packs || []).find((pack) => pack.id === 'story-ch01-core');
+  const storyManifest = core?.assets?.find((entry) => entry.id === 'story_ch01_animation_manifest');
+  report.check(storyManifest?.type === 'json', 'story animation runtime projection must be JSON in story-ch01-core');
+  report.check(stripUrlSuffix(storyManifest?.src || '') === state.validation.storyAnimationRuntimeOutput,
+    'story animation runtime path differs from project-state');
+}
+
+function validateStoryAnimation(root, projectState, assetSource, source, report) {
+  const runtime = report.capture('read runtime story animation manifest', () => (
+    readJson(root, projectState.validation.storyAnimationRuntimeOutput)
+  ));
+  report.check(source.storyGeneratedFile === projectState.validation.storyAnimationRuntimeOutput,
+    'canonical storyGeneratedFile differs from project-state');
+  report.check(source.storyRuntimeVersion === projectState.versions.storyAnimationManifest,
+    'canonical storyRuntimeVersion differs from project-state');
+  report.check(source.storyRenderContract?.renderer === 'canvas-2d-keypose-atlas-with-continuous-rig',
+    'story renderer contract must use Canvas 2D key poses with a continuous rig');
+  report.check(source.storyRenderContract?.battlePhaserDependency === false,
+    'story renderer contract must remain independent from Battle Phaser');
+  report.check(source.storyRenderContract?.loadPolicy === 'scene-specific-lazy-packs; no new critical assets',
+    'story renderer must retain the scene-specific lazy-pack policy');
+
+  if (runtime) {
+    const projected = {
+      version: source.storyRuntimeVersion,
+      renderContract: source.storyRenderContract,
+      poseAtlases: source.poseAtlases,
+      storyAnimations: source.storyAnimations
+    };
+    report.check(JSON.stringify(runtime) === JSON.stringify(projected),
+      'story animation runtime projection differs from the canonical story contract');
+  }
+
+  const catalogById = new Map((assetSource.catalog || []).map((record) => [record.logicalId, record]));
+  const poseAtlases = source.poseAtlases || {};
+  report.check(Object.keys(poseAtlases).length === 4, 'Chapter 01 must define four fixed-cell pose atlases');
+  for (const [atlasName, atlas] of Object.entries(poseAtlases)) {
+    const label = `story pose atlas ${atlasName}`;
+    const record = catalogById.get(atlas.assetId);
+    report.check(Boolean(record), `${label} references an unknown assetId: ${atlas.assetId}`);
+    if (record) {
+      report.check(record.lifecycle?.status === 'active' && record.approval?.status === 'approved',
+        `${label} must reference an active approved asset`);
+      report.check(record.dimensions?.width === atlas.width && record.dimensions?.height === atlas.height,
+        `${label} dimensions differ from the Asset Manifest`);
+      report.check(record.minDisplay?.width === atlas.minimumDisplaySizeCssPx &&
+        record.minDisplay?.height === atlas.minimumDisplaySizeCssPx,
+      `${label} minimum display size differs from the Asset Manifest`);
+    }
+    report.check(atlas.noAutoCrop === true, `${label} must prohibit automatic cropping`);
+    report.check(atlas.frameOrder === 'row-major' && atlas.cellOrigin === 'top-left',
+      `${label} grid ordering is invalid`);
+    report.check(atlas.scaleBasis === 'cell-height', `${label} scaleBasis must be cell-height`);
+    report.check(atlas.width === atlas.columns * atlas.cell?.width && atlas.height === atlas.rows * atlas.cell?.height,
+      `${label} dimensions do not match its fixed-cell grid`);
+    report.check(atlas.pivot?.space === 'cell-normalized' &&
+      Number.isFinite(atlas.pivot?.x) && atlas.pivot.x >= 0 && atlas.pivot.x <= 1 &&
+      Number.isFinite(atlas.pivot?.y) && atlas.pivot.y >= 0 && atlas.pivot.y <= 1,
+    `${label} pivot must be normalized inside the fixed cell`);
+
+    const frameLimit = atlas.columns * atlas.rows;
+    const occupiedFrames = Object.values(atlas.states || {});
+    const emptyFrames = atlas.emptyFrames || [];
+    report.check(unique([...occupiedFrames, ...emptyFrames]), `${label} frame indices must be unique`);
+    report.check([...occupiedFrames, ...emptyFrames].every((frame) => (
+      Number.isInteger(frame) && frame >= 0 && frame < frameLimit
+    )), `${label} has an out-of-bounds frame`);
+    report.check(occupiedFrames.length + emptyFrames.length === frameLimit,
+      `${label} must explicitly account for every fixed cell`);
+
+    const boundsByState = atlas.visualBounds?.frames || {};
+    report.check(atlas.visualBounds?.space === 'cell-px', `${label} visualBounds must use cell-px`);
+    report.check(JSON.stringify(Object.keys(boundsByState).sort()) === JSON.stringify(Object.keys(atlas.states || {}).sort()),
+      `${label} must record visual bounds for every occupied state`);
+    for (const [stateName, bounds] of Object.entries(boundsByState)) {
+      const right = atlas.cell.width - (bounds.x + bounds.width);
+      const bottom = atlas.cell.height - (bounds.y + bounds.height);
+      report.check(bounds.width > 0 && bounds.height > 0 && bounds.x >= 0 && bounds.y >= 0 && right >= 0 && bottom >= 0,
+        `${label}.${stateName} visual bounds leave the fixed cell`);
+      report.check(Math.min(bounds.x, bounds.y, right, bottom) >= 12,
+        `${label}.${stateName} transparent guard band is below 12px`);
+    }
+  }
+
+  const resolvePose = (poseReference, markerLabel) => {
+    const [atlasName, stateName, extra] = String(poseReference || '').split('.');
+    report.check(Boolean(atlasName && stateName && !extra), `${markerLabel} has an invalid pose reference`);
+    const atlas = poseAtlases[atlasName];
+    report.check(Boolean(atlas), `${markerLabel} references unknown pose atlas ${atlasName}`);
+    if (atlas) report.check(hasOwn(atlas.states || {}, stateName), `${markerLabel} references unknown state ${poseReference}`);
+  };
+
+  const animations = source.storyAnimations || {};
+  report.check(Object.keys(animations).length === 4, 'Chapter 01 must define four story animations');
+  report.check(unique(Object.values(animations).map((animation) => animation.animationId)),
+    'story animationId values must be unique');
+  const lifecycleFields = [
+    'pause', 'resume', 'documentHidden', 'offscreen', 'sceneExit',
+    'reentry', 'duplicateStart', 'markerGuarantee'
+  ];
+  for (const [animationName, animation] of Object.entries(animations)) {
+    const label = `story animation ${animationName}`;
+    report.check(typeof animation.animationId === 'string' && animation.animationId.startsWith('story-ch01.'),
+      `${label} animationId is invalid`);
+    report.check(typeof animation.actorId === 'string' && animation.actorId.length > 0, `${label} actorId is required`);
+    report.check(typeof animation.loop === 'boolean', `${label} loop must be boolean`);
+    report.check(Array.isArray(animation.assetIds) && animation.assetIds.length > 0, `${label} assetIds are required`);
+    for (const assetId of animation.assetIds || []) {
+      const record = catalogById.get(assetId);
+      report.check(Boolean(record), `${label} references unknown asset ${assetId}`);
+      if (record) report.check(record.lifecycle?.status === 'active' && record.approval?.status === 'approved',
+        `${label} references a non-active or unapproved asset ${assetId}`);
+    }
+    for (const field of lifecycleFields) report.check(typeof animation.lifecycle?.[field] === 'string', `${label} lifecycle.${field} is required`);
+    report.check(Boolean(animation.reducedMotion), `${label} reducedMotion contract is required`);
+    report.check(Array.isArray(animation.canonAssertions?.mustRead) && animation.canonAssertions.mustRead.length > 0,
+      `${label} canonAssertions.mustRead is required`);
+    report.check(Array.isArray(animation.canonAssertions?.mustNotRead) && animation.canonAssertions.mustNotRead.length > 0,
+      `${label} canonAssertions.mustNotRead is required`);
+
+    const markers = animation.eventMarkers || [];
+    const markerIds = markers.map((marker) => marker.id);
+    report.check(unique(markerIds), `${label} event marker IDs must be unique`);
+    for (const marker of markers) {
+      report.check(marker.oneShot === true, `${label}.${marker.id} must be one-shot`);
+      report.check(Number.isFinite(marker.atMs) && marker.atMs >= 0, `${label}.${marker.id} time is invalid`);
+      if (marker.pose) resolvePose(marker.pose, `${label}.${marker.id}`);
+      for (const pose of marker.poses || []) resolvePose(pose, `${label}.${marker.id}`);
+    }
+    const markerById = new Map(markers.map((marker) => [marker.id, marker]));
+    let prior = -1;
+    for (const markerId of animation.requiredOrder || []) {
+      const marker = markerById.get(markerId);
+      report.check(Boolean(marker), `${label} requiredOrder references unknown marker ${markerId}`);
+      if (!marker) continue;
+      report.check(marker.atMs > prior, `${label} requiredOrder is not strictly chronological at ${markerId}`);
+      prior = marker.atMs;
+    }
+  }
+
+  const returnLight = animations.returnLightFlicker;
+  const phases = returnLight?.phases || [];
+  report.check(returnLight?.loop === true && returnLight?.durationMs === 5400,
+    'Return Light must remain a 5400ms loop');
+  report.check(phases.filter((phase) => phase.id === 'weaken-once').length === 1,
+    'Return Light must contain exactly one irregular weakening phase');
+  report.check(phases.some((phase) => phase.id === 'minimum-not-off'),
+    'Return Light must declare the never-off minimum phase');
+  report.check(phases.every((phase, index) => index === 0 || phase.startMs > phases[index - 1].startMs),
+    'Return Light phases must be strictly chronological');
+
+  const rescue = animations.reverseCrackRescue;
+  const rescueMarkers = new Map((rescue?.eventMarkers || []).map((marker) => [marker.id, marker.atMs]));
+  report.check(rescue?.loop === false, 'reverse/crack/rescue must be one-shot');
+  report.check(rescueMarkers.get('reverse_begin') < rescueMarkers.get('crack_begin') &&
+    rescueMarkers.get('crack_begin') < rescueMarkers.get('mogu_caught'),
+  'reverse must begin before the crack and before Young Mogu is caught');
+  report.check(!(rescue?.assetIds || []).includes('story_ch01_star_companion_pose_atlas'),
+    'the Star Companion must not appear in the past rescue scene');
+
+  const fragment = animations.fragmentConsumeStumble;
+  const fragmentMarkers = new Map((fragment?.eventMarkers || []).map((marker) => [marker.id, marker]));
+  report.check(fragment?.interaction?.type === 'deliberate-hold-no-time-limit-no-failure' &&
+    fragment.interaction.qte === false && fragment.interaction.choiceBranch === false,
+  'fragment interaction must remain a deliberate hold with no QTE, timeout, failure, or branch');
+  report.check(fragment?.nominalDurationMsAtEarliestCommit ===
+    fragment?.preCommitLogicalTimeMs + fragment?.interaction?.requiredHoldMs + fragment?.nominalDurationMsAfterHoldConfirmed,
+  'fragment earliest duration must equal pre-commit + required hold + post-commit duration');
+  report.check(fragmentMarkers.get('community_light_restored')?.atMs < fragmentMarkers.get('body_interference')?.atMs &&
+    fragmentMarkers.get('body_interference')?.atMs < fragmentMarkers.get('stumble')?.atMs,
+  'community light must restore before body interference and stumble');
+
+  const ledger = animations.ledgerBrokenPulse;
+  const ledgerMarkers = new Map((ledger?.eventMarkers || []).map((marker) => [marker.id, marker.atMs]));
+  report.check(ledger?.loop === false && ledger?.exactGapDurationMs === 320,
+    'ledger broken pulse must be a one-shot with an exact 320ms gap');
+  report.check(ledgerMarkers.get('gap_end') - ledgerMarkers.get('gap_begin') === ledger?.exactGapDurationMs,
+    'ledger gap markers differ from exactGapDurationMs');
+}
+
+function validateAnimation(root, projectState, assetSource, report) {
   const source = readJson(root, projectState.validation.animationSource);
   report.check(source.runtimeContract?.implementationStatus === 'audited-backfill',
     'animation runtime contract must disclose its audited-backfill status');
@@ -504,6 +753,7 @@ function validateAnimation(root, projectState, report) {
     const actual = imageDimensions(fs.readFileSync(repoPath(root, background.image)), background.image);
     report.check(actual.width === background.width && actual.height === background.height, `background ${backgroundName} dimensions are stale`);
   }
+  validateStoryAnimation(root, projectState, assetSource, source, report);
 }
 
 export function validateAssets(root = ROOT) {
@@ -515,6 +765,7 @@ export function validateAssets(root = ROOT) {
   if (!source || !runtime) return report;
 
   validateCatalog(root, source, report);
+  validateStoryAssetPacks(source, state, report);
   const referencedPaths = report.capture('discover runtime asset references', () => runtimeReferencedAssets(root, source, state)) || [];
   const governance = report.capture('resolve trusted asset governance baseline', () => (
     readGovernanceBaseline(root, state.validation.assetSource)
@@ -526,7 +777,7 @@ export function validateAssets(root = ROOT) {
     console.log(`Asset governance baseline: ${governance.sha} (${governance.mode})`);
   }
   for (const error of validateLegacyUncatalogedReferences(referencedPaths, source, root)) report.check(false, error);
-  report.capture('validate animation metadata', () => validateAnimation(root, state, report));
+  report.capture('validate animation metadata', () => validateAnimation(root, state, source, report));
   const unreferenced = report.capture('scan unreferenced assets', () => findUnreferencedAssets(root, source, state)) || [];
   if (state.validation.unreferencedAssetPolicy === 'error') {
     report.check(unreferenced.length === 0, `${unreferenced.length} unreferenced asset(s): ${unreferenced.slice(0, 12).join(', ')}`);
@@ -561,6 +812,13 @@ export function validateAssets(root = ROOT) {
       `battle pack ${formatBytes(battleTransfer)} exceeds ${formatBytes(state.performanceBudgets.battlePackTransferBytes)}`);
   }
 
+  const storyPacks = (runtime.packs || []).filter((pack) => pack.id.startsWith('story-ch01-'));
+  report.check(storyPacks.length === 4, 'Chapter 1 must keep four scene-specific story packs');
+  const storyTransfer = storyPacks.reduce((total, pack) => total
+    + (pack.assets || []).reduce((packTotal, entry) => packTotal + fileBytes(root, entry.src), 0), 0);
+  report.check(storyTransfer <= state.performanceBudgets.storyPackTransferBytes,
+    `Chapter 1 story packs ${formatBytes(storyTransfer)} exceed ${formatBytes(state.performanceBudgets.storyPackTransferBytes)}`);
+
   for (const entry of entries) {
     const size = fileBytes(root, entry.src);
     report.check(size <= state.performanceBudgets.singleRuntimeAssetBytes,
@@ -572,14 +830,17 @@ export function validateAssets(root = ROOT) {
   const stylesheetBytes = initial.styles.reduce((total, item) => total + fileBytes(root, item), 0);
   const scriptBytes = initial.scripts.reduce((total, item) => total + fileBytes(root, item), 0);
   const dynamicBytes = state.validation.dynamicBattleScripts.reduce((total, item) => total + fileBytes(root, item), 0);
+  const dynamicStoryBytes = state.validation.dynamicStoryScripts.reduce((total, item) => total + fileBytes(root, item), 0);
   report.check(stylesheetBytes <= state.performanceBudgets.initialStylesheetBytes,
     `initial stylesheets ${formatBytes(stylesheetBytes)} exceed ${formatBytes(state.performanceBudgets.initialStylesheetBytes)}`);
   report.check(scriptBytes <= state.performanceBudgets.initialScriptBytes,
     `initial scripts ${formatBytes(scriptBytes)} exceed ${formatBytes(state.performanceBudgets.initialScriptBytes)}`);
   report.check(dynamicBytes <= state.performanceBudgets.dynamicBattleScriptBytes,
     `dynamic battle scripts ${formatBytes(dynamicBytes)} exceed ${formatBytes(state.performanceBudgets.dynamicBattleScriptBytes)}`);
+  report.check(dynamicStoryBytes <= state.performanceBudgets.dynamicStoryScriptBytes,
+    `dynamic story scripts ${formatBytes(dynamicStoryBytes)} exceed ${formatBytes(state.performanceBudgets.dynamicStoryScriptBytes)}`);
 
-  console.log(`Asset budgets: critical=${formatBytes(criticalTransfer)} transfer/${formatBytes(criticalDecoded)} decoded; styles=${formatBytes(stylesheetBytes)}; scripts=${formatBytes(scriptBytes)}; battle-js=${formatBytes(dynamicBytes)}`);
+  console.log(`Asset budgets: critical=${formatBytes(criticalTransfer)} transfer/${formatBytes(criticalDecoded)} decoded; styles=${formatBytes(stylesheetBytes)}; scripts=${formatBytes(scriptBytes)}; battle-js=${formatBytes(dynamicBytes)}; story=${formatBytes(storyTransfer)}; story-js=${formatBytes(dynamicStoryBytes)}`);
   return report;
 }
 

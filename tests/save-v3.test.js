@@ -83,6 +83,23 @@ function v2Save(overrides = {}) {
   };
 }
 
+function advanceStoryToInvestigation(save) {
+  const steps = [
+    ['c1_seat', { worldFlags:{ c1InvitationSeen:true } }],
+    ['c1_return_lamp', { knowledgeFlags:['return-light-seen'], replayUnlockIds:['c1-return-lamp'] }],
+    ['c1_shard', {}],
+    ['c1_investigation_ready', {
+      knowledgeFlags:['return-light-seen','shared-lamp-seen','damaged-fragment-seen'],
+      replayUnlockIds:['c1-return-lamp','c1-shard'],
+      worldFlags:{ c1InvitationSeen:true, c1SharedLampRestored:true }
+    }]
+  ];
+  for (const [node, patch] of steps) {
+    const advanced = save.transitionStory(node, patch);
+    assert.equal(advanced.ok, true, `story should advance to ${node}`);
+  }
+}
+
 test('v2 payload migrates in place without losing existing progress', () => {
   const storage = createStorage({
     'moguria.save.v2': JSON.stringify(v2Save({
@@ -96,7 +113,7 @@ test('v2 payload migrates in place without losing existing progress', () => {
   const { save } = loadSave(storage);
   const migrated = save.load();
 
-  assert.equal(migrated.saveVersion, 3);
+  assert.equal(migrated.saveVersion, 4);
   assert.equal(migrated.belly, 2);
   assert.equal(migrated.runs[0].floor, 4);
   assert.equal(migrated.dex.skills.mini_mogu, 3);
@@ -105,6 +122,8 @@ test('v2 payload migrates in place without losing existing progress', () => {
   assert.equal(migrated.meta.inventory[0].uid, 'eq_old');
   assert.equal(migrated.activeRun, null);
   assert.deepEqual(Array.from(migrated.settledRunIds), []);
+  assert.equal(migrated.story.entryMode, 'existing');
+  assert.equal(migrated.story.currentNodeId, 'c1_available');
 });
 
 test('legacy storage key remains readable and is copied to the current key', () => {
@@ -114,9 +133,297 @@ test('legacy storage key remains readable and is copied to the current key', () 
   const { save } = loadSave(storage);
   const migrated = save.load();
 
-  assert.equal(migrated.saveVersion, 3);
+  assert.equal(migrated.saveVersion, 4);
   assert.equal(migrated.belly, 1);
-  assert.equal(storage.json().saveVersion, 3);
+  assert.equal(storage.json().saveVersion, 4);
+});
+
+test('a first save is new while malformed or future story data repairs only the story area', () => {
+  const freshPage = loadSave(createStorage()).save.load();
+  assert.equal(freshPage.saveVersion, 4);
+  assert.equal(freshPage.story.entryMode, 'new');
+
+  const storage = createStorage({
+    'moguria.save.v2': JSON.stringify(v2Save({
+      saveVersion: 4,
+      belly: 1,
+      runs: [{ runId:'kept-run', floor:3 }],
+      meta: { ...v2Save().meta, coins: 77 },
+      story: { contentVersion:'future-c9', entryMode:'existing', currentNodeId:'unsafe', completedChapterIds:['c1','bad'] }
+    }))
+  });
+  const repaired = loadSave(storage).save.load();
+  assert.equal(repaired.belly, 1);
+  assert.equal(repaired.meta.coins, 77);
+  assert.equal(repaired.runs[0].runId, 'kept-run');
+  assert.equal(repaired.story.currentNodeId, 'c1_complete');
+  assert.deepEqual(Array.from(repaired.story.completedChapterIds), ['c1']);
+  assert.equal(repaired.story.knowledgeFlags.includes('old-record-responded'), true);
+  assert.equal(repaired.story.keyItems.purpleScarf, 'story-present-unexplained');
+
+  const corrupt = loadSave(createStorage({ 'moguria.save.v2':'{' })).save.load();
+  assert.equal(corrupt.story.entryMode, 'existing', 'a quarantined current-key record must remain an existing-user entry');
+  const empty = loadSave(createStorage({ 'moguria.save.v2':'' })).save.load();
+  assert.equal(empty.story.entryMode, 'existing', 'an empty corrupt current-key record is still an existing-user entry');
+});
+
+test('story transitions are a canonical one-way prefix with idempotent duplicate delivery', () => {
+  const storage = createStorage({ 'moguria.save.v2': JSON.stringify(v2Save({
+    saveVersion:4,
+    story:{
+      schemaVersion:1, contentVersion:'c1-v1', entryMode:'existing', currentChapterId:'c1',
+      currentNodeId:'c1_seat', completedChapterIds:[], seenEventIds:[],
+      transitionIds:['c1-enter-seat','c1-investigation-settled','c1-shard-complete'],
+      replayUnlockIds:[], knowledgeFlags:[], worldFlags:{}, keyItems:{}, boundRun:null
+    }
+  })) });
+  const { save } = loadSave(storage);
+  const normalized = save.load();
+  assert.equal(normalized.story.currentNodeId, 'c1_seat');
+  assert.deepEqual(Array.from(normalized.story.transitionIds), ['c1-enter-seat']);
+
+  storage.resetSetCalls();
+  const duplicate = save.transitionStory('c1_seat');
+  assert.equal(duplicate.ok, true);
+  assert.equal(duplicate.alreadyApplied, true);
+  assert.equal(storage.setCalls, 0);
+
+  const skipped = save.transitionStory('c1_shard');
+  assert.equal(skipped.ok, false);
+  assert.equal(skipped.reason, 'story-transition-not-allowed');
+  assert.equal(storage.setCalls, 0);
+
+  const advanced = save.transitionStory('c1_return_lamp');
+  assert.equal(advanced.ok, true);
+  assert.equal(storage.setCalls, 1);
+  assert.deepEqual(Array.from(advanced.story.transitionIds), ['c1-enter-seat','c1-seat-complete']);
+
+  const reversedStorage = createStorage({ 'moguria.save.v2': JSON.stringify(v2Save({
+    saveVersion:4,
+    story:{
+      schemaVersion:1, contentVersion:'c1-v1', entryMode:'existing', currentChapterId:'c1',
+      currentNodeId:'c1_return_lamp', completedChapterIds:[], seenEventIds:[],
+      transitionIds:['c1-seat-complete','c1-enter-seat'], replayUnlockIds:[],
+      knowledgeFlags:[], worldFlags:{}, keyItems:{}, boundRun:null
+    }
+  })) });
+  const reversed = loadSave(reversedStorage).save.load();
+  assert.equal(reversed.story.currentNodeId, 'c1_available');
+  assert.deepEqual(Array.from(reversed.story.transitionIds), []);
+});
+
+test('generic story updates cannot rewrite structural progression fields', () => {
+  const storage = createStorage({ 'moguria.save.v2': JSON.stringify(v2Save({ saveVersion:3 })) });
+  const { save } = loadSave(storage);
+  const protectedPatches = {
+    schemaVersion:99, contentVersion:'future', entryMode:'new', currentChapterId:'c9',
+    currentNodeId:'c1_complete', transitionIds:['c1-chapter-complete'],
+    completedChapterIds:['c1'], boundRun:{ runId:'forged', profileId:save.STORY_PROFILE_ID }
+  };
+  for (const [field, value] of Object.entries(protectedPatches)) {
+    storage.resetSetCalls();
+    const result = save.updateStory({ [field]:value });
+    assert.equal(result.ok, false, `${field} must be protected`);
+    assert.equal(result.reason, 'protected-story-field');
+    assert.equal(result.field, field);
+    assert.equal(storage.setCalls, 0);
+  }
+  const transitionPatch = save.transitionStory('c1_seat', { entryMode:'new' });
+  assert.equal(transitionPatch.ok, false);
+  assert.equal(transitionPatch.reason, 'protected-story-field');
+  assert.equal(storage.setCalls, 0);
+});
+
+test('a failed story transition remains retryable and records its ledger entry once', () => {
+  const storage = createStorage({ 'moguria.save.v2': JSON.stringify(v2Save({ saveVersion:3 })) });
+  const { save } = loadSave(storage);
+  storage.setFailure(true);
+  const failed = save.transitionStory('c1_seat', { worldFlags:{ c1InvitationSeen:true } });
+  assert.equal(failed.ok, false);
+  assert.equal(failed.reason, 'save-failed');
+  assert.equal(storage.json().story, undefined);
+
+  storage.setFailure(false);
+  storage.resetSetCalls();
+  const retried = save.transitionStory('c1_seat', { worldFlags:{ c1InvitationSeen:true } });
+  assert.equal(retried.ok, true);
+  assert.equal(storage.setCalls, 1);
+  assert.deepEqual(Array.from(retried.story.transitionIds), ['c1-enter-seat']);
+
+  storage.resetSetCalls();
+  const duplicate = save.transitionStory('c1_seat');
+  assert.equal(duplicate.ok, true);
+  assert.equal(duplicate.alreadyApplied, true);
+  assert.equal(storage.setCalls, 0);
+});
+
+test('Chapter 1 story run starts atomically for zero belly and binds its story state', () => {
+  const storage = createStorage({ 'moguria.save.v2': JSON.stringify(v2Save({ saveVersion:3, belly:0 })) });
+  const { save } = loadSave(storage);
+  const tooEarly = save.startRun({ profileId:save.STORY_PROFILE_ID, engine:'battle-v3' });
+  assert.equal(tooEarly.ok, false);
+  assert.equal(tooEarly.reason, 'story-not-ready');
+  advanceStoryToInvestigation(save);
+  storage.resetSetCalls();
+  const started = save.startRun({ profileId:save.STORY_PROFILE_ID, engine:'battle-v3' });
+  const persisted = storage.json();
+
+  assert.equal(started.ok, true);
+  assert.equal(storage.setCalls, 1);
+  assert.equal(persisted.belly, 0);
+  assert.equal(persisted.activeRun.profileId, 'story-c1-investigation-v1');
+  assert.equal(persisted.story.currentNodeId, 'c1_investigation_active');
+  assert.equal(persisted.story.boundRun.runId, started.runId);
+});
+
+test('story settlement is one atomic, zero-reward handoff and duplicate delivery is a no-op success', () => {
+  const storage = createStorage({ 'moguria.save.v2': JSON.stringify(v2Save({ saveVersion:3, belly:2, meta:{...v2Save().meta,coins:15} })) });
+  const { save } = loadSave(storage);
+  advanceStoryToInvestigation(save);
+  const started = save.startRun({ profileId:save.STORY_PROFILE_ID, engine:'battle-v3' });
+  const run = { runId:started.runId, profileId:save.STORY_PROFILE_ID, cleared:true, wave:4, skills:[], artifacts:[], synergies:[], titles:[] };
+  storage.resetSetCalls();
+  const settled = save.settleRun(run,{coins:999});
+  const persisted = storage.json();
+
+  assert.equal(settled.ok, true);
+  assert.equal(settled.amount, 0);
+  assert.equal(storage.setCalls, 1);
+  assert.equal(persisted.meta.coins, 15);
+  assert.equal(persisted.activeRun, null);
+  assert.equal(persisted.story.boundRun, null);
+  assert.equal(persisted.story.currentNodeId, 'c1_return_pending');
+  assert.equal(persisted.story.transitionIds.includes('c1-investigation-settled'), true);
+  assert.equal(persisted.runs.length, 1);
+
+  storage.resetSetCalls();
+  const duplicate = save.settleRun(run,{coins:999});
+  assert.equal(duplicate.ok, true);
+  assert.equal(duplicate.alreadySettled, true);
+  assert.equal(storage.setCalls, 0);
+  assert.equal(storage.json().runs.length, 1);
+  assert.equal(storage.json().meta.coins, 15);
+
+  const normal = save.startRun({ engine:'battle-v3' });
+  assert.equal(normal.ok, true);
+  storage.resetSetCalls();
+  const delayedDuplicate = save.settleRun(run,{coins:999});
+  assert.equal(delayedDuplicate.ok, true);
+  assert.equal(delayedDuplicate.alreadySettled, true);
+  assert.equal(storage.setCalls, 0);
+  assert.equal(storage.json().activeRun.runId, normal.runId);
+});
+
+test('an incomplete story run cannot settle or advance the chapter', () => {
+  const storage = createStorage({ 'moguria.save.v2': JSON.stringify(v2Save({ saveVersion:3, belly:1 })) });
+  const { save } = loadSave(storage);
+  advanceStoryToInvestigation(save);
+  const started = save.startRun({ profileId:save.STORY_PROFILE_ID });
+  storage.resetSetCalls();
+  const result = save.settleRun({ runId:started.runId, profileId:save.STORY_PROFILE_ID, cleared:false, skills:[], artifacts:[], synergies:[], titles:[] },{coins:30});
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, 'story-objective-incomplete');
+  assert.equal(storage.setCalls, 0);
+  assert.equal(storage.json().activeRun.runId, started.runId);
+  assert.equal(storage.json().story.currentNodeId, 'c1_investigation_active');
+});
+
+test('story settlement rejects a mismatched bound run without changing durable state', () => {
+  const storage = createStorage({ 'moguria.save.v2': JSON.stringify(v2Save({ saveVersion:3 })) });
+  const { save } = loadSave(storage);
+  advanceStoryToInvestigation(save);
+  const started = save.startRun({ profileId:save.STORY_PROFILE_ID });
+  const corrupted = storage.json();
+  corrupted.story.boundRun = { ...corrupted.story.boundRun, runId:'foreign-story-run' };
+  storage.setItem('moguria.save.v2', JSON.stringify(corrupted));
+  storage.resetSetCalls();
+  const result = save.settleRun({
+    runId:started.runId, profileId:save.STORY_PROFILE_ID, cleared:true,
+    wave:4, skills:[], artifacts:[], synergies:[], titles:[]
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, 'story-run-mismatch');
+  assert.equal(storage.setCalls, 0);
+  assert.equal(storage.json().activeRun.runId, started.runId);
+});
+
+test('Chapter 1 completion requires both investigation settlement and the old-record response', () => {
+  const storage = createStorage({ 'moguria.save.v2': JSON.stringify(v2Save({ saveVersion:3 })) });
+  const { save } = loadSave(storage);
+  advanceStoryToInvestigation(save);
+  const started = save.startRun({ profileId:save.STORY_PROFILE_ID });
+  assert.equal(save.settleRun({
+    runId:started.runId, profileId:save.STORY_PROFILE_ID, cleared:true,
+    wave:4, skills:[], artifacts:[], synergies:[], titles:[]
+  }).ok, true);
+  assert.equal(save.transitionStory('c1_record_signal').ok, true);
+
+  storage.resetSetCalls();
+  const missingKnowledge = save.completeStoryChapter();
+  assert.equal(missingKnowledge.ok, false);
+  assert.equal(missingKnowledge.reason, 'story-prerequisite-missing');
+  assert.equal(storage.setCalls, 0);
+
+  assert.equal(save.updateStory({ knowledgeFlags:['old-record-responded'], worldFlags:{ c1OldRecordResponded:true } }).ok, true);
+  storage.resetSetCalls();
+  const missingInvestigation = save.completeStoryChapter();
+  assert.equal(missingInvestigation.ok, false);
+  assert.equal(missingInvestigation.reason, 'story-prerequisite-missing');
+  assert.equal(storage.setCalls, 0);
+});
+
+test('Chapter 1 completion requires the record boundary and is idempotent', () => {
+  const storage = createStorage({ 'moguria.save.v2': JSON.stringify(v2Save({ saveVersion:3 })) });
+  const { save } = loadSave(storage);
+  advanceStoryToInvestigation(save);
+  const started = save.startRun({ profileId:save.STORY_PROFILE_ID });
+  assert.equal(save.settleRun({
+    runId:started.runId, profileId:save.STORY_PROFILE_ID, cleared:true,
+    wave:4, skills:[], artifacts:[], synergies:[], titles:[]
+  }).ok, true);
+  storage.resetSetCalls();
+
+  const tooEarly = save.completeStoryChapter();
+  assert.equal(tooEarly.ok, false);
+  assert.equal(tooEarly.reason, 'story-node-mismatch');
+  assert.equal(storage.setCalls, 0);
+
+  const protectedUpdate = save.updateStory({ currentNodeId:'c1_record_signal' });
+  assert.equal(protectedUpdate.ok, false);
+  assert.equal(protectedUpdate.reason, 'protected-story-field');
+  const record = save.transitionStory('c1_record_signal', {
+    knowledgeFlags:['old-record-responded'],
+    worldFlags:{ c1InvestigationComplete:true, c1OldRecordResponded:true }
+  });
+  assert.equal(record.ok, true);
+  storage.resetSetCalls();
+  const completed = save.completeStoryChapter();
+  assert.equal(completed.ok, true);
+  assert.equal(storage.setCalls, 1);
+  assert.equal(completed.story.currentNodeId, 'c1_complete');
+  assert.deepEqual(Array.from(completed.story.completedChapterIds), ['c1']);
+  assert.deepEqual(Array.from(completed.story.replayUnlockIds).sort(), ['c1-seat','c1-return-lamp','c1-shard','c1-record-signal'].sort());
+  assert.deepEqual(Array.from(completed.story.knowledgeFlags).sort(), ['return-light-seen','shared-lamp-seen','damaged-fragment-seen','old-record-responded'].sort());
+  assert.equal(completed.story.keyItems.purpleScarf, 'story-present-unexplained');
+  assert.equal(completed.story.transitionIds.at(-1), 'c1-chapter-complete');
+
+  storage.resetSetCalls();
+  const duplicate = save.completeStoryChapter();
+  assert.equal(duplicate.ok, true);
+  assert.equal(duplicate.alreadyCompleted, true);
+  assert.equal(storage.setCalls, 0);
+});
+
+test('a forged c1_complete node without the completion ledger repairs to a safe boundary', () => {
+  const storage = createStorage({
+    'moguria.save.v2': JSON.stringify(v2Save({
+      saveVersion: 4,
+      story: { contentVersion:'c1-v1', entryMode:'existing', currentNodeId:'c1_complete', completedChapterIds:[] }
+    }))
+  });
+  const repaired = loadSave(storage).save.load();
+  assert.equal(repaired.story.currentNodeId, 'c1_available');
+  assert.deepEqual(Array.from(repaired.story.completedChapterIds), []);
 });
 
 test('startRun consumes exactly one belly and persists activeRun in one write', () => {

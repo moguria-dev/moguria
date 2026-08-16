@@ -1,18 +1,33 @@
 # Animation contract
 
-Moguria battle motion combines semantic sprite animation with continuous presentation motion. The goal is not merely a higher frame count: adjacent poses, timing, state transitions, anchors, facing, and reduced-motion behavior must read as one living action at the actual mobile size.
+Moguria uses two renderer-specific animation contracts. Battle combines semantic sprite states with a continuous presentation rig in Phaser. Chapter 1 uses fixed-cell key-pose atlases plus procedural Canvas2D effects and DOM interaction. In both systems, timing, state order, anchors, pause/resume, and reduced-motion behavior must remain readable at actual mobile size.
 
 ## Sources and projections
 
 - `config/animation-manifest.json` is the canonical machine-readable animation inventory and target contract.
-- `assets/images/battle-v3/atlas.json` is the current renderer-compatible projection.
-- `config/project-state.json.validation.animationSource` names the canonical source, and `validation.animationRuntimeOutput` / `generated.animationManifest` name the compatibility output.
+- `assets/images/battle-v3/atlas.json` is the Battle renderer-compatible projection at runtime version 2.
+- `assets/animations/story-ch01.json` is the separate Story renderer-compatible projection at runtime version 1.
+- `config/project-state.json.validation.animationSource` names the canonical source. `validation.animationRuntimeOutput` / `generated.animationManifest` name Battle output; `validation.storyAnimationRuntimeOutput` / `generated.storyAnimationManifest` name Story output.
 - `js/battle-v3-scene.js` defines the per-actor renderer bridge, stable atlas-cell policy, companion formation, and temporary compatibility defaults.
 - `js/mogu-rig.js` defines deterministic Motion Rig 2 poses and state blending for Mogu, regular enemies, and companions. Bosses retain their reviewed atlas sequences.
+- `js/story-ch01-player.js` consumes the Story projection, advances its own deterministic presentation clock, draws Canvas2D visual layers, and coordinates DOM controls without depending on Phaser.
 
-The canonical timing, transition, and event-marker fields are currently an audited backfill of renderer behavior, not runtime-consumed configuration. This is recorded as `runtimeContract.implementationStatus: audited-backfill` and `runtimeConsumed: false`. The runtime remains authoritative until those fields are deliberately integrated and tested; do not claim that editing them alone changes gameplay presentation.
+For Battle, the canonical timing, transition, and event-marker fields remain an audited backfill of renderer behavior rather than runtime-consumed configuration. This is recorded as `runtimeContract.implementationStatus: audited-backfill` and `runtimeConsumed: false`; editing those Battle fields alone does not change gameplay presentation. Chapter 1 is different: its player consumes the separate Story projection, while save/game state remains authoritative for progression.
 
-Update shared image/grid/frame fields and `runtimeVersion` in the canonical manifest and renderer projection together. Motion Rig 2 changes renderer behavior and audited canonical metadata, but not the projected image/grid/frame object, so the compatibility projection remains byte-identical at runtime version 2. When renderer timing or semantic composition changes, update the audited contract in the same change and run the schema/projection validator plus renderer behavior tests. This coverage does not deep-compare the backfilled timing, transition, rig-profile, or marker values with the hardcoded implementation; semantic parity therefore remains an explicit review obligation. Do not hide a manifest discrepancy by adding another fallback table in code.
+Update shared image/grid/frame fields and the affected renderer version in the canonical manifest and its matching projection together. Motion Rig 2 changes renderer behavior and audited canonical metadata, but not the Battle projected image/grid/frame object, so Battle remains at runtime version 2. Chapter 1 additions use Story runtime version 1 and must not cause an unrelated Battle projection bump. When renderer timing or semantic composition changes, update the audited contract in the same change and run the schema/projection validator plus renderer behavior tests. Do not hide a manifest discrepancy by adding another fallback table in code.
+
+## Chapter 1 Story contract
+
+The Story projection declares four fixed-cell pose atlases, four scene motions, the logical `390×844` viewport, a DPR cap, the `375×667` minimum viewport, layer order, safe area, and lifecycle behavior. Text is never baked into painted assets: Canvas2D owns background/prop/actor/effect composition and DOM owns narrative copy, controls, focus, status announcements, and the deliberate hold.
+
+| Motion | Contract | Canonical reading |
+| --- | --- | --- |
+| Return Light | 5,400 ms one-shot | Stable → narrow/tilt → one irregular weakening → minimum that never turns off → incomplete, unstable recovery. It must not read as an alarm, input failure, or regular heartbeat, and the weakening must not repeat while the player waits to continue. |
+| Reverse/crack/rescue | 6,400 ms one-shot | Reverse begins before the crack and before young Mogu is caught. The Guardian chooses rescue and the scene exits with the child protected; the Star Companion is absent from the past. |
+| Fragment commitment | 700 ms pre-commit, untimed wait, 850 ms deliberate hold, then 5,250 ms post-commit sequence | There is no timeout, failure, score, QTE, or branch. The fragment is consumed, the community lamp restores first, Mogu shows interference and stumbles, the companion stays near, then Mogu masks discomfort with a smile. |
+| Ledger response | 5,400 ms one-shot | One ambiguous, incomplete pulse contains an exact 320 ms broken gap and ends in silence. It must not confirm survival, identity, a Guardian mark, “one awaiting return,” or an item acquisition. |
+
+Every one-shot event marker fires at most once per playback. Duplicate starts are ignored while running. Document hiding or pause freezes the story clock and defers unfired markers; resume continues from frozen time without catch-up. Scene exit cancels timers/listeners/particles and releases scene textures. Actor atlases use the full declared cell, stable pivot, and `noAutoCrop` rule so differing alpha bounds cannot move the actor's feet or center.
 
 ## Simulation and presentation boundary
 
@@ -112,6 +127,8 @@ The bubble, status copy, Tips, progress value, bar, gate and delayed wait hint r
 - Low quality may reduce ambient transform amplitude, but must not slow or skip combat states in a way that changes the perceived action window.
 - World movement and player-linked parallax remain legible under reduced motion.
 
+For Story, reduced motion preserves the same causal order using short crossfades between semantic still states. It disables camera shake, rapid parallax, particle flow, and zoom where declared, but does not remove the deliberate hold, the fragment/lamp ordering, rescue causality, or the ledger's 320 ms gap. Pausing or backgrounding must not fabricate elapsed time in either motion mode.
+
 ## Adding or changing animation
 
 1. Define role, variant, semantic states, timing, loop behavior, anchor and transition needs.
@@ -123,4 +140,6 @@ The bubble, status copy, Tips, progress value, bar, gate and delayed wait hint r
 7. Check projectile release alignment without changing its core spawn/collision path, and check renderer-only companion formation under rapid direction changes.
 8. Check that the same entity does not rotate or flip unexpectedly and that anchors do not jump.
 
-Relevant automated coverage is in `tests/mogu-rig.test.js`, `tests/battle-v3-scene.test.js`, `tests/battle-v3-loader.test.js`, and `tests/game-resume.test.js`.
+For Chapter 1, additionally verify all four motions at `390×844` and `375×667`, normal and reduced motion, before/after pause, after document hide/resume, and at the earliest and delayed fragment hold commitment. Runtime video and a pivot-overlay inspection remain required release evidence; do not infer them from a manifest-only test.
+
+Relevant automated coverage is in `tests/mogu-rig.test.js`, `tests/battle-v3-scene.test.js`, `tests/battle-v3-loader.test.js`, `tests/game-resume.test.js`, and `tests/story-ch01-manifest.test.js`. Renderer behavior still requires browser/video QA; projection validation alone is not a visual pass.

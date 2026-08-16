@@ -90,3 +90,15 @@ test('artifact choice, owned rail and pause journal share dedicated production a
   assert.match(game, />Lv\.\$\{level\}</);
   assert.doesNotMatch(game, /skill-icon__glyph[^\n]*a\.icon/);
 });
+
+test('completed Chapter 1 records stay hidden until completion and remain canon-safe', () => {
+  const ui=read('js/ui.js');
+  assert.match(ui,/completedChapterIds/);
+  assert.match(ui,/物語の記録/);
+  assert.match(ui,/回想[\s\S]*人物[\s\S]*用語/);
+  assert.match(ui,/帰り灯の夜／古い記録の脈動/);
+  assert.match(ui,/星の守り手/);
+  assert.match(ui,/正体と行方は、まだ分からない/);
+  assert.match(ui,/帰り灯／傷ついた欠片/);
+  assert.doesNotMatch(ui,/帰還待ち(?:一|1)名|星の守り手は生きて/);
+});

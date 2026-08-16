@@ -37,6 +37,15 @@ export function projectAnimationManifest(source) {
   };
 }
 
+export function projectStoryAnimationManifest(source) {
+  return {
+    version: source.storyRuntimeVersion,
+    renderContract: structuredClone(source.storyRenderContract),
+    poseAtlases: structuredClone(source.poseAtlases),
+    storyAnimations: structuredClone(source.storyAnimations)
+  };
+}
+
 export function projectAssetManifest(source, projectState) {
   const runtime = structuredClone(source.runtimeManifest);
   const budgetBytes = projectState.performanceBudgets.criticalTransferBytes;
@@ -68,7 +77,8 @@ export function validateProjectState(root = ROOT) {
   for (const jsonFile of [
     'package.json', 'data/skills.json', 'config/project-state.json',
     'config/asset-manifest.json', 'config/animation-manifest.json',
-    'assets/manifest.json', 'assets/images/battle-v3/atlas.json'
+    'assets/manifest.json', 'assets/images/battle-v3/atlas.json',
+    'assets/animations/story-ch01.json'
   ]) {
     report.capture(`validate unique JSON keys in ${jsonFile}`, () => readJson(root, jsonFile));
   }
@@ -102,15 +112,19 @@ export function validateProjectState(root = ROOT) {
   report.check(state.deployment?.target?.workflow === '.github/workflows/deploy-pages.yml',
     'target deployment must use the approved Pages workflow');
 
-  const requiredVersions = ['display', 'application', 'saveSchema', 'assetManifest', 'animationManifest'];
+  const requiredVersions = [
+    'display', 'application', 'saveSchema', 'assetManifest',
+    'animationManifest', 'storyAnimationManifest'
+  ];
   for (const key of requiredVersions) report.check(state.versions?.[key] !== undefined, `versions.${key} is required`);
   for (const [key, value] of Object.entries(state.performanceBudgets || {})) {
     report.check(Number.isInteger(value) && value > 0, `performanceBudgets.${key} must be a positive integer`);
   }
   const expectedBudgetKeys = [
     'criticalTransferBytes', 'criticalDecodedBytes', 'battlePackTransferBytes',
+    'storyPackTransferBytes',
     'singleRuntimeAssetBytes', 'initialStylesheetBytes', 'initialScriptBytes',
-    'dynamicBattleScriptBytes'
+    'dynamicBattleScriptBytes', 'dynamicStoryScriptBytes'
   ];
   for (const key of expectedBudgetKeys) report.check(key in (state.performanceBudgets || {}), `performanceBudgets.${key} is required`);
 
@@ -136,6 +150,7 @@ export function validateProjectState(root = ROOT) {
 
   const nvmVersion = report.capture('read .nvmrc', () => fs.readFileSync(repoPath(root, '.nvmrc'), 'utf8').trim());
   const packageJson = report.capture('read package.json', () => readJson(root, 'package.json'));
+  const packageLock = report.capture('read package-lock.json', () => readJson(root, 'package-lock.json'));
   report.check(nvmVersion === state.runtime?.nodeVersion, '.nvmrc must equal runtime.nodeVersion');
   report.check(packageJson?.engines?.node === state.runtime?.nodeVersion, 'package engines.node must equal the pinned Node version');
   report.check(process.version.slice(1) === state.runtime?.nodeVersion, `running Node ${process.version.slice(1)} must equal ${state.runtime?.nodeVersion}`);
@@ -147,6 +162,10 @@ export function validateProjectState(root = ROOT) {
   const ciWorkflow = report.capture('read CI workflow', () => fs.readFileSync(repoPath(root, '.github/workflows/ci.yml'), 'utf8')) || '';
   const deployWorkflow = report.capture('read Pages workflow', () => fs.readFileSync(repoPath(root, state.deployment.target.workflow), 'utf8')) || '';
   report.check(configText.includes(`version: '${state.versions.application}'`), 'js/config.js application version differs from project-state');
+  report.check(packageJson?.version === state.versions.display, 'package.json version differs from project-state display version');
+  report.check(packageLock?.version === state.versions.display
+    && packageLock?.packages?.['']?.version === state.versions.display,
+    'package-lock.json root version differs from project-state display version');
   report.check(configText.includes(`saveVersion: ${state.versions.saveSchema}`), 'js/config.js save version differs from project-state');
   report.check(saveText.includes(`const SAVE_VERSION = ${state.versions.saveSchema};`), 'js/save.js save version differs from project-state');
   report.check(indexText.includes(`<title>Moguria v${state.versions.display}</title>`), 'index title display version differs from project-state');
@@ -208,8 +227,23 @@ export function validateProjectState(root = ROOT) {
     report.capture('compare animation runtime projection', () => assert.deepStrictEqual(animationRuntime, projectAnimationManifest(animationSource)));
   }
 
+  const storyAnimationRuntime = report.capture('read runtime story animation manifest', () => (
+    readJson(root, state.validation.storyAnimationRuntimeOutput)
+  ));
+  if (animationSource && storyAnimationRuntime) {
+    report.check(animationSource.storyGeneratedFile === state.validation.storyAnimationRuntimeOutput,
+      'story animation generatedFile differs from project-state');
+    report.check(animationSource.storyRuntimeVersion === state.versions.storyAnimationManifest,
+      'story animation manifest version differs from project-state');
+    report.capture('compare story animation runtime projection', () => (
+      assert.deepStrictEqual(storyAnimationRuntime, projectStoryAnimationManifest(animationSource))
+    ));
+  }
+
   report.check(state.generated?.assetManifest === state.validation?.assetRuntimeOutput, 'generated.assetManifest must name the asset compatibility output');
   report.check(state.generated?.animationManifest === state.validation?.animationRuntimeOutput, 'generated.animationManifest must name the animation compatibility output');
+  report.check(state.generated?.storyAnimationManifest === state.validation?.storyAnimationRuntimeOutput,
+    'generated.storyAnimationManifest must name the story animation compatibility output');
   return report;
 }
 

@@ -27,7 +27,7 @@
     }
   },
   "runtimeManifest": {
-    "version": "3.3.2-loading-child",
+    "version": "3.4.0-story-ch01",
     "policy": {
       "initialAudio": "metadata-only",
       "lazyLoad": true,
@@ -438,6 +438,90 @@
         "id": "audio-basic",
         "label": "基本SE/BGM",
         "assets": []
+      },
+      {
+        "id": "story-ch01-core",
+        "label": "第1章 共通小道具",
+        "assets": [
+          {
+            "id": "story_ch01_animation_manifest",
+            "type": "json",
+            "src": "assets/animations/story-ch01.json?v=20260816-story-ch01-1"
+          },
+          {
+            "id": "story_ch01_return_light",
+            "type": "image",
+            "src": "assets/images/story/ch01/props/story_ch01_return_light.webp"
+          }
+        ]
+      },
+      {
+        "id": "story-ch01-return-hall",
+        "label": "第1章 帰り灯／逆流／救助",
+        "assets": [
+          {
+            "id": "story_ch01_bg_return_hall",
+            "type": "image",
+            "src": "assets/images/story/ch01/backgrounds/story_ch01_bg_return_hall.webp"
+          },
+          {
+            "id": "story_ch01_young_mogu_pose_atlas",
+            "type": "image",
+            "src": "assets/images/story/ch01/actors/story_ch01_young_mogu_pose_atlas.webp"
+          },
+          {
+            "id": "story_ch01_star_guardian_candidate_pose_atlas",
+            "type": "image",
+            "src": "assets/images/story/ch01/actors/story_ch01_star_guardian_candidate_pose_atlas.webp"
+          }
+        ]
+      },
+      {
+        "id": "story-ch01-fragment-chamber",
+        "label": "第1章 損傷片",
+        "assets": [
+          {
+            "id": "story_ch01_bg_fragment_chamber",
+            "type": "image",
+            "src": "assets/images/story/ch01/backgrounds/story_ch01_bg_fragment_chamber.webp"
+          },
+          {
+            "id": "story_ch01_damaged_fragment",
+            "type": "image",
+            "src": "assets/images/story/ch01/props/story_ch01_damaged_fragment.webp"
+          },
+          {
+            "id": "story_ch01_community_lamp",
+            "type": "image",
+            "src": "assets/images/story/ch01/props/story_ch01_community_lamp.webp"
+          },
+          {
+            "id": "story_ch01_current_mogu_pose_atlas",
+            "type": "image",
+            "src": "assets/images/story/ch01/actors/story_ch01_current_mogu_pose_atlas.webp"
+          },
+          {
+            "id": "story_ch01_star_companion_pose_atlas",
+            "type": "image",
+            "src": "assets/images/story/ch01/actors/story_ch01_star_companion_pose_atlas.webp"
+          }
+        ]
+      },
+      {
+        "id": "story-ch01-archive",
+        "label": "第1章 古い記録",
+        "assets": [
+          {
+            "id": "story_ch01_bg_archive",
+            "type": "image",
+            "src": "assets/images/story/ch01/backgrounds/story_ch01_bg_archive.webp"
+          },
+          {
+            "id": "story_ch01_return_ledger",
+            "type": "image",
+            "src": "assets/images/story/ch01/props/story_ch01_return_ledger.webp"
+          }
+        ]
       }
     ],
     "images": {
@@ -509,7 +593,18 @@
       "ui_refresh_slots_body": "assets/images/ui-refresh/slots/body.webp",
       "ui_refresh_slots_hand": "assets/images/ui-refresh/slots/hand.webp",
       "ui_refresh_slots_foot": "assets/images/ui-refresh/slots/foot.webp",
-      "ui_refresh_slots_charm": "assets/images/ui-refresh/slots/charm.webp"
+      "ui_refresh_slots_charm": "assets/images/ui-refresh/slots/charm.webp",
+      "story_ch01_bg_return_hall": "assets/images/story/ch01/backgrounds/story_ch01_bg_return_hall.webp",
+      "story_ch01_bg_fragment_chamber": "assets/images/story/ch01/backgrounds/story_ch01_bg_fragment_chamber.webp",
+      "story_ch01_bg_archive": "assets/images/story/ch01/backgrounds/story_ch01_bg_archive.webp",
+      "story_ch01_return_light": "assets/images/story/ch01/props/story_ch01_return_light.webp",
+      "story_ch01_damaged_fragment": "assets/images/story/ch01/props/story_ch01_damaged_fragment.webp",
+      "story_ch01_community_lamp": "assets/images/story/ch01/props/story_ch01_community_lamp.webp",
+      "story_ch01_return_ledger": "assets/images/story/ch01/props/story_ch01_return_ledger.webp",
+      "story_ch01_current_mogu_pose_atlas": "assets/images/story/ch01/actors/story_ch01_current_mogu_pose_atlas.webp",
+      "story_ch01_young_mogu_pose_atlas": "assets/images/story/ch01/actors/story_ch01_young_mogu_pose_atlas.webp",
+      "story_ch01_star_guardian_candidate_pose_atlas": "assets/images/story/ch01/actors/story_ch01_star_guardian_candidate_pose_atlas.webp",
+      "story_ch01_star_companion_pose_atlas": "assets/images/story/ch01/actors/story_ch01_star_companion_pose_atlas.webp"
     }
   },
   "legacyUncatalogedReferences": [
@@ -6516,6 +6611,905 @@
       "approval": {
         "status": "approved",
         "approvedAt": "2026-08-14"
+      }
+    },
+    {
+      "logicalId": "story_ch01_bg_return_hall",
+      "path": "assets/images/story/ch01/backgrounds/story_ch01_bg_return_hall.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "story-ch01-return-light",
+          "story-ch01-reverse-rescue"
+        ],
+        "states": [
+          "base"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260816-ch01-assets-1"
+      },
+      "dimensions": {
+        "width": 780,
+        "height": 1688
+      },
+      "minDisplay": {
+        "width": 375,
+        "height": 667,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "openai-imagegen-source-master-plus-deterministic-imagemagick-export",
+        "source": "Independent source master; no preview plate or key visual crop is used as runtime content.",
+        "generatedDate": "2026-08-16",
+        "approvalBasis": "approved-by-user-production-package",
+        "approvedDate": "2026-08-16"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "2818bac9b36594fcacbfa6bf7f4c082fa3879768",
+        "sha256": "4e18975155ccfad5d918710c326dc0004137ebaab143df636b74bf0afe9bbf56",
+        "bytes": 90264
+      },
+      "category": "story-background",
+      "semanticRole": "story.chapter-01.return-hall.background",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": false,
+        "channels": "srgb"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null,
+        "validatorNote": "Current repo validator requires unverified/null padding fields; measured bounds are retained in qaBounds."
+      },
+      "qaBounds": {
+        "threshold": "alpha>1%",
+        "x": 0,
+        "y": 0,
+        "width": 780,
+        "height": 1688,
+        "margins": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "sourceMasterId": "story-ch01-bg-return-hall-master-v1",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-16"
+      }
+    },
+    {
+      "logicalId": "story_ch01_bg_fragment_chamber",
+      "path": "assets/images/story/ch01/backgrounds/story_ch01_bg_fragment_chamber.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "story-ch01-fragment"
+        ],
+        "states": [
+          "base"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260816-ch01-assets-1"
+      },
+      "dimensions": {
+        "width": 780,
+        "height": 1688
+      },
+      "minDisplay": {
+        "width": 375,
+        "height": 667,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "openai-imagegen-source-master-plus-deterministic-imagemagick-export",
+        "source": "Independent source master; no preview plate or key visual crop is used as runtime content.",
+        "generatedDate": "2026-08-16",
+        "approvalBasis": "approved-by-user-production-package",
+        "approvedDate": "2026-08-16"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "38e82f5c41420c68aa7011f29afb9ba14c6f873a",
+        "sha256": "a4c59791a0a5527847b3bfcfd4da16855d455b011d8da448414c5d4cd6c3c298",
+        "bytes": 116306
+      },
+      "category": "story-background",
+      "semanticRole": "story.chapter-01.fragment-chamber.background",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": false,
+        "channels": "srgb"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null,
+        "validatorNote": "Current repo validator requires unverified/null padding fields; measured bounds are retained in qaBounds."
+      },
+      "qaBounds": {
+        "threshold": "alpha>1%",
+        "x": 0,
+        "y": 0,
+        "width": 780,
+        "height": 1688,
+        "margins": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "sourceMasterId": "story-ch01-bg-fragment-chamber-master-v1",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-16"
+      }
+    },
+    {
+      "logicalId": "story_ch01_bg_archive",
+      "path": "assets/images/story/ch01/backgrounds/story_ch01_bg_archive.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "story-ch01-ledger"
+        ],
+        "states": [
+          "base"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260816-ch01-assets-1"
+      },
+      "dimensions": {
+        "width": 780,
+        "height": 1688
+      },
+      "minDisplay": {
+        "width": 375,
+        "height": 667,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "openai-imagegen-source-master-plus-deterministic-imagemagick-export",
+        "source": "Independent source master; no preview plate or key visual crop is used as runtime content.",
+        "generatedDate": "2026-08-16",
+        "approvalBasis": "approved-by-user-production-package",
+        "approvedDate": "2026-08-16"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "ad406ec5b822315b16466b277a381a12bf6ede27",
+        "sha256": "615658f1321622f5823b80c9f3241ffbec75b5da45e896413658fc666d1c2e1c",
+        "bytes": 100578
+      },
+      "category": "story-background",
+      "semanticRole": "story.chapter-01.archive.background",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": false,
+        "channels": "srgb"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null,
+        "validatorNote": "Current repo validator requires unverified/null padding fields; measured bounds are retained in qaBounds."
+      },
+      "qaBounds": {
+        "threshold": "alpha>1%",
+        "x": 0,
+        "y": 0,
+        "width": 780,
+        "height": 1688,
+        "margins": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "sourceMasterId": "story-ch01-bg-archive-master-v1",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-16"
+      }
+    },
+    {
+      "logicalId": "story_ch01_return_light",
+      "path": "assets/images/story/ch01/props/story_ch01_return_light.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "story-ch01-return-light",
+          "story-ch01-reverse-rescue",
+          "story-ch01-ledger"
+        ],
+        "states": [
+          "stable",
+          "narrow",
+          "weak",
+          "unstable-recovery",
+          "overlap-ledger"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260816-ch01-assets-1"
+      },
+      "dimensions": {
+        "width": 256,
+        "height": 320
+      },
+      "minDisplay": {
+        "width": 48,
+        "height": 60,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "openai-imagegen-source-master-plus-deterministic-imagemagick-export",
+        "source": "Independent source master; no preview plate or key visual crop is used as runtime content.",
+        "generatedDate": "2026-08-16",
+        "approvalBasis": "approved-by-user-production-package",
+        "approvedDate": "2026-08-16"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "806a31a2b1cc3d7c6a5075a86c05eeccd06fb34c",
+        "sha256": "486ea56f3fe46ddd823bbc18cd71d8210230a3369c8f134093865a195080a481",
+        "bytes": 13318
+      },
+      "category": "story-prop",
+      "semanticRole": "story.chapter-01.return-light",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null,
+        "validatorNote": "Current repo validator requires unverified/null padding fields; measured bounds are retained in qaBounds."
+      },
+      "qaBounds": {
+        "threshold": "alpha>1%",
+        "x": 53,
+        "y": 16,
+        "width": 149,
+        "height": 288,
+        "margins": {
+          "top": 16,
+          "right": 54,
+          "bottom": 16,
+          "left": 53
+        }
+      },
+      "sourceMasterId": "story-ch01-return-light-master-v1",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-16"
+      }
+    },
+    {
+      "logicalId": "story_ch01_damaged_fragment",
+      "path": "assets/images/story/ch01/props/story_ch01_damaged_fragment.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "story-ch01-fragment"
+        ],
+        "states": [
+          "inert",
+          "heavy-pulse",
+          "consumed"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260816-ch01-assets-1"
+      },
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "minDisplay": {
+        "width": 40,
+        "height": 40,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "openai-imagegen-source-master-plus-deterministic-imagemagick-export",
+        "source": "Independent source master; no preview plate or key visual crop is used as runtime content.",
+        "generatedDate": "2026-08-16",
+        "approvalBasis": "approved-by-user-production-package",
+        "approvedDate": "2026-08-16"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "20c5cffc59cea1147227200ca3bedc382286b7b1",
+        "sha256": "171c18dd6c62f5e8b4305915e99252272b54964b9b2b32fb128db4ab403d93d4",
+        "bytes": 7404
+      },
+      "category": "story-prop",
+      "semanticRole": "story.chapter-01.damaged-fragment.not-star-fruit",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null,
+        "validatorNote": "Current repo validator requires unverified/null padding fields; measured bounds are retained in qaBounds."
+      },
+      "qaBounds": {
+        "threshold": "alpha>1%",
+        "x": 72,
+        "y": 20,
+        "width": 111,
+        "height": 216,
+        "margins": {
+          "top": 20,
+          "right": 73,
+          "bottom": 20,
+          "left": 72
+        }
+      },
+      "sourceMasterId": "story-ch01-damaged-fragment-master-v1",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-16"
+      }
+    },
+    {
+      "logicalId": "story_ch01_community_lamp",
+      "path": "assets/images/story/ch01/props/story_ch01_community_lamp.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "story-ch01-fragment"
+        ],
+        "states": [
+          "dim",
+          "restored-first"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260816-ch01-assets-1"
+      },
+      "dimensions": {
+        "width": 256,
+        "height": 320
+      },
+      "minDisplay": {
+        "width": 56,
+        "height": 70,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "openai-imagegen-source-master-plus-deterministic-imagemagick-export",
+        "source": "Independent source master; no preview plate or key visual crop is used as runtime content.",
+        "generatedDate": "2026-08-16",
+        "approvalBasis": "approved-by-user-production-package",
+        "approvedDate": "2026-08-16"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "7030a7ab213550f6002c786561249a35461d68b8",
+        "sha256": "b599a311ff8d3e7c0990666ef84fc50059ee96b32c0e5b57fba0346bc4b029b3",
+        "bytes": 20982
+      },
+      "category": "story-prop",
+      "semanticRole": "story.chapter-01.community-light",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null,
+        "validatorNote": "Current repo validator requires unverified/null padding fields; measured bounds are retained in qaBounds."
+      },
+      "qaBounds": {
+        "threshold": "alpha>1%",
+        "x": 16,
+        "y": 16,
+        "width": 223,
+        "height": 288,
+        "margins": {
+          "top": 16,
+          "right": 17,
+          "bottom": 16,
+          "left": 16
+        }
+      },
+      "sourceMasterId": "story-ch01-community-lamp-master-v1",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-16"
+      }
+    },
+    {
+      "logicalId": "story_ch01_return_ledger",
+      "path": "assets/images/story/ch01/props/story_ch01_return_ledger.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "story-ch01-ledger"
+        ],
+        "states": [
+          "inert",
+          "pulse-overlay-target"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260816-ch01-assets-1"
+      },
+      "dimensions": {
+        "width": 640,
+        "height": 480
+      },
+      "minDisplay": {
+        "width": 128,
+        "height": 96,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "openai-imagegen-source-master-plus-deterministic-imagemagick-export",
+        "source": "Independent source master; no preview plate or key visual crop is used as runtime content.",
+        "generatedDate": "2026-08-16",
+        "approvalBasis": "approved-by-user-production-package",
+        "approvedDate": "2026-08-16"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "0305d442c856c6972f077dc58d9dea2d2b023fd4",
+        "sha256": "855fb56d24e2fbb77dcf17a61fa53350309c0a626bb3fed3147cacaf9a714dd6",
+        "bytes": 57358
+      },
+      "category": "story-prop",
+      "semanticRole": "story.chapter-01.old-return-ledger",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null,
+        "validatorNote": "Current repo validator requires unverified/null padding fields; measured bounds are retained in qaBounds."
+      },
+      "qaBounds": {
+        "threshold": "alpha>1%",
+        "x": 20,
+        "y": 24,
+        "width": 600,
+        "height": 431,
+        "margins": {
+          "top": 24,
+          "right": 20,
+          "bottom": 25,
+          "left": 20
+        }
+      },
+      "sourceMasterId": "story-ch01-return-ledger-master-v1",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-16"
+      }
+    },
+    {
+      "logicalId": "story_ch01_current_mogu_pose_atlas",
+      "path": "assets/images/story/ch01/actors/story_ch01_current_mogu_pose_atlas.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "story-ch01-fragment"
+        ],
+        "states": [
+          "idle",
+          "reach",
+          "consume",
+          "body-interference",
+          "stumble",
+          "masking-smile"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260816-ch01-assets-1"
+      },
+      "dimensions": {
+        "width": 960,
+        "height": 640
+      },
+      "minDisplay": {
+        "width": 72,
+        "height": 72,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "openai-imagegen-source-master-plus-deterministic-imagemagick-export",
+        "source": "Independent source master; no preview plate or key visual crop is used as runtime content.",
+        "generatedDate": "2026-08-16",
+        "approvalBasis": "approved-by-user-production-package",
+        "approvedDate": "2026-08-16"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "f5dfcba11b2bcfa0f68a9c2dcac7460311e1dbda",
+        "sha256": "48e2fb8698978a571aa66c1dd0f8092f0b1a327e808f7c1f6997837d4fc2be10",
+        "bytes": 103524
+      },
+      "category": "story-actor-atlas",
+      "semanticRole": "story.chapter-01.current-mogu.fragment-sequence",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null,
+        "validatorNote": "Current repo validator requires unverified/null padding fields; measured bounds are retained in qaBounds."
+      },
+      "qaBounds": {
+        "threshold": "alpha>1%",
+        "x": 36,
+        "y": 22,
+        "width": 887,
+        "height": 590,
+        "margins": {
+          "top": 22,
+          "right": 37,
+          "bottom": 28,
+          "left": 36
+        }
+      },
+      "sourceMasterId": "story-ch01-current-mogu-pose-set-v1",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-16"
+      }
+    },
+    {
+      "logicalId": "story_ch01_young_mogu_pose_atlas",
+      "path": "assets/images/story/ch01/actors/story_ch01_young_mogu_pose_atlas.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "story-ch01-reverse-rescue"
+        ],
+        "states": [
+          "calm",
+          "startled",
+          "caught",
+          "lifted",
+          "reach-rescuer",
+          "safe-huddle"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260816-ch01-assets-1"
+      },
+      "dimensions": {
+        "width": 768,
+        "height": 512
+      },
+      "minDisplay": {
+        "width": 64,
+        "height": 64,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "openai-imagegen-source-master-plus-deterministic-imagemagick-export",
+        "source": "Independent source master; no preview plate or key visual crop is used as runtime content.",
+        "generatedDate": "2026-08-16",
+        "approvalBasis": "approved-by-user-production-package",
+        "approvedDate": "2026-08-16"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "a90cf07877520361c99c591820310161b7367759",
+        "sha256": "7a84e47460705b611e51019fd26ca222e7ae980ce0cb2d09176545d10373a0c7",
+        "bytes": 68612
+      },
+      "category": "story-actor-atlas",
+      "semanticRole": "story.chapter-01.young-mogu.reverse-rescue",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null,
+        "validatorNote": "Current repo validator requires unverified/null padding fields; measured bounds are retained in qaBounds."
+      },
+      "qaBounds": {
+        "threshold": "alpha>1%",
+        "x": 16,
+        "y": 26,
+        "width": 724,
+        "height": 466,
+        "margins": {
+          "top": 26,
+          "right": 28,
+          "bottom": 20,
+          "left": 16
+        }
+      },
+      "sourceMasterId": "story-ch01-young-mogu-pose-set-v1",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-16"
+      }
+    },
+    {
+      "logicalId": "story_ch01_star_guardian_candidate_pose_atlas",
+      "path": "assets/images/story/ch01/actors/story_ch01_star_guardian_candidate_pose_atlas.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "story-ch01-reverse-rescue"
+        ],
+        "states": [
+          "watch",
+          "commit",
+          "lunge",
+          "contact",
+          "protect"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260816-ch01-assets-1"
+      },
+      "dimensions": {
+        "width": 1152,
+        "height": 768
+      },
+      "minDisplay": {
+        "width": 96,
+        "height": 96,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "openai-imagegen-source-master-plus-deterministic-imagemagick-export",
+        "source": "Independent source master; no preview plate or key visual crop is used as runtime content.",
+        "generatedDate": "2026-08-16",
+        "approvalBasis": "approved-by-user-production-package",
+        "approvedDate": "2026-08-16"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "f4b4cd09ba2e4f25809153028020e5f7841ba7bc",
+        "sha256": "335d4fffb8a07b52d741d586bebce298a1285a21f5c2b00fe1af34d4e3204de5",
+        "bytes": 136086
+      },
+      "category": "story-actor-atlas",
+      "semanticRole": "story.chapter-01.star-guardian.rescue",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null,
+        "validatorNote": "Current repo validator requires unverified/null padding fields; measured bounds are retained in qaBounds."
+      },
+      "qaBounds": {
+        "threshold": "alpha>1%",
+        "x": 17,
+        "y": 24,
+        "width": 1118,
+        "height": 724,
+        "margins": {
+          "top": 24,
+          "right": 17,
+          "bottom": 20,
+          "left": 17
+        }
+      },
+      "sourceMasterId": "story-ch01-star-guardian-candidate-pose-set-v1",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-16"
+      }
+    },
+    {
+      "logicalId": "story_ch01_star_companion_pose_atlas",
+      "path": "assets/images/story/ch01/actors/story_ch01_star_companion_pose_atlas.webp",
+      "type": "image",
+      "usage": {
+        "screens": [
+          "story-ch01-fragment"
+        ],
+        "states": [
+          "idle",
+          "notice",
+          "worry",
+          "approach",
+          "concern",
+          "stay-near"
+        ]
+      },
+      "lifecycle": {
+        "status": "active",
+        "deprecated": false,
+        "replacement": null
+      },
+      "version": {
+        "cacheToken": "20260816-ch01-assets-1"
+      },
+      "dimensions": {
+        "width": 480,
+        "height": 320
+      },
+      "minDisplay": {
+        "width": 40,
+        "height": 40,
+        "unit": "css-px"
+      },
+      "sourceMaster": null,
+      "provenance": {
+        "method": "openai-imagegen-source-master-plus-deterministic-imagemagick-export",
+        "source": "Independent source master; no preview plate or key visual crop is used as runtime content.",
+        "generatedDate": "2026-08-16",
+        "approvalBasis": "approved-by-user-production-package",
+        "approvedDate": "2026-08-16"
+      },
+      "integrity": {
+        "strategy": "git-blob-sha1",
+        "value": "d1248cef30696f66da5d8dce72bb811c90d6be80",
+        "sha256": "066c8a721cd2d35df267f33a6f7a14d64a397494b67e376965f529b47f783593",
+        "bytes": 34134
+      },
+      "category": "story-actor-atlas",
+      "semanticRole": "story.chapter-01.star-companion.concern",
+      "format": "webp",
+      "transparency": {
+        "status": "verified-imagemagick",
+        "hasAlpha": true,
+        "channels": "srgba"
+      },
+      "padding": {
+        "status": "unverified",
+        "unit": "px",
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "left": null,
+        "validatorNote": "Current repo validator requires unverified/null padding fields; measured bounds are retained in qaBounds."
+      },
+      "qaBounds": {
+        "threshold": "alpha>1%",
+        "x": 13,
+        "y": 12,
+        "width": 454,
+        "height": 296,
+        "margins": {
+          "top": 12,
+          "right": 13,
+          "bottom": 12,
+          "left": 13
+        }
+      },
+      "sourceMasterId": "story-ch01-star-companion-pose-set-v1",
+      "approval": {
+        "status": "approved",
+        "approvedAt": "2026-08-16"
       }
     }
   ]

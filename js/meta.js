@@ -96,7 +96,7 @@ window.MoguriaMeta = (() => {
   // Existing entry point used by the current battle. Unlike the v2 version,
   // the returned object reports persistence success and all records commit together.
   function awardFromRun(run){
-    const amount = runReward(run);
+    const amount = run?.profileId === 'story-c1-investigation-v1' ? 0 : runReward(run);
     const result = window.MoguriaSave.settleRun(run, { coins: amount });
     if (result.ok) run.coins = amount;
     return { ...result, amount };
