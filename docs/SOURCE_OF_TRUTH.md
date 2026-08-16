@@ -10,7 +10,7 @@ This document prevents project workflow, repository documentation, executable be
 | Assistant workflow, visual gates, approval gates, minimum QA | Moguria project workflow and integrated rules | These govern how work is performed, not the current code architecture. |
 | Repository, runtime, deployment, versions, budgets, validation and manifest paths | `config/project-state.json` | Verify it against provider settings and executable files before risky work. |
 | Asset inventory | `config/asset-manifest.json` | `assets/manifest.json` is the current runtime projection. |
-| Animation state/data contract | `config/animation-manifest.json` | `assets/images/battle-v3/atlas.json` is the current renderer projection. |
+| Animation state/data contract | `config/animation-manifest.json` | `assets/images/battle-v3/atlas.json` is the Battle projection at version 2; `assets/animations/story-ch01.json` is the independent Story projection at version 1. |
 | Game behavior | Code and automated tests | A documentation conflict is a defect to report, not a reason to guess. |
 | Pages source, branch protection, build status | GitHub repository settings | These settings determine whether a push publishes. |
 | Past changes | `CHANGELOG.md`, tags and release notes | Historical and non-normative. |
@@ -36,11 +36,13 @@ config/project-state.json
   │  └─ validation.assetRuntimeOutput / generated.assetManifest
   │                                  └─ assets/manifest.json
   └─ validation.animationSource ──> config/animation-manifest.json
-     └─ validation.animationRuntimeOutput / generated.animationManifest
-                                      └─ assets/images/battle-v3/atlas.json
+     ├─ validation.animationRuntimeOutput / generated.animationManifest
+     │                                └─ assets/images/battle-v3/atlas.json (Battle v2)
+     └─ validation.storyAnimationRuntimeOutput / generated.storyAnimationManifest
+                                      └─ assets/animations/story-ch01.json (Story v1)
 ```
 
-“Runtime projection” describes the compatibility file consumed by current code. Generation is not installed in the current baseline: update the canonical file and projection together, then run the validator named by project-state. Do not hand-edit one and assume the other follows automatically.
+“Runtime projection” describes a compatibility file consumed by current code. Generation is not installed in the current baseline: update the canonical file and every affected projection together, then run the validator named by project-state. A Story-only change does not require changing the Battle projection when its projected contract is unchanged. Do not hand-edit one file and assume the others follow automatically.
 
 Version rules:
 
@@ -48,7 +50,8 @@ Version rules:
 - `project-state.versions.display` is the human-facing release label derived from the application version policy.
 - `project-state.versions.saveSchema` must match the payload version normalized by `MoguriaSave`.
 - `project-state.versions.assetManifest` must match the canonical asset manifest schema/version policy.
-- `project-state.versions.animationManifest` must match the canonical animation manifest schema/version policy.
+- `project-state.versions.animationManifest` must match the Battle runtime projection version.
+- `project-state.versions.storyAnimationManifest` must match the Story runtime projection version.
 - Human-facing version text and the changelog must be checked against these values before publication.
 
 Budget rules:

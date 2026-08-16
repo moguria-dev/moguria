@@ -8,6 +8,19 @@
 - Added canonical development, architecture, asset, animation, testing, deployment, recovery, save, security, and agent-environment guidance plus contribution templates.
 - Pinned the Node runtime and added project, asset, HTML, Service Worker, test, and preflight validation gates.
 
+## v3.4.0 — Chapter 1 playable vertical slice
+
+- Added the approved four-motion Chapter 1 playable vertical slice in a full-screen story player with Canvas2D visuals, DOM text/controls, pause/resume, and reduced-motion behavior. This release does not claim the complete 7–9 minute flow from the Game Design v0.1 review draft.
+- Added four lazy story packs containing 11 approved production image assets without increasing the 17-asset Home critical set.
+- Added the independent Story animation projection `assets/animations/story-ch01.json` at version 1; the Battle projection remains at version 2.
+- Advanced the normalized save payload to version 4 under the unchanged `moguria.save.v2` key and added an independently normalized `story` area.
+- Added the dedicated four-wave Chapter 1 investigation profile with zero belly cost and free retry while preserving the normal 12-wave run.
+- Updated Home entry rules: new players receive the story as the main action, existing players keep an optional story entry, and any active run takes resume priority.
+- Connected the published vertical-slice route through return, the single broken ledger response, route completion, and Home.
+- Added manifest/save/story/run-profile coverage, a browser-level public-API lifecycle through ledger return, six stable Story states, and 14 marker-adjacent Canvas captures at 390×844 / 375×667. A real iPhone Safari check remains a separate required-pending release gate until performed.
+
+This entry describes the v3.4.0 source release. It is not evidence that required CI, merge, Pages dispatch, or public-site verification has completed.
+
 ## v3.2.1 — battle-v3 QA hardening
 
 - スキル／アーティファクト選択中の保存復帰と、リロール0回の保持を修正

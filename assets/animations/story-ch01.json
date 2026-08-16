@@ -1,0 +1,820 @@
+{
+  "version": 1,
+  "renderContract": {
+    "renderer": "canvas-2d-keypose-atlas-with-continuous-rig",
+    "uiLayer": "dom-dialogue-hold-input-safe-area-and-transitions",
+    "battlePhaserDependency": false,
+    "logicalViewport": {
+      "width": 390,
+      "height": 844,
+      "unit": "css-px"
+    },
+    "dprCap": 2,
+    "minimumViewport": {
+      "width": 375,
+      "height": 667,
+      "unit": "css-px"
+    },
+    "narrativeSafeArea": {
+      "x": 24,
+      "y": 88,
+      "width": 342,
+      "height": 668,
+      "unit": "logical-px"
+    },
+    "loadPolicy": "scene-specific-lazy-packs; no new critical assets",
+    "backgroundFit": "cover",
+    "layerOrder": [
+      "background",
+      "rear-vfx",
+      "props",
+      "actors",
+      "front-vfx",
+      "dom-ui"
+    ],
+    "proceduralVfx": [
+      "return-light-core",
+      "world-flow",
+      "rift",
+      "fragment-pulse",
+      "community-light-core",
+      "ledger-pulse"
+    ]
+  },
+  "poseAtlases": {
+    "currentMogu": {
+      "animationId": "story-ch01.current-mogu",
+      "actorId": "current-mogu",
+      "assetId": "story_ch01_current_mogu_pose_atlas",
+      "width": 960,
+      "height": 640,
+      "columns": 3,
+      "rows": 2,
+      "cell": {
+        "width": 320,
+        "height": 320
+      },
+      "pivot": {
+        "space": "cell-normalized",
+        "x": 0.5,
+        "y": 0.9125
+      },
+      "transformOrigin": "50% 91.25%",
+      "minimumDisplaySizeCssPx": 72,
+      "states": {
+        "idle": 0,
+        "reach": 1,
+        "consumed": 2,
+        "bodyInterference": 3,
+        "stumble": 4,
+        "maskingSmile": 5
+      },
+      "noAutoCrop": true,
+      "frameOrder": "row-major",
+      "cellOrigin": "top-left",
+      "scaleBasis": "cell-height",
+      "visualBounds": {
+        "space": "cell-px",
+        "policy": "alpha>1% inside fixed cell",
+        "frames": {
+          "idle": {
+            "x": 37,
+            "y": 22,
+            "width": 245,
+            "height": 270
+          },
+          "reach": {
+            "x": 22,
+            "y": 22,
+            "width": 275,
+            "height": 270
+          },
+          "consumed": {
+            "x": 37,
+            "y": 22,
+            "width": 246,
+            "height": 270
+          },
+          "bodyInterference": {
+            "x": 36,
+            "y": 22,
+            "width": 248,
+            "height": 270
+          },
+          "stumble": {
+            "x": 26,
+            "y": 22,
+            "width": 268,
+            "height": 270
+          },
+          "maskingSmile": {
+            "x": 45,
+            "y": 22,
+            "width": 230,
+            "height": 270
+          }
+        }
+      }
+    },
+    "youngMogu": {
+      "animationId": "story-ch01.young-mogu",
+      "actorId": "young-mogu",
+      "assetId": "story_ch01_young_mogu_pose_atlas",
+      "width": 768,
+      "height": 512,
+      "columns": 3,
+      "rows": 2,
+      "cell": {
+        "width": 256,
+        "height": 256
+      },
+      "pivot": {
+        "space": "cell-normalized",
+        "x": 0.5,
+        "y": 0.921875
+      },
+      "transformOrigin": "50% 92.1875%",
+      "minimumDisplaySizeCssPx": 64,
+      "states": {
+        "calm": 0,
+        "startled": 1,
+        "caught": 2,
+        "lifted": 3,
+        "reachRescuer": 4,
+        "safeHuddle": 5
+      },
+      "noAutoCrop": true,
+      "frameOrder": "row-major",
+      "cellOrigin": "top-left",
+      "scaleBasis": "cell-height",
+      "visualBounds": {
+        "space": "cell-px",
+        "policy": "alpha>1% inside fixed cell",
+        "frames": {
+          "calm": {
+            "x": 50,
+            "y": 26,
+            "width": 155,
+            "height": 210
+          },
+          "startled": {
+            "x": 48,
+            "y": 26,
+            "width": 159,
+            "height": 210
+          },
+          "caught": {
+            "x": 27,
+            "y": 26,
+            "width": 201,
+            "height": 210
+          },
+          "lifted": {
+            "x": 16,
+            "y": 30,
+            "width": 224,
+            "height": 206
+          },
+          "reachRescuer": {
+            "x": 19,
+            "y": 26,
+            "width": 217,
+            "height": 210
+          },
+          "safeHuddle": {
+            "x": 43,
+            "y": 26,
+            "width": 169,
+            "height": 210
+          }
+        }
+      }
+    },
+    "starGuardianCandidate": {
+      "animationId": "story-ch01.star-guardian-candidate",
+      "actorId": "star-guardian",
+      "assetId": "story_ch01_star_guardian_candidate_pose_atlas",
+      "width": 1152,
+      "height": 768,
+      "columns": 3,
+      "rows": 2,
+      "cell": {
+        "width": 384,
+        "height": 384
+      },
+      "pivot": {
+        "space": "cell-normalized",
+        "x": 0.5,
+        "y": 0.9479167
+      },
+      "transformOrigin": "50% 94.79167%",
+      "minimumDisplaySizeCssPx": 96,
+      "states": {
+        "watch": 0,
+        "commit": 1,
+        "lunge": 2,
+        "contact": 3,
+        "protect": 4
+      },
+      "emptyFrames": [
+        5
+      ],
+      "lifecycle": "approved-production",
+      "noAutoCrop": true,
+      "frameOrder": "row-major",
+      "cellOrigin": "top-left",
+      "scaleBasis": "cell-height",
+      "visualBounds": {
+        "space": "cell-px",
+        "policy": "alpha>1% inside fixed cell",
+        "frames": {
+          "watch": {
+            "x": 19,
+            "y": 24,
+            "width": 345,
+            "height": 340
+          },
+          "commit": {
+            "x": 17,
+            "y": 85,
+            "width": 350,
+            "height": 279
+          },
+          "lunge": {
+            "x": 17,
+            "y": 119,
+            "width": 350,
+            "height": 245
+          },
+          "contact": {
+            "x": 17,
+            "y": 91,
+            "width": 350,
+            "height": 273
+          },
+          "protect": {
+            "x": 17,
+            "y": 87,
+            "width": 350,
+            "height": 277
+          }
+        }
+      }
+    },
+    "starCompanion": {
+      "animationId": "story-ch01.star-companion",
+      "actorId": "star-companion",
+      "assetId": "story_ch01_star_companion_pose_atlas",
+      "width": 480,
+      "height": 320,
+      "columns": 3,
+      "rows": 2,
+      "cell": {
+        "width": 160,
+        "height": 160
+      },
+      "pivot": {
+        "space": "cell-normalized",
+        "x": 0.5,
+        "y": 0.5
+      },
+      "transformOrigin": "50% 50%",
+      "minimumDisplaySizeCssPx": 40,
+      "states": {
+        "idle": 0,
+        "notice": 1,
+        "worry": 2,
+        "approach": 3,
+        "concern": 4,
+        "stayNear": 5
+      },
+      "noAutoCrop": true,
+      "frameOrder": "row-major",
+      "cellOrigin": "top-left",
+      "scaleBasis": "cell-height",
+      "visualBounds": {
+        "space": "cell-px",
+        "policy": "alpha>1% inside fixed cell",
+        "frames": {
+          "idle": {
+            "x": 13,
+            "y": 12,
+            "width": 134,
+            "height": 136
+          },
+          "notice": {
+            "x": 15,
+            "y": 12,
+            "width": 130,
+            "height": 136
+          },
+          "worry": {
+            "x": 13,
+            "y": 12,
+            "width": 134,
+            "height": 136
+          },
+          "approach": {
+            "x": 14,
+            "y": 12,
+            "width": 132,
+            "height": 136
+          },
+          "concern": {
+            "x": 13,
+            "y": 12,
+            "width": 134,
+            "height": 136
+          },
+          "stayNear": {
+            "x": 12,
+            "y": 12,
+            "width": 135,
+            "height": 136
+          }
+        }
+      }
+    }
+  },
+  "storyAnimations": {
+    "returnLightFlicker": {
+      "animationId": "story-ch01.return-light-flicker",
+      "actorId": "return-light-core",
+      "assetIds": [
+        "story_ch01_bg_return_hall",
+        "story_ch01_return_light"
+      ],
+      "screen": "story-ch01-return-light",
+      "renderMode": "canvas2d-procedural-light-over-independent-prop",
+      "durationMs": 5400,
+      "loop": true,
+      "holdMs": 0,
+      "fallback": {
+        "assetId": "story_ch01_return_light",
+        "state": "stable"
+      },
+      "phases": [
+        {
+          "id": "stable",
+          "startMs": 0
+        },
+        {
+          "id": "narrow",
+          "startMs": 1480
+        },
+        {
+          "id": "weaken-once",
+          "startMs": 2260
+        },
+        {
+          "id": "minimum-not-off",
+          "startMs": 2860
+        },
+        {
+          "id": "restore",
+          "startMs": 3320
+        },
+        {
+          "id": "unstable-recovery",
+          "startMs": 4380
+        },
+        {
+          "id": "loop",
+          "startMs": 5400
+        }
+      ],
+      "entryState": "stable",
+      "exitState": "unstable-recovery",
+      "interruptible": "any-time-freeze-at-current-luminance",
+      "lifecycle": {
+        "pause": "freeze-animation-clock-vfx-and-hold-timer",
+        "resume": "continue-from-frozen-time-without-catch-up",
+        "documentHidden": "pause-and-defer-unfired-markers",
+        "offscreen": "retain-semantic-state-and-stop-ambient-raf",
+        "sceneExit": "cancel-timers-listeners-particles-and-release-textures",
+        "reentry": "initialize-clean-entry-state",
+        "duplicateStart": "ignore-while-running",
+        "markerGuarantee": "each-one-shot-marker-fires-at-most-once-per-run"
+      },
+      "reducedMotion": {
+        "mode": "three-static-states-with-140ms-crossfade",
+        "states": [
+          "stable",
+          "weakened",
+          "incomplete-recovery"
+        ],
+        "preservesCausality": true
+      },
+      "canonAssertions": {
+        "mustRead": [
+          "one irregular weakening",
+          "never fully extinguishes",
+          "recovery remains unstable"
+        ],
+        "mustNotRead": [
+          "alarm",
+          "input failure",
+          "equal-interval heartbeat",
+          "complete restoration"
+        ]
+      }
+    },
+    "reverseCrackRescue": {
+      "animationId": "story-ch01.reverse-crack-rescue",
+      "actorId": "chapter-01-rescue-group",
+      "assetIds": [
+        "story_ch01_bg_return_hall",
+        "story_ch01_return_light",
+        "story_ch01_young_mogu_pose_atlas",
+        "story_ch01_star_guardian_candidate_pose_atlas"
+      ],
+      "screen": "story-ch01-reverse-rescue",
+      "renderMode": "canvas2d-keypose-atlas-plus-procedural-flow-and-rift",
+      "durationMs": 6400,
+      "loop": false,
+      "holdMs": 0,
+      "fallback": {
+        "youngMogu": "safeHuddle",
+        "starGuardian": "protect",
+        "clearProceduralVfx": true
+      },
+      "eventMarkers": [
+        {
+          "id": "flow_halt",
+          "atMs": 650,
+          "oneShot": true
+        },
+        {
+          "id": "reverse_begin",
+          "atMs": 900,
+          "oneShot": true
+        },
+        {
+          "id": "crack_begin",
+          "atMs": 1550,
+          "oneShot": true
+        },
+        {
+          "id": "crack_open",
+          "atMs": 2250,
+          "oneShot": true
+        },
+        {
+          "id": "mogu_caught",
+          "atMs": 2550,
+          "oneShot": true,
+          "pose": "youngMogu.caught"
+        },
+        {
+          "id": "guardian_commit",
+          "atMs": 3100,
+          "oneShot": true,
+          "pose": "starGuardianCandidate.commit"
+        },
+        {
+          "id": "guardian_contact",
+          "atMs": 3650,
+          "oneShot": true,
+          "pose": "starGuardianCandidate.contact"
+        },
+        {
+          "id": "rescue_clear",
+          "atMs": 4450,
+          "oneShot": true,
+          "poses": [
+            "youngMogu.safeHuddle",
+            "starGuardianCandidate.protect"
+          ]
+        },
+        {
+          "id": "protect_hold",
+          "atMs": 5200,
+          "oneShot": true
+        },
+        {
+          "id": "end",
+          "atMs": 6400,
+          "oneShot": true
+        }
+      ],
+      "requiredOrder": [
+        "reverse_begin",
+        "crack_begin",
+        "mogu_caught",
+        "guardian_commit",
+        "guardian_contact"
+      ],
+      "entryState": {
+        "youngMogu": "calm",
+        "starGuardian": "watch",
+        "vfx": "flow-forward"
+      },
+      "exitState": {
+        "youngMogu": "safeHuddle",
+        "starGuardian": "protect",
+        "vfx": "cleared"
+      },
+      "interruptible": "non-loop-sequence-not-user-interruptible-after-start",
+      "lifecycle": {
+        "pause": "freeze-animation-clock-vfx-and-hold-timer",
+        "resume": "continue-from-frozen-time-without-catch-up",
+        "documentHidden": "pause-and-defer-unfired-markers",
+        "offscreen": "retain-semantic-state-and-stop-ambient-raf",
+        "sceneExit": "cancel-timers-listeners-particles-and-release-textures",
+        "reentry": "initialize-clean-entry-state",
+        "duplicateStart": "ignore-while-running",
+        "markerGuarantee": "each-one-shot-marker-fires-at-most-once-per-run"
+      },
+      "reducedMotion": {
+        "mode": "four-static-causal-states-with-140ms-crossfade",
+        "states": [
+          "reverse-direction",
+          "crack",
+          "rescue-contact",
+          "safe-protect"
+        ],
+        "disable": [
+          "camera-shake",
+          "particle-flow",
+          "zoom",
+          "rapid-parallax"
+        ]
+      },
+      "canonAssertions": {
+        "mustRead": [
+          "reverse begins before crack and before Mogu is caught",
+          "guardian chooses to rescue",
+          "child is safe at exit"
+        ],
+        "mustNotRead": [
+          "Mogu caused the event",
+          "player failed an input",
+          "guardian abandoned the child",
+          "star companion appears in the past scene"
+        ]
+      }
+    },
+    "fragmentConsumeStumble": {
+      "animationId": "story-ch01.fragment-consume-stumble",
+      "actorId": "chapter-01-fragment-group",
+      "assetIds": [
+        "story_ch01_bg_fragment_chamber",
+        "story_ch01_damaged_fragment",
+        "story_ch01_community_lamp",
+        "story_ch01_current_mogu_pose_atlas",
+        "story_ch01_star_companion_pose_atlas"
+      ],
+      "screen": "story-ch01-fragment",
+      "renderMode": "canvas2d-keypose-atlas-plus-procedural-light",
+      "nominalDurationMsAtEarliestCommit": 6800,
+      "preCommitLogicalTimeMs": 700,
+      "nominalDurationMsAfterHoldConfirmed": 5250,
+      "loop": false,
+      "interaction": {
+        "type": "deliberate-hold-no-time-limit-no-failure",
+        "availableAtMs": 700,
+        "requiredHoldMs": 850,
+        "timelinePolicy": "pause-precommit-at-700ms-with-no-timeout; after-850ms-continuous-hold-start-post-commit-clock-at-0",
+        "holdCommitTimeOrigin": "post-commit event markers use milliseconds after successful hold confirmation; wait duration is excluded",
+        "pointerCancelBeforeCommit": "return-to-precommit-state",
+        "pointerCancelAfterCommit": "ignored-sequence-is-noninterruptible",
+        "choiceBranch": false,
+        "qte": false
+      },
+      "eventMarkers": [
+        {
+          "id": "fragment_heavy_pulse",
+          "clock": "pre-commit",
+          "atMs": 0,
+          "oneShot": true
+        },
+        {
+          "id": "hold_available",
+          "clock": "pre-commit",
+          "atMs": 700,
+          "oneShot": true
+        },
+        {
+          "id": "hold_confirmed",
+          "clock": "post-commit",
+          "atMs": 0,
+          "oneShot": true
+        },
+        {
+          "id": "contact",
+          "clock": "post-commit",
+          "atMs": 350,
+          "oneShot": true,
+          "pose": "currentMogu.reach"
+        },
+        {
+          "id": "consumed",
+          "clock": "post-commit",
+          "atMs": 650,
+          "oneShot": true,
+          "pose": "currentMogu.consumed"
+        },
+        {
+          "id": "community_light_restored",
+          "clock": "post-commit",
+          "atMs": 1050,
+          "oneShot": true
+        },
+        {
+          "id": "body_interference",
+          "clock": "post-commit",
+          "atMs": 1500,
+          "oneShot": true,
+          "pose": "currentMogu.bodyInterference"
+        },
+        {
+          "id": "stumble",
+          "clock": "post-commit",
+          "atMs": 2150,
+          "oneShot": true,
+          "pose": "currentMogu.stumble"
+        },
+        {
+          "id": "companion_approach",
+          "clock": "post-commit",
+          "atMs": 2450,
+          "oneShot": true,
+          "pose": "starCompanion.approach"
+        },
+        {
+          "id": "masking_smile",
+          "clock": "post-commit",
+          "atMs": 3750,
+          "oneShot": true,
+          "pose": "currentMogu.maskingSmile"
+        },
+        {
+          "id": "end",
+          "clock": "post-commit",
+          "atMs": 5250,
+          "oneShot": true
+        }
+      ],
+      "requiredOrder": [
+        "consumed",
+        "community_light_restored",
+        "body_interference",
+        "stumble",
+        "companion_approach",
+        "masking_smile"
+      ],
+      "entryState": {
+        "currentMogu": "idle",
+        "starCompanion": "idle",
+        "fragment": "present",
+        "communityLamp": "dim"
+      },
+      "exitState": {
+        "currentMogu": "maskingSmile",
+        "starCompanion": "stayNear",
+        "fragment": "consumed",
+        "communityLamp": "restored"
+      },
+      "interruptible": "before-hold-commit-only",
+      "lifecycle": {
+        "pause": "freeze-animation-clock-vfx-and-hold-timer",
+        "resume": "continue-from-frozen-time-without-catch-up",
+        "documentHidden": "pause-and-defer-unfired-markers",
+        "offscreen": "retain-semantic-state-and-stop-ambient-raf",
+        "sceneExit": "cancel-timers-listeners-particles-and-release-textures",
+        "reentry": "initialize-clean-entry-state",
+        "duplicateStart": "ignore-while-running",
+        "markerGuarantee": "each-one-shot-marker-fires-at-most-once-per-run"
+      },
+      "reducedMotion": {
+        "mode": "three-static-causal-states-with-140ms-crossfade",
+        "states": [
+          "reach",
+          "fragment-gone-and-lamp-restored",
+          "stumble-and-companion-near"
+        ],
+        "preservesHoldInteraction": true
+      },
+      "canonAssertions": {
+        "mustRead": [
+          "damaged fragment is distinct from star fruit and companion",
+          "community lamp restores first",
+          "Mogu then shows unstable interference and stumbles",
+          "smile masks discomfort"
+        ],
+        "mustNotRead": [
+          "level-up",
+          "reward pickup",
+          "eat-or-do-not-eat branch",
+          "uninjured comic fall",
+          "support is the action name"
+        ]
+      }
+    },
+    "ledgerBrokenPulse": {
+      "animationId": "story-ch01.ledger-broken-pulse",
+      "actorId": "return-ledger-pulse",
+      "assetIds": [
+        "story_ch01_bg_archive",
+        "story_ch01_return_light",
+        "story_ch01_return_ledger"
+      ],
+      "screen": "story-ch01-ledger",
+      "renderMode": "canvas2d-procedural-line-pulse-over-independent-ledger",
+      "durationMs": 5400,
+      "loop": false,
+      "holdMs": 0,
+      "fallback": {
+        "ledger": "inert",
+        "pulse": "none"
+      },
+      "eventMarkers": [
+        {
+          "id": "inert",
+          "atMs": 0,
+          "oneShot": true
+        },
+        {
+          "id": "return_light_overlap",
+          "atMs": 850,
+          "oneShot": true
+        },
+        {
+          "id": "pulse_begin",
+          "atMs": 1450,
+          "oneShot": true
+        },
+        {
+          "id": "gap_begin",
+          "atMs": 2350,
+          "oneShot": true
+        },
+        {
+          "id": "gap_end",
+          "atMs": 2670,
+          "oneShot": true
+        },
+        {
+          "id": "weak_tip",
+          "atMs": 2940,
+          "oneShot": true
+        },
+        {
+          "id": "pulse_end",
+          "atMs": 3350,
+          "oneShot": true
+        },
+        {
+          "id": "silence",
+          "atMs": 4200,
+          "oneShot": true
+        },
+        {
+          "id": "end",
+          "atMs": 5400,
+          "oneShot": true
+        }
+      ],
+      "exactGapDurationMs": 320,
+      "entryState": {
+        "ledger": "inert",
+        "pulse": "none"
+      },
+      "exitState": {
+        "ledger": "inert",
+        "pulse": "none"
+      },
+      "interruptible": "non-loop-sequence-not-user-interruptible-after-start",
+      "lifecycle": {
+        "pause": "freeze-animation-clock-vfx-and-hold-timer",
+        "resume": "continue-from-frozen-time-without-catch-up",
+        "documentHidden": "pause-and-defer-unfired-markers",
+        "offscreen": "retain-semantic-state-and-stop-ambient-raf",
+        "sceneExit": "cancel-timers-listeners-particles-and-release-textures",
+        "reentry": "initialize-clean-entry-state",
+        "duplicateStart": "ignore-while-running",
+        "markerGuarantee": "each-one-shot-marker-fires-at-most-once-per-run"
+      },
+      "reducedMotion": {
+        "mode": "two-separated-lit-segments-then-fade",
+        "crossfadeMs": 140,
+        "preservesAmbiguity": true
+      },
+      "canonAssertions": {
+        "mustRead": [
+          "a single incomplete response may have occurred",
+          "response ends in silence"
+        ],
+        "mustNotRead": [
+          "survival confirmation",
+          "continuous communication",
+          "name",
+          "guardian mark",
+          "one awaiting return",
+          "identified person",
+          "item acquired notification"
+        ]
+      }
+    }
+  }
+}

@@ -11,7 +11,7 @@ const LOADER_SOURCE = fs.readFileSync(path.join(ROOT, 'js/battle-v3-loader.js'),
 const HTML_SOURCE = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 const ENGINE_SRC = 'vendor/phaser/phaser-arcade-physics-4.2.1.min.js';
 const MOTION_VERSION = '20260814-motion-rig2-1';
-const VFX_VERSION = '20260814-skill-vfx-1';
+const VFX_VERSION = '20260816-story-ch01-1';
 const LOADING_VERSION = '20260814-loading-experience-1';
 const RIG_SRC = `js/mogu-rig.js?v=${MOTION_VERSION}`;
 const SCENE_SRC = `js/battle-v3-scene.js?v=${LOADING_VERSION}`;

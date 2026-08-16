@@ -73,20 +73,23 @@
     }
   },
   "versions": {
-    "display": "3.3.0",
-    "application": "3.3.0-ui-consistency",
-    "saveSchema": 3,
-    "assetManifest": "3.3.2-loading-child",
-    "animationManifest": 2
+    "display": "3.4.0",
+    "application": "3.4.0-story-ch01",
+    "saveSchema": 4,
+    "assetManifest": "3.4.0-story-ch01",
+    "animationManifest": 2,
+    "storyAnimationManifest": 1
   },
   "performanceBudgets": {
     "criticalTransferBytes": 4194304,
     "criticalDecodedBytes": 25165824,
     "battlePackTransferBytes": 5242880,
+    "storyPackTransferBytes": 1048576,
     "singleRuntimeAssetBytes": 1572864,
     "initialStylesheetBytes": 358400,
-    "initialScriptBytes": 358400,
-    "dynamicBattleScriptBytes": 1572864
+    "initialScriptBytes": 393216,
+    "dynamicBattleScriptBytes": 1572864,
+    "dynamicStoryScriptBytes": 131072
   },
   "validation": {
     "commands": {
@@ -102,10 +105,14 @@
     "assetRuntimeOutput": "assets/manifest.json",
     "animationSource": "config/animation-manifest.json",
     "animationRuntimeOutput": "assets/images/battle-v3/atlas.json",
+    "storyAnimationRuntimeOutput": "assets/animations/story-ch01.json",
     "dynamicBattleScripts": [
       "vendor/phaser/phaser-arcade-physics-4.2.1.min.js",
       "js/mogu-rig.js",
       "js/battle-v3-scene.js"
+    ],
+    "dynamicStoryScripts": [
+      "js/story-ch01-player.js"
     ],
     "existingTestFiles": [
       "tests/asset-manager.test.js",
@@ -120,7 +127,11 @@
       "tests/development-environment.test.js",
       "tests/ui-consistency.test.js",
       "tests/ui-refresh-assets.test.js",
-      "tests/browser-qa-contract.test.js"
+      "tests/browser-qa-contract.test.js",
+      "tests/story-ch01-manifest.test.js",
+      "tests/story-ch01-home.test.js",
+      "tests/story-ch01-player.test.js",
+      "tests/story-ch01-contract.test.js"
     ],
     "requiredFiles": [
       ".nvmrc",
@@ -146,8 +157,15 @@
       "js/main.js",
       "js/game.js",
       "js/save.js",
+      "js/story-ch01-player.js",
+      "css/moguria-story-ch01.css",
       "assets/manifest.json",
       "assets/images/battle-v3/atlas.json",
+      "assets/animations/story-ch01.json",
+      "tests/story-ch01-manifest.test.js",
+      "tests/story-ch01-home.test.js",
+      "tests/story-ch01-player.test.js",
+      "tests/story-ch01-contract.test.js",
       "service-worker.js",
       "vendor/phaser/phaser-arcade-physics-4.2.1.min.js",
       "vendor/phaser/LICENSE.md"
@@ -157,6 +175,7 @@
   },
   "generated": {
     "assetManifest": "assets/manifest.json",
-    "animationManifest": "assets/images/battle-v3/atlas.json"
+    "animationManifest": "assets/images/battle-v3/atlas.json",
+    "storyAnimationManifest": "assets/animations/story-ch01.json"
   }
 }

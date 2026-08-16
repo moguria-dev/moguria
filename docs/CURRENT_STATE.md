@@ -1,8 +1,8 @@
 # Current state
 
-This snapshot was prepared from `moguria-dev/moguria`, protected branch `main`, at commit `120c33b118940174bb0046dc42eedfcefe6c97d3` on 2026-08-14. `config/project-state.json` is the ongoing machine-readable source and must be updated when this snapshot becomes stale.
+This document describes the v3.4.0 Chapter 1 playable-vertical-slice source candidate. Its approved release scope is the four authored motion directions and 11 production images connected through the isolated investigation run. It does not claim every beat in the longer 7–9 minute Game Design v0.1 review draft. `config/project-state.json` is the machine-readable source for versions, branches, deployment mode, budgets, and validation paths. This page is not a CI result, merge receipt, deployment receipt, or statement that v3.4.0 is already live.
 
-Workflow/approval guidance was checked against `moguria-development-rules` version `3.0.0`, effective `2026-08-14`, SHA-256 `9950741898d91396543bc6f76653e1ec39d42c9a9f6418e39d8f04232288d817`. The authoritative rule metadata is maintained by the Moguria Development Skill; this snapshot is a review anchor, not a second rule source.
+Workflow and approval guidance is pinned through project-state to `moguria-development-rules` version `3.0.0`, effective `2026-08-14`. Do not duplicate a mutable release commit SHA here; verify the exact branch, full SHA, checks, and Pages deployment at release time.
 
 ## Supported product state
 
@@ -10,52 +10,53 @@ Workflow/approval guidance was checked against `moguria-development-rules` versi
 - Baseline design viewport: `390×844`.
 - Compact vertical regression viewport: `375×667` when bottom fit is affected.
 - Home and meta screens use DOM/CSS plus production image assets.
-- Startup and adventure transitions show determinate progress, current preparation status, a delayed wait hint, and the existing active production expedition Mogu wait motion; reduced-motion users retain the semantic feedback without the decorative loop.
-- Battle uses a single Phaser 4.2.1 scene loaded on demand, with a DOM HUD aligned to the rendered Canvas.
-- Battle progression currently targets 12 waves.
-- Battle presentation includes four non-repeating parallax layers, player/enemy/companion/boss atlases, semantic state animation, continuous body motion, status cues, off-screen guidance, drops, projectiles, and effects.
-- Skills and artifacts support rerolls, persisted choices, eligibility rules, owned-power inspection, and skill icon atlases.
-- Meta progression includes MoguCoin, five equipment slots, inventory, gacha, upgrades, and challenge/reward entry points.
-- Saves use a version 3 payload in localStorage and support active-run checkpoints, reload recovery, one-time settlement, and corruption quarantine.
+- Battle uses one Phaser 4.2.1 Scene loaded on demand, with a DOM HUD aligned to its Canvas.
+- The normal run profile remains 12 waves, with artifacts at waves 3 and 7, the mid-boss at wave 7, and the final boss at wave 12.
+- Chapter 1 adds a dedicated four-wave investigation profile. It consumes zero belly, permits free retry, has no artifact or boss waves, and does not alter normal-run semantics.
+- Chapter 1 uses a full-screen story player: Canvas2D owns painted visual composition and procedural effects; DOM owns headings, dialogue, status, hold interaction, controls, focus, and accessibility.
+- The story player and four Story packs (one shared core plus three scene-specific packs) are lazy-loaded when Chapter 1 is opened. Story assets are not part of startup readiness and Phaser is not loaded for story playback.
+- The published vertical-slice route proceeds through the Return Light memory, reverse flow/crack/rescue, damaged-fragment commitment, a four-wave investigation, return, one incomplete ledger response, route completion, and Home. The current `c1_complete` marker means completion of this versioned route, not implementation of every review-draft beat.
+- The damaged-fragment interaction is a deliberate hold with no timeout, failure state, quick-time score, or branching choice.
+- Save payloads normalize to version 4 under the unchanged `moguria.save.v2` key. Story progress is a separate normalized area and a Chapter 1 run is bound by profile/run ID without replacing ordinary progression data.
+- Home makes Chapter 1 the main action for a fresh player, keeps story optional for an existing player, and gives any active run resume priority.
+- Story and battle pause/resume preserve their current progress. Reduced motion retains semantic state changes while removing or reducing decorative movement.
 
 ## Runtime and publication
 
 - Entry point: `index.html`.
 - Module mode: classic ordered scripts attached to `window`.
-- Current Pages URL: <https://moguria-dev.github.io/moguria/>.
-- Current Pages mode: GitHub Actions (`build_type: workflow`).
-- Release source: protected `main`; publication requires an authorized manual `workflow_dispatch` of `.github/workflows/deploy-pages.yml`.
-- A push or merge does not publish.
-- First Actions deployment: run `31750308477`, successful from 2026-08-14 07:31:34 to 07:32:56 JST for full SHA `120c33b118940174bb0046dc42eedfcefe6c97d3`; the resulting `github-pages` deployment `5897163613` records the same SHA and `main` ref. Post-deployment public QA passed at the Pages URL.
-- Service Worker registration is off in `MoguriaConfig.assets.registerServiceWorker`.
-- The vendored Phaser browser build is under `vendor/phaser/` and is loaded only for battle.
-- Once Home is interactive, eligible clients can run a low-concurrency, fetch-only battle prewarm. It populates the HTTP cache without decoding the pack or starting Phaser and yields to foreground loading, hidden-page, offline, Data Saver, and very-slow-connection conditions.
+- Public URL: <https://moguria-dev.github.io/moguria/>.
+- Pages mode: GitHub Actions (`build_type: workflow`).
+- Release source: protected `main`.
+- Publication requires a separately authorized manual `workflow_dispatch` of `.github/workflows/deploy-pages.yml`; a push or merge does not publish.
+- Service Worker registration remains disabled.
+- The vendored Phaser browser build remains battle-only.
 
-Values above must match `config/project-state.json`; the JSON wins for automation once validated against current GitHub settings.
+The v3.4.0 pull-request checks, merge, Pages dispatch, deployed SHA, and public QA must be verified from live GitHub and the public origin. None should be inferred from this source document.
 
 ## Current manifest state
 
 - The runtime reads `assets/manifest.json`.
-- The loading-child manifest declares 17 Home critical assets, an empty `lazy` group, and a separate `battle-v3` pack. The existing expedition Mogu remains critical for its Home outing use; startup and adventure loading share the single 22,942-byte `loading_child_mogu_flight` sheet instead. Both loading surfaces bind the child Mogu, carried starlight, and fill tip to one real progress value, preserve the arrival → contact → complete order, and draw five unique session Tips from the canonical safe pool without displaying a counter or dots.
-- The audited critical Home files total approximately 3.35 MiB on disk. The old runtime manifest declares a 4 MiB critical budget; the prior prose performance document stated 2 MB. The replacement single budget source is `config/project-state.json.performanceBudgets`.
-- Battle atlas metadata currently lives in `assets/images/battle-v3/atlas.json`.
-- Canonical inventory/state files are introduced under `config/`; see `docs/SOURCE_OF_TRUTH.md` before editing either side of a manifest pair.
+- Home startup remains at 17 critical assets; Chapter 1 adds no critical item.
+- Chapter 1 contributes 11 approved production image assets under `assets/images/story/ch01/`, divided among four lazy packs: `story-ch01-core`, `story-ch01-return-hall`, `story-ch01-fragment-chamber`, and `story-ch01-archive`.
+- The core pack also carries the Story runtime animation projection so the player can load one coherent story contract before scene-specific art.
+- `config/animation-manifest.json` remains canonical. Battle continues to use `assets/images/battle-v3/atlas.json` at runtime version 2; Story uses the separate `assets/animations/story-ch01.json` projection at version 1.
+- Canonical inventory/state files live under `config/`; update canonical files and runtime projections together until generation is installed.
 
-## Known limitations and risks
+## Known limitations and release gates
 
 - The game is client-only. localStorage and JavaScript can be changed by the player; competitive results are not trustworthy without server validation.
-- `main` is covered by active ruleset `Moguria main protection` (`20819854`): pull requests are required, deletion and non-fast-forward updates are blocked, and `Dependency-free preflight` is a strict required status check.
-- The live ruleset requires zero approving reviews and does not require review-thread resolution. This accurately supports the current single-maintainer flow, but unresolved review conversations are not technically blocked from merge.
-- GitHub's Pages API still reports the historical `source.branch` value `develop-homeui2` alongside `build_type: workflow`. Actual release evidence is the successful Actions run and latest `github-pages` deployment on `main`; do not infer an active branch-publishing path from that retained source metadata.
-- No tag or GitHub Release existed at the audited commit, so the human version label did not uniquely identify every published change.
-- Multiple prior-generation asset and CSS layers remain in the repository. Their presence does not prove they are unused; removal requires a reference and visual regression audit.
-- `service-worker.js` is disabled and stale. At the audited commit, 51 `CORE_ASSETS` entries referenced absent `assets/images/moguria-final/**` files. Enabling it without repair would risk installation failure.
-- Historical `DESIGN_NOTES.md`, release notes, and upload instructions contain superseded statements and are not current specifications.
-- The Chromium/WebKit browser-QA runner covers deterministic startup (50%) and adventure (47%) loading fixtures at 390×844 and 375×667. A real iPhone Safari pass is still **required-pending**; emulation evidence must not be reported as that device check.
+- `main` is protected by pull-request and required-check rules. Do not bypass protection, force-push, or use the retained legacy branch as an integration or publication path.
+- GitHub's Pages API can retain historical branch-source metadata even while workflow deployment is active. Use the workflow run and Pages deployment record for release evidence.
+- Multiple prior-generation asset and CSS layers remain in the repository. Their presence does not prove they are unused; removal requires a reference and visual-regression audit.
+- `service-worker.js` is disabled and stale. Do not enable it as part of the Chapter 1 release without a separate cache-path/update/rollback review.
+- Chromium and WebKit emulation at `390×844` and `375×667` are repeatable browser-QA gates, not substitutes for hardware testing.
+- A real iPhone Safari pass covering story entry, hold interaction, pause/resume, four-wave handoff, return/ledger completion, safe areas, memory, and touch response is **required-pending** until actually performed.
+- v3.4.0 CI, protected-main integration, manual Pages deployment, and post-deployment public QA remain unverified until their respective commands and provider records complete successfully.
 
 ## Near-term maintenance goals
 
-1. Decide whether review-thread resolution should become mandatory. Keep the approval count at zero unless an independent reviewer is available, to avoid blocking the single-maintainer release path.
-2. Classify active, fallback, source-only, and legacy assets before deleting anything; require reference and visual-regression evidence for removal.
-3. Complete the required-pending real-device performance/interaction baseline on compact iPhone Safari or an equivalent device farm; keep the repeatable browser smoke suite linked from project-state validation.
-4. Keep `docs/CURRENT_STATE.md` concise; put history in the changelog/releases and durable decisions in ADRs.
+1. Complete the v3.4.0 automated, browser, protected-main, and public-release gates and record the resulting evidence outside mutable architectural prose.
+2. Complete the required-pending real-device iPhone Safari pass.
+3. Keep Story and Battle animation projections independent while validating both from the shared canonical manifest.
+4. Classify active, fallback, source-only, and legacy assets before deleting anything; require reference and visual-regression evidence for removal.

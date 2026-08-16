@@ -434,6 +434,20 @@ window.MoguriaUI = (() => {
   }
 
   function showResult(run = {}){
+    const againButton=document.getElementById('againBtn');
+    const homeButton=document.getElementById('homeBtn');
+    if(againButton){ againButton.textContent='もう一回潜る'; againButton.disabled=false; againButton.onclick=()=>{ show('home'); setTimeout(()=>document.getElementById('startBtn')?.click(),100); }; }
+    if(homeButton){ homeButton.textContent='ホームへ'; homeButton.onclick=()=>show('home'); }
+    if(run.storyRetry){
+      document.getElementById('resultTitle').textContent='調査はここで中断';
+      document.getElementById('resultComment').textContent='おなかは減りません。帰り灯の外縁から、同じ調査をやり直せます。';
+      window.MoguriaHome?.applyVisual?.(document.getElementById('resultMogu'),run.visual);
+      document.getElementById('resultStats').innerHTML=`<div class="result-primary-stats"><div class="stat stat--primary"><b>${esc(run.wave||1)} / 4</b><span>調査地点</span></div><div class="stat stat--primary"><b>${esc(run.kills||0)}</b><span>撃破数</span></div></div>`;
+      document.getElementById('resultBadges').innerHTML='';
+      if(againButton){ againButton.textContent='無料でもう一度'; againButton.onclick=async()=>{ againButton.disabled=true; againButton.textContent='準備中…'; if(await run.retry?.()===false){ againButton.disabled=false; againButton.textContent='無料でもう一度'; document.getElementById('resultComment').textContent='再開の準備を保存できませんでした。もう一度ためしてね。'; } }; }
+      if(homeButton){ homeButton.textContent='あとで続ける'; homeButton.onclick=()=>run.later?.(); }
+      show('result'); return;
+    }
     document.getElementById('resultTitle').textContent = run.name || 'もぐもぐの旅';
     document.getElementById('resultComment').textContent = run.comment || '今日はよくがんばったね…';
     window.MoguriaHome?.applyVisual?.(document.getElementById('resultMogu'), run.visual);
@@ -573,12 +587,21 @@ window.MoguriaUI = (() => {
         }).join('')
       : emptyState('✦', '最初の冒険を待っています', 'ダンジョンから帰ると、ここに旅の記憶が残ります。');
 
+    const storyComplete=asArray(save.story?.completedChapterIds).includes('c1');
+    const storyRecords=storyComplete?`<section class="meta-section-head"><div><span>STORY ARCHIVE</span><h3>物語の記録</h3></div><small>第1章</small></section>
+      <div class="meta-log-list">
+        <article class="meta-log-card"><div class="meta-log-card__main"><header><div><small>回想</small><h3>帰り灯の夜／古い記録の脈動</h3></div></header><p>細く揺れた帰り灯の夜と、欠けた一拍を返した古い記録。</p></div></article>
+        <article class="meta-log-card"><div class="meta-log-card__main"><header><div><small>人物</small><h3>星の守り手</h3></div></header><p>幼いMoguへ救いの手を差し伸べた者。正体と行方は、まだ分からない。</p></div></article>
+        <article class="meta-log-card"><div class="meta-log-card__main"><header><div><small>用語</small><h3>帰り灯／傷ついた欠片</h3></div></header><p>帰る道を示す灯りと、共同灯へ光を戻した傷ついた欠片。</p></div></article>
+      </div>`:'';
+
     overlay('logs', `
       <section class="meta-log-summary">
         <div><small>冒険した回数</small><b>${runs.length}</b></div>
         <div><small>最高到達</small><b>${esc(best.floor || 0)}<em>階</em></b></div>
         <div><small>最高ダメージ</small><b>${esc(best.damage || 0)}</b></div>
       </section>
+      ${storyRecords}
       <section class="meta-section-head"><div><span>JOURNEYS</span><h3>星に残った足あと</h3></div><small>新しい順</small></section>
       <div class="meta-log-list">${html}</div>
     `);

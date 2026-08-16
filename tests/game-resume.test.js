@@ -72,7 +72,7 @@ function createGameHarness(checkpoint = null, options = {}) {
     'gameCanvas', 'game', 'stick', 'knob', 'giveupBtn', 'pauseBtn', 'resumeBtn', 'pauseGiveupBtn',
     'pauseModal', 'pauseSkills', 'pauseSummary', 'pauseWaveValue', 'pauseLevelValue', 'pauseHpValue',
     'pauseSkillGrid', 'pauseArtifactGrid', 'pausePowerDetail', 'pauseSkillTab', 'pauseArtifactTab',
-    'app', 'startBtn', 'settlementError', 'settlementErrorTitle', 'settlementErrorMessage',
+    'app', 'startBtn', 'homeNotice', 'settlementError', 'settlementErrorTitle', 'settlementErrorMessage',
     'settlementWaveValue', 'settlementLevelValue', 'settlementHpValue', 'settlementRetryBtn', 'settlementHomeBtn',
     'artifactModal', 'artifactChoices', 'artifactTitle', 'artifactOwnedSkills', 'artifactOwnedDetail', 'artifactRerollBtn', 'artifactRerollCount',
     'levelModal', 'skillChoices', 'levelOwnedSkills', 'levelOwnedDetail', 'rerollBtn', 'rerollCount', 'lv', 'hp', 'exp', 'nextExp',
@@ -132,8 +132,8 @@ function createGameHarness(checkpoint = null, options = {}) {
   };
   context.MoguriaKVVisualRefresh = { decorateAll() {} };
   context.MoguriaUI = {
-    show() {},
-    showResult(run) { context.lastResult = clone(run); },
+    show(id) { context.lastScreen = id; },
+    showResult(run) { context.lastResultRaw = run; context.lastResult = clone(run); },
     confirmAction(settings) {
       confirmRequests.push(clone(settings));
       return new Promise(resolve => confirmResolvers.push(resolve));
@@ -143,7 +143,7 @@ function createGameHarness(checkpoint = null, options = {}) {
     updateCheckpoint(runId, payload) {
       assert.equal(runId, 'run-resume-test');
       savedCheckpoint = clone(payload.checkpoint);
-      return { ok: true };
+      return { ok: true, activeRun:{ runId, profileId:options.profileId, startedAt:100, checkpoint:clone(payload.checkpoint) } };
     }
   };
 
@@ -154,7 +154,8 @@ function createGameHarness(checkpoint = null, options = {}) {
   context.MoguriaGame.init();
   context.MoguriaGame.start({
     runId: 'run-resume-test',
-    activeRun: checkpoint ? { runId: 'run-resume-test', startedAt: 100, checkpoint: clone(checkpoint) } : null,
+    profileId: options.profileId,
+    activeRun: checkpoint ? { runId: 'run-resume-test', profileId:options.profileId, startedAt: 100, checkpoint: clone(checkpoint) } : null,
     resume: Boolean(checkpoint)
   });
 
@@ -994,6 +995,126 @@ test('pending artifact choice is restored before its wave is marked complete', (
   assert.equal(secondPage.state.wave, 4);
   assert.equal(secondPage.state.artifactWaves[3], true);
   assert.equal(secondPage.state.pendingChoice, null);
+});
+
+test('run profiles preserve normal 12-wave gates and isolate the Chapter 1 four-wave route', () => {
+  const normal=createGameHarness();
+  assert.equal(normal.state.profileId,'normal-v1');
+  assert.equal(normal.state.maxWave,12);
+  assert.deepEqual(Array.from(normal.state.runProfile.artifactWaves),[3,7]);
+  assert.deepEqual(Array.from(normal.state.runProfile.midBossWaves),[7]);
+  assert.deepEqual(Array.from(normal.state.runProfile.bossWaves),[12]);
+
+  const story=createGameHarness(null,{profileId:'story-c1-investigation-v1'});
+  assert.equal(story.state.maxWave,4);
+  assert.equal(story.state.runProfile.kind,'story');
+  assert.deepEqual(Array.from(story.state.runProfile.artifactWaves),[]);
+  story.state.introTimer=0;
+  story.state.wave=3;
+  story.state.floor=3;
+  story.state.waveState='spawning';
+  story.state.waveTarget=1;
+  story.state.waveSpawned=1;
+  story.state.waveClearTimer=.8;
+  story.state.enemies=[];
+  story.game.devStep(.016);
+  assert.equal(story.state.mode,'run');
+  assert.equal(story.state.wave,4,'Wave 3 advances without opening an Artifact gate');
+  assert.equal(story.state.waveState,'spawning','Wave 4 is not a boss gate');
+});
+
+test('a cleared story run bypasses numeric result and hands off once to the return story', () => {
+  const harness=createGameHarness(null,{profileId:'story-c1-investigation-v1'});
+  const state=harness.state;
+  let resultCalls=0,handOffs=0,eventCalls=0;
+  harness.context.MoguriaMeta={awardFromRun:run=>({ok:true,amount:0,data:{story:{currentNodeId:'c1_return_pending'}},run})};
+  harness.context.MoguriaResult={buildName:()=> '外縁調査',comment:()=>'',titles:()=>[]};
+  harness.context.MoguriaUI.showResult=()=>{resultCalls++;};
+  harness.context.dispatchEvent=()=>{eventCalls++;};
+  harness.context.MoguriaStoryChapter01={resumeAfterRun(payload){handOffs++; harness.context.storyPayload=payload;}};
+  state.introTimer=0; state.wave=4; state.floor=4; state.waveState='spawning';
+  state.waveTarget=1; state.waveSpawned=1; state.waveClearTimer=.8; state.enemies=[];
+  harness.game.devStep(.016);
+  for(let i=0;i<70&&state.mode==='run';i++) harness.game.devStep(.033);
+  assert.equal(state.mode,'ended');
+  assert.equal(handOffs,1);
+  assert.equal(eventCalls,0);
+  assert.equal(resultCalls,0);
+  assert.equal(harness.context.storyPayload.run.profileId,'story-c1-investigation-v1');
+  assert.equal(harness.context.storyPayload.run.cleared,true);
+});
+
+test('a synchronous story handoff failure is contained without dispatching a second resume path', () => {
+  const harness=createGameHarness(null,{profileId:'story-c1-investigation-v1'});
+  const state=harness.state;
+  let resultCalls=0,eventCalls=0;
+  harness.context.MoguriaMeta={awardFromRun:()=>({ok:true,amount:0})};
+  harness.context.MoguriaResult={buildName:()=> '外縁調査',comment:()=>'',titles:()=>[]};
+  harness.context.MoguriaUI.showResult=()=>{resultCalls++;};
+  harness.context.dispatchEvent=()=>{eventCalls++;};
+  harness.context.MoguriaStoryChapter01={resumeAfterRun(){throw new Error('simulated player failure');}};
+  state.introTimer=0; state.wave=4; state.floor=4; state.waveState='spawning';
+  state.waveTarget=1; state.waveSpawned=1; state.waveClearTimer=.8; state.enemies=[];
+  harness.game.devStep(.016);
+  for(let i=0;i<70&&state.mode==='run';i++) harness.game.devStep(.033);
+  assert.equal(state.mode,'ended');
+  assert.equal(resultCalls,0);
+  assert.equal(eventCalls,0);
+  assert.equal(harness.context.lastScreen,'home');
+  assert.equal(harness.elements.homeNotice.hidden,false);
+  assert.equal(harness.elements.homeNotice.attributes.role,'alert');
+  assert.match(harness.elements.homeNotice.textContent,/物語の続き/);
+});
+
+test('story settlement dispatches the decoupled fallback only when the direct player API is absent', () => {
+  const harness=createGameHarness(null,{profileId:'story-c1-investigation-v1'});
+  const state=harness.state;
+  const events=[];
+  harness.context.MoguriaMeta={awardFromRun:()=>({ok:true,amount:0})};
+  harness.context.MoguriaResult={buildName:()=> '外縁調査',comment:()=>'',titles:()=>[]};
+  harness.context.CustomEvent=function(type,options){this.type=type;this.detail=options?.detail;};
+  harness.context.dispatchEvent=event=>{events.push(event); return true;};
+  state.introTimer=0; state.wave=4; state.floor=4; state.waveState='spawning';
+  state.waveTarget=1; state.waveSpawned=1; state.waveClearTimer=.8; state.enemies=[];
+  harness.game.devStep(.016);
+  for(let i=0;i<70&&state.mode==='run';i++) harness.game.devStep(.033);
+  assert.equal(events.length,1);
+  assert.equal(events[0].type,'moguria:story-run-settled');
+  assert.equal(events[0].detail.run.profileId,'story-c1-investigation-v1');
+  assert.equal(harness.context.lastScreen,'home');
+});
+
+test('story defeat remains bound and retries the same run for free instead of settling', async () => {
+  const harness=createGameHarness(null,{profileId:'story-c1-investigation-v1'});
+  const state=prepareDropCombat(harness);
+  harness.context.MoguriaMeta={applyEquipmentToPlayer(){},awardFromRun(){throw new Error('story defeat must not settle');}};
+  harness.context.MoguriaResult={buildName:()=> '外縁調査',comment:()=>'',titles:()=>[]};
+  state.p.hp=0;
+  harness.game.devStep(.016);
+  for(let i=0;i<20&&state.mode==='defeat';i++) harness.game.devStep(.033);
+  assert.equal(state.mode,'storyRetry');
+  assert.equal(harness.context.lastResult.storyRetry,true);
+  assert.equal(harness.context.lastResult.profileId,'story-c1-investigation-v1');
+  assert.equal(await harness.context.lastResultRaw.retry(),true);
+  assert.equal(harness.savedCheckpoint.defeated,false);
+  assert.equal(harness.savedCheckpoint.wave,1);
+  assert.equal(harness.state.runId,'run-resume-test');
+  assert.equal(harness.state.maxWave,4);
+});
+
+test('leaving a story investigation preserves its active checkpoint for later', async () => {
+  const harness=createGameHarness(null,{profileId:'story-c1-investigation-v1'});
+  harness.state.introTimer=0;
+  harness.state.mode='run';
+  harness.context.MoguriaMeta={awardFromRun(){throw new Error('story interruption must not settle');}};
+  const decision=harness.elements.giveupBtn.click();
+  assert.match(harness.confirmRequests[0].message,/同じ続きから再開/);
+  assert.match(harness.confirmRequests[0].message,/おなかは消費しません/);
+  harness.resolveConfirm(true);
+  await decision;
+  assert.equal(harness.state.mode,'pause');
+  assert.equal(harness.context.lastScreen,'home');
+  assert.equal(harness.savedCheckpoint.wave,0);
 });
 
 test('repeated pagehide during the restored wave entrance cannot move progress backwards', () => {

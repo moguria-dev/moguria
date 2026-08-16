@@ -3,7 +3,10 @@
     manifest: null,
     images: new Map(),
     imageLoads: new Map(),
+    json: new Map(),
+    jsonLoads: new Map(),
     audio: new Map(),
+    loadedPacks: new Set(),
     warmPacks: new Map(),
     warmedPacks: new Set(),
     bytes: 0,
@@ -98,6 +101,7 @@
     }
     if(state.images.has(id)) return Promise.resolve(state.images.get(id));
     if(state.imageLoads.has(id)) return state.imageLoads.get(id);
+    if(options.signal?.aborted) return Promise.resolve(null);
 
     const timeoutMs = Math.max(1, Number(options.timeoutMs) || DEFAULT_ASSET_TIMEOUT_MS);
     const pending = new Promise((resolve) => {
@@ -105,18 +109,20 @@
       img.decoding = 'async';
       let settled = false;
       let timeoutId = null;
+      const abortFromCaller = () => fail('aborted', false);
 
       const cleanup = () => {
         if(timeoutId != null) clearTimeout(timeoutId);
+        options.signal?.removeEventListener?.('abort', abortFromCaller);
         img.onload = null;
         img.onerror = null;
       };
 
-      const fail = (reason) => {
+      const fail = (reason, shouldRecord = true) => {
         if(settled) return;
         settled = true;
         cleanup();
-        recordError(`image ${reason}: ${id}`);
+        if(shouldRecord) recordError(`image ${reason}: ${id}`);
         resolve(null);
       };
 
@@ -135,6 +141,7 @@
         }, () => fail('decode failed'));
       };
       img.onerror = () => fail('load failed');
+      options.signal?.addEventListener?.('abort', abortFromCaller, { once:true });
       timeoutId = setTimeout(() => fail(`timed out after ${timeoutMs}ms`), timeoutMs);
       img.src = src;
     });
@@ -157,16 +164,30 @@
     return a;
   }
 
-  async function loadJson(asset){
-    const src = safeUrl(asset.src);
-    if(!src) return null;
-    const timeoutMs = Math.max(1, Number(asset?.timeoutMs) || DEFAULT_ASSET_TIMEOUT_MS);
-    try{
-      return await fetchJsonWithTimeout(src, timeoutMs, `json ${asset.id}`);
-    }catch(err){
-      recordError(`json load failed: ${asset.id} (${err.message})`);
-      return null;
+  function loadJson(asset, options = {}){
+    const src = safeUrl(asset?.src);
+    const id = String(asset?.id || src);
+    if(!src){
+      recordError('json has no safe URL: ' + id);
+      return Promise.resolve(null);
     }
+    if(state.json.has(id)) return Promise.resolve(state.json.get(id));
+    if(state.jsonLoads.has(id)) return state.jsonLoads.get(id);
+
+    const timeoutMs = Math.max(1, Number(options.timeoutMs ?? asset?.timeoutMs) || DEFAULT_ASSET_TIMEOUT_MS);
+    const pending = fetchJsonWithTimeout(src, timeoutMs, `json ${id}`, options.signal).then(value => {
+      state.json.set(id, value);
+      return value;
+    }, err => {
+      if(!options.signal?.aborted) recordError(`json load failed: ${id} (${err.message})`);
+      return null;
+    });
+    let tracked;
+    tracked = pending.finally(() => {
+      if(state.jsonLoads.get(id) === tracked) state.jsonLoads.delete(id);
+    });
+    state.jsonLoads.set(id, tracked);
+    return tracked;
   }
 
   function notifyProgress(listener, progress){
@@ -178,7 +199,7 @@
   function loadAsset(asset, options = {}){
     if(asset.type === 'image') return loadImage(asset, options);
     if(asset.type === 'audio') return Promise.resolve(loadAudio(asset));
-    if(asset.type === 'json') return loadJson({ ...asset, timeoutMs:options.timeoutMs ?? asset.timeoutMs });
+    if(asset.type === 'json') return loadJson(asset, options);
     return Promise.resolve(null);
   }
 
@@ -231,6 +252,7 @@
 
   function getImage(id){ return state.images.get(id) || null; }
   function getAudio(id){ return state.audio.get(id) || null; }
+  function getJson(id){ return state.json.get(id) || null; }
 
   async function loadPack(packId, options = {}){
     let manifest;
@@ -240,9 +262,42 @@
     if(!pack) return { ok:false, reason:'pack not found' };
     const assets = pack.assets || [];
     const results = await Promise.all(assets.map(asset => loadAsset(asset, options)));
-    return results.some(value => !value)
-      ? { ok:false, reason:'asset-load-failed', stats:stats() }
-      : { ok:true, stats: stats() };
+    const failed = assets.filter((asset, index) => !results[index]).map(asset => String(asset?.id || asset?.src || 'unknown'));
+    if(failed.length) return { ok:false, reason:'asset-load-failed', failed, stats:stats() };
+    state.loadedPacks.add(packId);
+    return { ok:true, packId, loaded:assets.length, stats:stats() };
+  }
+
+  function releasePack(packId){
+    const manifest = state.manifest;
+    const pack = (manifest?.packs || []).find(item => item.id === packId);
+    if(!pack) return { ok:false, reason:'pack not found', packId, released:[] };
+    state.loadedPacks.delete(packId);
+    state.warmedPacks.delete(packId);
+
+    const retainedIds = new Set((manifest.critical || []).map(asset => String(asset.id || '')));
+    for(const activePackId of state.loadedPacks){
+      const activePack = (manifest.packs || []).find(item => item.id === activePackId);
+      for(const asset of activePack?.assets || []) retainedIds.add(String(asset.id || ''));
+    }
+
+    const released = [];
+    for(const asset of pack.assets || []){
+      const id = String(asset?.id || '');
+      if(!id || retainedIds.has(id)) continue;
+      let removed = false;
+      if(asset.type === 'image') {
+        const cachedImage = state.images.get(id);
+        removed = state.images.delete(id) || removed;
+        if(removed && cachedImage) {
+          state.bytes = Math.max(0, state.bytes - estimateBytes(cachedImage.naturalWidth, cachedImage.naturalHeight));
+        }
+      }
+      else if(asset.type === 'json') removed = state.json.delete(id) || removed;
+      else if(asset.type === 'audio') removed = state.audio.delete(id) || removed;
+      if(removed) released.push(id);
+    }
+    return { ok:true, packId, released, stats:stats() };
   }
 
   async function consumeResponseBody(response){
@@ -412,11 +467,13 @@
     return {
       ready: state.ready,
       images: state.images.size,
+      json: state.json.size,
       audio: state.audio.size,
+      loadedPacks: [...state.loadedPacks],
       approxMB: Math.round(state.bytes / 1024 / 1024 * 10) / 10,
       errors: state.errors.slice(-10)
     };
   }
 
-  window.MoguriaAssets = { loadManifest, preloadCritical, loadPack, warmPack, getImage, getAudio, stats };
+  window.MoguriaAssets = { loadManifest, preloadCritical, loadPack, releasePack, warmPack, getImage, getJson, getAudio, stats };
 })();

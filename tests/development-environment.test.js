@@ -13,7 +13,11 @@ function json(relativePath) {
 }
 
 test('canonical manifests project exactly to current runtime compatibility files', async () => {
-  const { projectAnimationManifest, projectAssetManifest } = await import('../scripts/validate-project-state.mjs');
+  const {
+    projectAnimationManifest,
+    projectAssetManifest,
+    projectStoryAnimationManifest
+  } = await import('../scripts/validate-project-state.mjs');
   const state = json('config/project-state.json');
   assert.deepStrictEqual(
     projectAssetManifest(json(state.validation.assetSource), state),
@@ -23,6 +27,19 @@ test('canonical manifests project exactly to current runtime compatibility files
     projectAnimationManifest(json(state.validation.animationSource)),
     json(state.validation.animationRuntimeOutput)
   );
+  assert.deepStrictEqual(
+    projectStoryAnimationManifest(json(state.validation.animationSource)),
+    json(state.validation.storyAnimationRuntimeOutput)
+  );
+});
+
+test('release package metadata matches the project-state display version', () => {
+  const state = json('config/project-state.json');
+  const packageJson = json('package.json');
+  const packageLock = json('package-lock.json');
+  assert.equal(packageJson.version, state.versions.display);
+  assert.equal(packageLock.version, state.versions.display);
+  assert.equal(packageLock.packages[''].version, state.versions.display);
 });
 
 test('completed deployment state fails closed when any release-control field drifts', async () => {
@@ -61,7 +78,7 @@ test('service worker remains off and an attempted ON transition detects stale pr
 test('active production assets have unique lifecycle and provenance catalog records', () => {
   const source = json('config/asset-manifest.json');
   const active = source.catalog.filter((record) => record.lifecycle.status === 'active');
-  assert.equal(active.length, 87);
+  assert.equal(active.length, 98);
   assert.equal(new Set(active.map((record) => record.logicalId)).size, active.length);
   assert.equal(new Set(active.map((record) => record.path)).size, active.length);
   for (const record of active) {
@@ -81,7 +98,7 @@ test('loading feedback uses the approved dedicated child Mogu sheet with aligned
   const source = json('config/asset-manifest.json');
   const runtime = json('assets/manifest.json');
   const animation = json('config/animation-manifest.json');
-  assert.equal(state.versions.assetManifest, '3.3.2-loading-child');
+  assert.equal(state.versions.assetManifest, '3.4.0-story-ch01');
   assert.equal(source.runtimeManifest.version, state.versions.assetManifest);
   assert.equal(runtime.version, state.versions.assetManifest);
   assert.equal(source.runtimeManifest.critical.length, 17);
