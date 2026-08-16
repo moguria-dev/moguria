@@ -2852,10 +2852,18 @@ async function withDeadline(promise, deadline, label) {
 async function inspectStoryVideoArtifact(
   browserType, filePath, expectedVideoSize, launchOptions, totalAuditDeadline
 ) {
-  if (!fs.existsSync(filePath)) return { passed:false, bytes:0, container:'missing', decode:null };
+  const browserName = browserType.name();
+  const presentationStrategy = browserName === 'webkit'
+    ? 'webkit-playback-quality-raf'
+    : 'request-video-frame-callback';
+  if (!fs.existsSync(filePath)) {
+    return {
+      passed:false, bytes:0, container:'missing', browserName, presentationStrategy, decode:null
+    };
+  }
   const bytes = fs.statSync(filePath).size;
   if (bytes > STORY_RUNTIME_VIDEO_CONTRACT.maximumVideoBytes) {
-    return { passed:false, bytes, container:'oversize', decode:null };
+    return { passed:false, bytes, container:'oversize', browserName, presentationStrategy, decode:null };
   }
   const buffer = fs.readFileSync(filePath);
   const sourceSha256 = sha256(buffer);
@@ -2868,6 +2876,8 @@ async function inspectStoryVideoArtifact(
     expectedWidth:expectedVideoSize.width,
     expectedHeight:expectedVideoSize.height,
     sourceSha256,
+    browserName,
+    presentationStrategy,
     decodeAttemptLimit:STORY_RUNTIME_VIDEO_CONTRACT.maximumDecodeAttempts,
     decodeAttemptCount:0,
     auditCleanupFailed:false,
@@ -2930,7 +2940,9 @@ async function inspectStoryVideoArtifact(
           auditPage.bringToFront(), attemptDeadline, 'headed audit page activation'
         );
       }
-      const decode = await withDeadline(auditPage.evaluate(async ({ base64, sampleFractions }) => {
+      const decode = await withDeadline(auditPage.evaluate(async ({
+        base64, sampleFractions, presentationStrategy
+      }) => {
       const binary = atob(base64);
       const bytes = new Uint8Array(binary.length);
       for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
@@ -2966,92 +2978,128 @@ async function inspectStoryVideoArtifact(
         if (video.error) onError();
       });
       const frameToleranceSeconds = 0.25;
-      const playbackFrameCount = () => {
-        if (typeof video.getVideoPlaybackQuality !== 'function') return null;
-        const count = video.getVideoPlaybackQuality()?.totalVideoFrames;
-        return Number.isFinite(count) ? count : null;
-      };
-      const waitForAnimationFrameUntil = (deadline) => new Promise((resolve, reject) => {
-        const remainingMs = deadline - performance.now();
-        if (remainingMs <= 0) {
-          reject(new Error('playback fallback animation frame deadline elapsed'));
-          return;
+      const readPlaybackQuality = (required = false) => {
+        if (typeof video.getVideoPlaybackQuality !== 'function') {
+          if (required) throw new Error('getVideoPlaybackQuality is unavailable');
+          return null;
         }
-        let settled = false;
-        let frameId = null;
-        const cleanup = () => {
-          clearTimeout(timer);
-          if (frameId !== null) cancelAnimationFrame(frameId);
+        const quality = video.getVideoPlaybackQuality();
+        const totalVideoFrames = Number(quality?.totalVideoFrames);
+        const droppedVideoFrames = Number(quality?.droppedVideoFrames);
+        if (!Number.isFinite(totalVideoFrames) || !Number.isFinite(droppedVideoFrames)
+          || totalVideoFrames < 0 || droppedVideoFrames < 0
+          || totalVideoFrames < droppedVideoFrames) {
+          if (required) throw new Error('getVideoPlaybackQuality returned invalid frame counters');
+          return null;
+        }
+        return {
+          totalVideoFrames,
+          droppedVideoFrames,
+          displayedVideoFrames:totalVideoFrames - droppedVideoFrames
         };
-        const timer = setTimeout(() => {
-          if (settled) return;
-          settled = true;
-          cleanup();
-          reject(new Error('playback fallback animation frame timed out'));
-        }, remainingMs);
-        frameId = requestAnimationFrame(() => {
-          if (settled) return;
-          settled = true;
-          cleanup();
-          resolve();
-        });
-      });
-      const captureWithPlaybackFallback = async (targetSeconds, context, canvas, timeoutMs) => {
-        const startedAt = performance.now();
-        const deadline = startedAt + timeoutMs;
-        const initialTime = video.currentTime;
-        const initialFrameCount = playbackFrameCount();
-        const frameCountAvailable = initialFrameCount !== null;
-        try {
-          let playStartTimer = null;
-          try {
-            await Promise.race([
-              video.play(),
-              new Promise((_, reject) => {
-                playStartTimer = setTimeout(
-                  () => reject(new Error('video play start timed out')),
-                  Math.max(1, deadline - performance.now())
-                );
-              })
-            ]);
-          } finally {
-            clearTimeout(playStartTimer);
-          }
-          while (performance.now() < deadline) {
-            if (video.error) throw new Error(`video decode failed (${video.error.code || 'unknown'})`);
-            await waitForAnimationFrameUntil(deadline);
-            const currentFrameCount = playbackFrameCount();
-            const frameCountAdvanced = frameCountAvailable && currentFrameCount !== null
-              && currentFrameCount > initialFrameCount;
-            const timeAdvanced = !frameCountAvailable && video.currentTime >= initialTime + 1 / 120;
-            if (!frameCountAdvanced && !timeAdvanced) continue;
+      };
+      const captureWithPlaybackQuality = (targetSeconds, context, canvas, timeoutMs) => (
+        new Promise((resolve, reject) => {
+          const qualityBefore = readPlaybackQuality(true);
+          let settled = false;
+          let frameId = null;
+          let timer = null;
+          const cleanup = () => {
+            if (timer !== null) clearTimeout(timer);
+            video.removeEventListener('error', onError);
+            if (frameId !== null) cancelAnimationFrame(frameId);
+          };
+          const fail = (error) => {
+            if (settled) return;
+            settled = true;
             video.pause();
-            await waitForAnimationFrameUntil(deadline);
-            if (Math.abs(video.currentTime - targetSeconds) > frameToleranceSeconds) {
-              throw new Error(`playback fallback left requested frame tolerance (${video.currentTime})`);
+            cleanup();
+            reject(error instanceof Error ? error : new Error(String(error)));
+          };
+          const onError = () => {
+            fail(new Error(`video decode failed (${video.error?.code || 'unknown'})`));
+          };
+          const inspectPresentedFrame = () => {
+            if (settled) return;
+            if (video.error) {
+              onError();
+              return;
             }
-            context.drawImage(video, 0, 0, canvas.width, canvas.height);
-            return {
-              presentationMethod:'playback-quality-or-time-fallback',
+            let qualityAfter;
+            try { qualityAfter = readPlaybackQuality(true); }
+            catch (error) {
+              fail(error);
+              return;
+            }
+            if (video.paused) {
+              frameId = requestAnimationFrame(inspectPresentedFrame);
+              return;
+            }
+            if (qualityAfter.displayedVideoFrames <= qualityBefore.displayedVideoFrames) {
+              frameId = requestAnimationFrame(inspectPresentedFrame);
+              return;
+            }
+            if (video.currentTime < targetSeconds - frameToleranceSeconds) {
+              frameId = requestAnimationFrame(inspectPresentedFrame);
+              return;
+            }
+            if (video.currentTime > targetSeconds + frameToleranceSeconds) {
+              fail(new Error(`playback-quality frame overshot requested frame (${video.currentTime})`));
+              return;
+            }
+            video.pause();
+            try {
+              context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            } catch (error) {
+              fail(error);
+              return;
+            }
+            settled = true;
+            const result = {
+              presentationStrategy,
+              presentationMethod:'getVideoPlaybackQuality+rAF',
               targetSeconds,
               currentTime:video.currentTime,
               mediaTime:null,
-              initialFrameCount,
-              currentFrameCount,
-              frameCountAvailable,
-              frameCountAdvanced,
-              timeAdvanced
+              qualityBefore,
+              qualityAfter,
+              displayedFrameIncrease:qualityAfter.displayedVideoFrames
+                - qualityBefore.displayedVideoFrames
             };
+            cleanup();
+            resolve(result);
+          };
+          timer = setTimeout(() => {
+            fail(new Error('getVideoPlaybackQuality frame advance timed out'));
+          }, timeoutMs);
+          video.addEventListener('error', onError, { once:true });
+          if (video.error) {
+            onError();
+            return;
           }
-          throw new Error('playback fallback timed out before a presented frame advanced');
-        } finally {
-          video.pause();
-        }
-      };
+          frameId = requestAnimationFrame(inspectPresentedFrame);
+          let playPromise;
+          try { playPromise = video.play(); }
+          catch (error) {
+            fail(new Error(`video play failed: ${error?.message || String(error)}`));
+            return;
+          }
+          Promise.resolve(playPromise).catch((error) => {
+            fail(new Error(`video play failed: ${error?.message || String(error)}`));
+          });
+        })
+      );
       const capturePresentedFrame = (targetSeconds, context, canvas, timeoutMs) => {
-        if (typeof video.requestVideoFrameCallback !== 'function') {
-          return captureWithPlaybackFallback(targetSeconds, context, canvas, timeoutMs);
+        if (presentationStrategy === 'webkit-playback-quality-raf') {
+          return captureWithPlaybackQuality(targetSeconds, context, canvas, timeoutMs);
         }
+        if (presentationStrategy !== 'request-video-frame-callback') {
+          return Promise.reject(new Error(`unsupported presentation strategy: ${presentationStrategy}`));
+        }
+        if (typeof video.requestVideoFrameCallback !== 'function') {
+          return Promise.reject(new Error('requestVideoFrameCallback is unavailable'));
+        }
+        const qualityBefore = readPlaybackQuality();
         return new Promise((resolve, reject) => {
           let settled = false;
           let callbackId = 0;
@@ -3096,11 +3144,14 @@ async function inspectStoryVideoArtifact(
             }
             settled = true;
             const result = {
+              presentationStrategy,
               presentationMethod:'requestVideoFrameCallback',
               targetSeconds,
               currentTime:video.currentTime,
               mediaTime,
-              presentedFrames:Number(metadata?.presentedFrames) || null
+              presentedFrames:Number(metadata?.presentedFrames) || null,
+              qualityBefore,
+              qualityAfter:readPlaybackQuality()
             };
             cleanup();
             resolve(result);
@@ -3225,6 +3276,7 @@ async function inspectStoryVideoArtifact(
         }
         return {
           canPlayType,
+          presentationStrategy,
           durationSeconds:video.duration,
           width:video.videoWidth,
           height:video.videoHeight,
@@ -3243,7 +3295,8 @@ async function inspectStoryVideoArtifact(
       }
     }, {
       base64:buffer.toString('base64'),
-      sampleFractions:STORY_RUNTIME_VIDEO_CONTRACT.videoSampleFractions
+      sampleFractions:STORY_RUNTIME_VIDEO_CONTRACT.videoSampleFractions,
+      presentationStrategy
     }), attemptDeadline, 'dedicated video content audit');
       const samplingComplete = decode.samples.length === STORY_RUNTIME_VIDEO_CONTRACT.videoSampleFractions.length
         && decode.samples.every((sample, index) => (
@@ -3258,17 +3311,52 @@ async function inspectStoryVideoArtifact(
         difference.meanAbsoluteDifference >= STORY_RUNTIME_VIDEO_CONTRACT.minimumDecodedMeanDifference
           && difference.changedPixelRatio >= STORY_RUNTIME_VIDEO_CONTRACT.minimumDecodedChangedPixelRatio
       )).length;
+      const strategyEvidenceComplete = decode.presentationStrategy === presentationStrategy
+        && decode.samples.every((sample) => (
+          sample.frameReadiness?.presentationStrategy === presentationStrategy
+        ));
+      const playbackQualityEvidenceComplete = presentationStrategy !== 'webkit-playback-quality-raf'
+        || decode.samples.every((sample) => {
+          const before = sample.frameReadiness?.qualityBefore;
+          const after = sample.frameReadiness?.qualityAfter;
+          return before && after
+            && Number.isFinite(before.totalVideoFrames)
+            && Number.isFinite(before.droppedVideoFrames)
+            && Number.isFinite(after.totalVideoFrames)
+            && Number.isFinite(after.droppedVideoFrames)
+            && before.totalVideoFrames >= before.droppedVideoFrames
+            && after.totalVideoFrames >= after.droppedVideoFrames
+            && before.displayedVideoFrames
+              === before.totalVideoFrames - before.droppedVideoFrames
+            && after.displayedVideoFrames
+              === after.totalVideoFrames - after.droppedVideoFrames
+            && sample.frameReadiness.displayedFrameIncrease
+              === after.displayedVideoFrames - before.displayedVideoFrames
+            && after.displayedVideoFrames > before.displayedVideoFrames;
+        });
       const passed = decode.durationSeconds >= STORY_RUNTIME_VIDEO_CONTRACT.minimumVideoDurationSeconds
         && decode.width === expectedVideoSize.width
         && decode.height === expectedVideoSize.height
         && samplingComplete
+        && strategyEvidenceComplete
+        && playbackQualityEvidenceComplete
         && nonBlankSamples >= STORY_RUNTIME_VIDEO_CONTRACT.minimumDecodedNonBlankSamples
         && changedPairs >= STORY_RUNTIME_VIDEO_CONTRACT.minimumDecodedChangedPairs
         && decode.uniqueFrameHashes >= STORY_RUNTIME_VIDEO_CONTRACT.minimumDecodedUniqueFrames;
       attemptResult = {
         ...base,
         passed,
-        decode:{ ...decode, attempt, processIsolation, launchMode, samplingComplete, nonBlankSamples, changedPairs }
+        decode:{
+          ...decode,
+          attempt,
+          processIsolation,
+          launchMode,
+          samplingComplete,
+          strategyEvidenceComplete,
+          playbackQualityEvidenceComplete,
+          nonBlankSamples,
+          changedPairs
+        }
       };
     } catch (error) {
       attemptError = error?.message || String(error);
@@ -3318,12 +3406,13 @@ async function inspectStoryVideoArtifact(
     const completedAt = new Date().toISOString();
     if (attemptError) {
       const attemptRecord = {
-        attempt, processIsolation, launchMode, startedAt, completedAt,
+        attempt, processIsolation, launchMode, browserName, presentationStrategy, startedAt, completedAt,
         sourceSha256Before, sourceSha256After, status:'error', error:attemptError
       };
       decodeAttempts.push(attemptRecord);
       decodeErrors.push({
-        attempt, processIsolation, launchMode, startedAt, completedAt, error:attemptError
+        attempt, processIsolation, launchMode, browserName, presentationStrategy,
+        startedAt, completedAt, error:attemptError
       });
       if (stopRetries || Date.now() >= artifactDeadline) break;
       continue;
@@ -3332,6 +3421,8 @@ async function inspectStoryVideoArtifact(
       attempt,
       processIsolation,
       launchMode,
+      browserName,
+      presentationStrategy,
       startedAt,
       completedAt,
       sourceSha256Before,
@@ -3360,6 +3451,8 @@ async function inspectStoryVideoArtifact(
       attempt:decodeAttempts.length,
       processIsolation:'dedicated-browser-process-after-producer-close',
       launchMode,
+      browserName,
+      presentationStrategy,
       error:decodeErrors.at(-1)?.error || 'video decode failed without an error detail'
     }
   };

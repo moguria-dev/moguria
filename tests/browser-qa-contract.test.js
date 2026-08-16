@@ -693,6 +693,11 @@ test('Story runtime evidence records all four motions continuously and projects 
     'decodeAttemptTimeoutMs',
     'videoArtifactAuditTimeoutMs',
     'withDeadline(auditPage.evaluate',
+    'browserType.name()',
+    "browserName === 'webkit'",
+    "'webkit-playback-quality-raf'",
+    "'request-video-frame-callback'",
+    'presentationStrategy',
     'sourceSha256Before',
     'sourceSha256After',
     'video artifact bytes changed during audit attempt',
@@ -707,20 +712,23 @@ test('Story runtime evidence records all four motions continuously and projects 
     'HTMLMediaElement.HAVE_CURRENT_DATA',
     'if (video.error) onError()',
     'capturePresentedFrame',
-    'captureWithPlaybackFallback',
-    'waitForAnimationFrameUntil',
+    'captureWithPlaybackQuality',
+    'readPlaybackQuality',
     'cancelAnimationFrame',
-    'deadline - performance.now()',
     'video.getVideoPlaybackQuality',
-    'Number.isFinite(count) ? count : null',
-    'video play start timed out',
-    'frameCountAvailable = initialFrameCount !== null',
-    'const timeAdvanced = !frameCountAvailable',
-    'initialTime + 1 / 120',
+    'quality?.totalVideoFrames',
+    'quality?.droppedVideoFrames',
+    'Number.isFinite(totalVideoFrames)',
+    'Number.isFinite(droppedVideoFrames)',
+    'displayedVideoFrames:totalVideoFrames - droppedVideoFrames',
+    'qualityBefore',
+    'qualityAfter',
+    'displayedFrameIncrease',
+    'if (video.paused)',
     'video.requestVideoFrameCallback',
     'video.cancelVideoFrameCallback',
     "presentationMethod:'requestVideoFrameCallback'",
-    "presentationMethod:'playback-quality-or-time-fallback'",
+    "presentationMethod:'getVideoPlaybackQuality+rAF'",
     "fail(new Error('requestVideoFrameCallback timed out for the requested frame'))",
     'await capturePresentedFrame(',
     'targetSeconds, context, canvas, 10000',
@@ -728,6 +736,8 @@ test('Story runtime evidence records all four motions continuously and projects 
     'currentTime:video.currentTime',
     'mediaTime',
     'frameReadiness',
+    'strategyEvidenceComplete',
+    'playbackQualityEvidenceComplete',
     'decodePhase = `seek@${fraction}`',
     'throw new Error(`${decodePhase}: ${error?.message || String(error)}`)',
     'retries are reserved for transient engine errors'
@@ -765,26 +775,42 @@ test('Story runtime evidence records all four motions continuously and projects 
     /decodePhase = 'first-frame';[\s\S]*HTMLMediaElement\.HAVE_CURRENT_DATA[\s\S]*waitFor\('loadeddata', 10000\)[\s\S]*decodePhase = `seek@\$\{fraction\}`/,
     'the audit must wait for first-frame data before phase-labelled seeking');
   assert.match(decodeSource,
-    /const captureWithPlaybackFallback = async[\s\S]*await Promise\.race\(\[[\s\S]*video\.play\(\)[\s\S]*video play start timed out[\s\S]*await waitForAnimationFrameUntil\(deadline\)[\s\S]*currentFrameCount > initialFrameCount[\s\S]*!frameCountAvailable && video\.currentTime >= initialTime \+ 1 \/ 120[\s\S]*video\.pause\(\);[\s\S]*await waitForAnimationFrameUntil\(deadline\)[\s\S]*context\.drawImage\(video/,
-    'the bounded fallback must observe a real playback frame advance before pausing and drawing');
-  const fallbackSource = decodeSource.slice(
-    decodeSource.indexOf('const captureWithPlaybackFallback'),
+    /const browserName = browserType\.name\(\);\s+const presentationStrategy = browserName === 'webkit'\s+\? 'webkit-playback-quality-raf'\s+: 'request-video-frame-callback';/,
+    'the public Playwright browser name must select the presentation strategy on the Node side');
+  assert.match(decodeSource,
+    /auditPage\.evaluate\(async \(\{[\s\S]*presentationStrategy[\s\S]*\}\) =>[\s\S]*base64:buffer\.toString\('base64'\)[\s\S]*presentationStrategy/,
+    'the selected Node-side strategy must be passed explicitly into the browser audit');
+  const qualitySource = decodeSource.slice(
+    decodeSource.indexOf('const captureWithPlaybackQuality'),
     decodeSource.indexOf('const capturePresentedFrame')
   );
-  assert.equal((fallbackSource.match(/await waitForAnimationFrameUntil\(deadline\)/g) || []).length, 2,
-    'both fallback animation-frame waits must share the remaining hard deadline');
-  assert.doesNotMatch(fallbackSource, /new Promise\([^)]*requestAnimationFrame|frameCountAdvanced \|\| timeAdvanced/,
-    'the fallback must not contain an unbounded rAF or let currentTime override an available frame counter');
-  const boundedRafSource = decodeSource.slice(
-    decodeSource.indexOf('const waitForAnimationFrameUntil'),
-    decodeSource.indexOf('const captureWithPlaybackFallback')
+  assert.match(qualitySource,
+    /new Promise\(\(resolve, reject\) => \{[\s\S]*qualityBefore = readPlaybackQuality\(true\)[\s\S]*setTimeout\([\s\S]*video\.addEventListener\('error', onError, \{ once:true \}\)[\s\S]*frameId = requestAnimationFrame\(inspectPresentedFrame\)[\s\S]*video\.play\(\)/,
+    'WebKit playback-quality capture must be bounded, error-aware, and driven by real playback plus rAF');
+  assert.match(qualitySource,
+    /qualityAfter\.displayedVideoFrames <= qualityBefore\.displayedVideoFrames[\s\S]*video\.currentTime < targetSeconds - frameToleranceSeconds[\s\S]*video\.currentTime > targetSeconds \+ frameToleranceSeconds[\s\S]*video\.pause\(\);\s+try \{\s+context\.drawImage\(video[\s\S]*qualityBefore,[\s\S]*qualityAfter,/,
+    'WebKit must synchronously draw only after a strict displayed-frame increase inside target tolerance');
+  assert.match(qualitySource,
+    /const cleanup = \(\) => \{[\s\S]*clearTimeout\(timer\)[\s\S]*removeEventListener\('error', onError\)[\s\S]*cancelAnimationFrame\(frameId\)/,
+    'the WebKit playback-quality path must cancel its timer, rAF, and error listener');
+  assert.doesNotMatch(qualitySource, /requestVideoFrameCallback|timeAdvanced|initialTime \+ 1 \/ 120/,
+    'the WebKit strategy must bypass rVFC and cannot accept currentTime-only readiness');
+  const strategyDispatchSource = decodeSource.slice(
+    decodeSource.indexOf('const capturePresentedFrame'),
+    decodeSource.indexOf("let decodePhase = 'metadata'")
   );
-  assert.match(boundedRafSource,
-    /remainingMs = deadline - performance\.now\(\)[\s\S]*frameId !== null\) cancelAnimationFrame\(frameId\)[\s\S]*setTimeout[\s\S]*requestAnimationFrame/,
-    'each fallback rAF must be cancellable by its remaining deadline');
-  assert.match(fallbackSource,
-    /const frameCountAvailable = initialFrameCount !== null;[\s\S]*const frameCountAdvanced = frameCountAvailable && currentFrameCount !== null[\s\S]*const timeAdvanced = !frameCountAvailable/,
-    'finite playback-quality counters must take precedence over currentTime progress');
+  assert.match(strategyDispatchSource,
+    /presentationStrategy === 'webkit-playback-quality-raf'[\s\S]*return captureWithPlaybackQuality[\s\S]*presentationStrategy !== 'request-video-frame-callback'[\s\S]*typeof video\.requestVideoFrameCallback !== 'function'/,
+    'WebKit must exit through playback quality before the Chromium rVFC path is considered');
+  assert.match(decodeSource,
+    /totalVideoFrames < droppedVideoFrames[\s\S]*displayedVideoFrames:totalVideoFrames - droppedVideoFrames/,
+    'playback quality must require finite coherent total/dropped counters and derive displayed frames');
+  assert.match(decodeSource,
+    /playbackQualityEvidenceComplete[\s\S]*before\.totalVideoFrames >= before\.droppedVideoFrames[\s\S]*after\.totalVideoFrames >= after\.droppedVideoFrames[\s\S]*after\.displayedVideoFrames > before\.displayedVideoFrames[\s\S]*&& playbackQualityEvidenceComplete/,
+    'WebKit before/after counter evidence and strict increase must be part of the pass gate');
+  assert.doesNotMatch(decodeSource,
+    /captureWithPlaybackFallback|playback-quality-or-time-fallback|timeAdvanced|initialTime \+ 1 \/ 120/,
+    'currentTime-only readiness and the former fallback must be removed');
   assert.match(decodeSource,
     /callbackId = video\.requestVideoFrameCallback\(onFrame\);\s+let playPromise;[\s\S]*playPromise = video\.play\(\)/,
     'the compositor callback must be armed synchronously before muted playback starts');
@@ -792,8 +818,8 @@ test('Story runtime evidence records all four motions continuously and projects 
     /const onFrame = \(_now, metadata\) =>[\s\S]*mediaTime < targetSeconds - frameToleranceSeconds[\s\S]*mediaTime > targetSeconds \+ frameToleranceSeconds[\s\S]*video\.pause\(\);\s+try \{\s+context\.drawImage\(video[\s\S]*presentationMethod:'requestVideoFrameCallback'/,
     'only a near-target compositor frame may be drawn synchronously inside rVFC');
   assert.match(decodeSource,
-    /if \(typeof video\.requestVideoFrameCallback !== 'function'\) \{\s+return captureWithPlaybackFallback/,
-    'playback polling is a bounded API-absence fallback, not an rVFC error bypass');
+    /if \(typeof video\.requestVideoFrameCallback !== 'function'\) \{\s+return Promise\.reject\(new Error\('requestVideoFrameCallback is unavailable'\)\)/,
+    'the Chromium strategy must fail closed if rVFC is unavailable instead of changing readiness strategy');
   assert.match(decodeSource,
     /const seeked = waitFor\('seeked', 10000\);\s+video\.currentTime = targetSeconds;\s+await seeked;[\s\S]*frameReadiness = await capturePresentedFrame/,
     'each seek must finish before the compositor-frame capture is armed');
