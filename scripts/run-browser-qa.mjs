@@ -2886,6 +2886,10 @@ function validWebKitScreenshotState(state, targetSeconds, expectedVideoSize) {
     && state.readyState >= 2
     && (state.networkState === 1 || state.networkState === 2)
     && state.isConnected === true
+    && state.elementIdentity === 'webkit-video-audit-singleton'
+    && state.elementCount === 1
+    && state.sameElement === true
+    && state.lateActivationErrorCount === 0
     && Math.abs(state.rect?.x || 0) <= 0.01
     && Math.abs(state.rect?.y || 0) <= 0.01
     && Math.abs((state.rect?.width || 0) - expectedVideoSize.width) <= 0.01
@@ -2896,6 +2900,11 @@ function validWebKitScreenshotState(state, targetSeconds, expectedVideoSize) {
     && state.videoHeight === expectedVideoSize.height
     && Number.isFinite(state.currentTime)
     && Math.abs(state.currentTime - targetSeconds) <= 0.25;
+}
+
+function validWebKitRunningState(state, targetSeconds, expectedVideoSize) {
+  return state?.paused === false
+    && validWebKitScreenshotState({ ...state, paused:true }, targetSeconds, expectedVideoSize);
 }
 
 async function inspectWebKitVideoElementScreenshots({
@@ -2909,29 +2918,7 @@ async function inspectWebKitVideoElementScreenshots({
     `attempt-${attempt}`
   );
   fs.mkdirSync(sampleDirectory, { recursive:true });
-  const initialize = await withDeadline(auditPage.evaluate(({ base64 }) => {
-    document.body.replaceChildren();
-    Object.assign(document.documentElement.style, {
-      margin:'0',
-      padding:'0',
-      background:'rgb(1, 2, 3)'
-    });
-    Object.assign(document.body.style, {
-      margin:'0',
-      padding:'0',
-      overflow:'hidden',
-      background:'rgb(1, 2, 3)'
-    });
-    const binary = atob(base64);
-    const bytes = new Uint8Array(binary.length);
-    for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
-    const url = URL.createObjectURL(new Blob([bytes], { type:'video/webm' }));
-    const probe = document.createElement('video');
-    const canPlayType = probe.canPlayType('video/webm; codecs="vp8"');
-    window.__moguriaWebKitVideoAudit = { url, canPlayType };
-    return { canPlayType };
-  }, { base64:buffer.toString('base64') }), attemptDeadline, 'WebKit video audit initialization');
-
+  let initialize = null;
   const samples = [];
   const luminanceVectors = [];
   let durationSeconds = null;
@@ -2939,161 +2926,316 @@ async function inspectWebKitVideoElementScreenshots({
   let height = null;
   let auditError = null;
   try {
+    initialize = await withDeadline(auditPage.evaluate(async ({
+      base64, expectedWidth, expectedHeight
+    }) => {
+      document.body.replaceChildren();
+      Object.assign(document.documentElement.style, {
+        margin:'0',
+        padding:'0',
+        background:'rgb(1, 2, 3)'
+      });
+      Object.assign(document.body.style, {
+        margin:'0',
+        padding:'0',
+        overflow:'hidden',
+        background:'rgb(1, 2, 3)'
+      });
+      const binary = atob(base64);
+      const bytes = new Uint8Array(binary.length);
+      for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+      const url = URL.createObjectURL(new Blob([bytes], { type:'video/webm' }));
+      const video = document.createElement('video');
+      const canPlayType = video.canPlayType('video/webm; codecs="vp8"');
+      const elementIdentity = 'webkit-video-audit-singleton';
+      video.id = 'audit-video';
+      video.dataset.auditElementIdentity = elementIdentity;
+      video.controls = false;
+      video.muted = true;
+      video.playsInline = true;
+      video.preload = 'auto';
+      video.autoplay = false;
+      video.loop = false;
+      video.removeAttribute('poster');
+      Object.assign(video.style, {
+        display:'block',
+        width:`${expectedWidth}px`,
+        height:`${expectedHeight}px`,
+        margin:'0',
+        padding:'0',
+        border:'0',
+        outline:'0',
+        boxShadow:'none',
+        objectFit:'fill',
+        background:'rgb(1, 2, 3)'
+      });
+      video.src = url;
+      document.body.append(video);
+      const audit = { url, canPlayType, elementIdentity, video };
+      window.__moguriaWebKitVideoAudit = audit;
+
+      audit.readState = () => {
+        const rect = video.getBoundingClientRect();
+        const selected = document.querySelector('#audit-video');
+        return {
+          currentTime:Number(video.currentTime),
+          duration:Number(video.duration),
+          videoWidth:Number(video.videoWidth),
+          videoHeight:Number(video.videoHeight),
+          readyState:Number(video.readyState),
+          networkState:Number(video.networkState),
+          seeking:Boolean(video.seeking),
+          paused:Boolean(video.paused),
+          isConnected:video.isConnected,
+          elementIdentity:video.dataset.auditElementIdentity || '',
+          elementCount:document.querySelectorAll('#audit-video').length,
+          sameElement:selected === video && audit.video === video,
+          lateActivationErrorCount:audit.lateActivationErrors?.length || 0,
+          rect:{ x:rect.x, y:rect.y, width:rect.width, height:rect.height },
+          error:video.error ? {
+            code:Number(video.error.code),
+            message:String(video.error.message || '')
+          } : null
+        };
+      };
+      audit.waitFor = (eventName, timeoutMs) => new Promise((resolve, reject) => {
+        let settled = false;
+        let timer = null;
+        const cleanup = () => {
+          if (timer !== null) clearTimeout(timer);
+          video.removeEventListener(eventName, onEvent);
+          video.removeEventListener('error', onError);
+        };
+        const finish = (callback) => {
+          if (settled) return;
+          settled = true;
+          cleanup();
+          callback();
+        };
+        const onEvent = () => finish(resolve);
+        const onError = () => finish(() => reject(
+          new Error(`video decode failed (${video.error?.code || 'unknown'})`)
+        ));
+        timer = setTimeout(() => finish(() => reject(
+          new Error(`video ${eventName} timed out`)
+        )), timeoutMs);
+        video.addEventListener(eventName, onEvent, { once:true });
+        video.addEventListener('error', onError, { once:true });
+        if (video.error) onError();
+      });
+      audit.assertState = (snapshot, targetSeconds, phase, expectedPaused = true) => {
+        if (snapshot.error !== null
+          || snapshot.paused !== expectedPaused
+          || snapshot.seeking !== false
+          || snapshot.readyState < HTMLMediaElement.HAVE_CURRENT_DATA
+          || (snapshot.networkState !== HTMLMediaElement.NETWORK_IDLE
+            && snapshot.networkState !== HTMLMediaElement.NETWORK_LOADING)
+          || snapshot.isConnected !== true
+          || snapshot.elementIdentity !== elementIdentity
+          || snapshot.elementCount !== 1
+          || snapshot.sameElement !== true
+          || snapshot.lateActivationErrorCount !== 0
+          || Math.abs(snapshot.rect.x) > 0.01
+          || Math.abs(snapshot.rect.y) > 0.01
+          || Math.abs(snapshot.rect.width - expectedWidth) > 0.01
+          || Math.abs(snapshot.rect.height - expectedHeight) > 0.01
+          || !Number.isFinite(snapshot.duration)
+          || snapshot.duration <= 0
+          || snapshot.videoWidth !== expectedWidth
+          || snapshot.videoHeight !== expectedHeight
+          || !Number.isFinite(snapshot.currentTime)
+          || Math.abs(snapshot.currentTime - targetSeconds) > 0.25) {
+          throw new Error(`${phase} state is not screenshot-ready: ${JSON.stringify(snapshot)}`);
+        }
+      };
+      audit.assertRunningState = (snapshot, targetSeconds, phase) => {
+        audit.assertState(snapshot, targetSeconds, phase, false);
+      };
+
+      const metadataReady = audit.waitFor('loadedmetadata', 10000);
+      video.load();
+      await metadataReady;
+      if (!Number.isFinite(video.duration) || video.duration <= 0
+        || !video.videoWidth || !video.videoHeight) {
+        throw new Error('decoded WebM metadata is incomplete');
+      }
+      if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
+        await audit.waitFor('loadeddata', 10000);
+      }
+      if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
+        throw new Error('decoded WebM has no current frame data');
+      }
+
+      audit.activationSerial = 0;
+      audit.lateActivationErrors = [];
+      audit.activateAtTarget = (targetSeconds, phaseLabel, timeoutMs) => (
+        new Promise((resolve, reject) => {
+          let settled = false;
+          let playingObserved = false;
+          let playPromiseOutcome = 'pending-at-playing';
+          let timer = null;
+          const activationSerial = ++audit.activationSerial;
+          const cleanup = () => {
+            if (timer !== null) clearTimeout(timer);
+            video.removeEventListener('playing', onPlaying);
+            video.removeEventListener('error', onError);
+          };
+          const fail = (error) => {
+            if (settled) return;
+            settled = true;
+            video.pause();
+            cleanup();
+            reject(error instanceof Error ? error : new Error(String(error)));
+          };
+          const onPlaying = () => {
+            if (settled || playingObserved) return;
+            playingObserved = true;
+            const playingTime = Number(video.currentTime);
+            const runningState = audit.readState();
+            try {
+              audit.assertRunningState(
+                runningState, targetSeconds, phaseLabel + ':playing-before-screenshot'
+              );
+            } catch (error) {
+              fail(error);
+              return;
+            }
+            if (!Number.isFinite(playingTime)
+              || Math.abs(playingTime - targetSeconds) > 0.25) {
+              fail(new Error('video playing frame escaped target tolerance at ' + phaseLabel));
+              return;
+            }
+            settled = true;
+            cleanup();
+            resolve({
+              setupOnly:false,
+              pixelPassSignal:false,
+              method:'per-sample-muted-play-running-locator-screenshot',
+              phaseLabel,
+              activationSerial,
+              playingObserved,
+              playingTime,
+              runningState,
+              playPromiseOutcome
+            });
+          };
+          const onError = () => fail(
+            new Error('video activation failed (' + (video.error?.code || 'unknown') + ')')
+          );
+          timer = setTimeout(() => fail(
+            new Error('video playing timed out at ' + phaseLabel)
+          ), timeoutMs);
+          video.addEventListener('playing', onPlaying, { once:true });
+          video.addEventListener('error', onError, { once:true });
+          if (video.error) {
+            onError();
+            return;
+          }
+          let playPromise;
+          try { playPromise = video.play(); }
+          catch (error) {
+            fail(new Error('video play failed: ' + (error?.message || String(error))));
+            return;
+          }
+          Promise.resolve(playPromise).then(() => {
+            playPromiseOutcome = 'fulfilled';
+          }, (error) => {
+            if (settled && playingObserved && error?.name === 'AbortError') return;
+            if (settled) {
+              audit.lateActivationErrors.push({
+                phaseLabel,
+                name:String(error?.name || ''),
+                message:String(error?.message || error)
+              });
+              return;
+            }
+            fail(new Error('video play failed: ' + (error?.message || String(error))));
+          });
+        })
+      );
+      const setupState = audit.readState();
+      audit.assertState(setupState, setupState.currentTime, 'post-load setup');
+      return {
+        canPlayType,
+        durationSeconds:video.duration,
+        width:video.videoWidth,
+        height:video.videoHeight,
+        elementIdentity,
+        setupState
+      };
+    }, {
+      base64:buffer.toString('base64'),
+      expectedWidth:expectedVideoSize.width,
+      expectedHeight:expectedVideoSize.height
+    }), attemptDeadline, 'WebKit singleton video load setup');
+
+    durationSeconds = initialize.durationSeconds;
+    width = initialize.width;
+    height = initialize.height;
     for (let sampleIndex = 0;
       sampleIndex < STORY_RUNTIME_VIDEO_CONTRACT.videoSampleFractions.length;
       sampleIndex += 1) {
       const fraction = STORY_RUNTIME_VIDEO_CONTRACT.videoSampleFractions[sampleIndex];
+      const phaseLabel = `sample-${String(sampleIndex + 1).padStart(2, '0')}@${fraction}`;
       let prepared = null;
       let sampleError = null;
       try {
         prepared = await withDeadline(auditPage.evaluate(async ({
-          fraction:sampleFraction, expectedWidth, expectedHeight
+          fraction:sampleFraction, phaseLabel:samplePhaseLabel
         }) => {
           const audit = window.__moguriaWebKitVideoAudit;
-          if (!audit?.url) throw new Error('WebKit video audit URL is unavailable');
-          document.querySelector('#audit-video')?.remove();
-          const video = document.createElement('video');
-          video.id = 'audit-video';
-          video.controls = false;
-          video.muted = true;
-          video.playsInline = true;
-          video.preload = 'auto';
-          video.autoplay = false;
-          video.loop = false;
-          video.removeAttribute('poster');
-          Object.assign(video.style, {
-            display:'block',
-            width:`${expectedWidth}px`,
-            height:`${expectedHeight}px`,
-            margin:'0',
-            padding:'0',
-            border:'0',
-            outline:'0',
-            boxShadow:'none',
-            objectFit:'fill',
-            background:'rgb(1, 2, 3)'
-          });
-          video.src = audit.url;
-          document.body.append(video);
-
-          const state = () => {
-            const rect = video.getBoundingClientRect();
-            return {
-              currentTime:Number(video.currentTime),
-              duration:Number(video.duration),
-              videoWidth:Number(video.videoWidth),
-              videoHeight:Number(video.videoHeight),
-              readyState:Number(video.readyState),
-              networkState:Number(video.networkState),
-              seeking:Boolean(video.seeking),
-              paused:Boolean(video.paused),
-              isConnected:video.isConnected,
-              rect:{ x:rect.x, y:rect.y, width:rect.width, height:rect.height },
-              error:video.error ? {
-                code:Number(video.error.code),
-                message:String(video.error.message || '')
-              } : null
-            };
-          };
-          const waitFor = (eventName, timeoutMs, onEventAction = null) => new Promise((resolve, reject) => {
-            let settled = false;
-            const cleanup = () => {
-              clearTimeout(timer);
-              video.removeEventListener(eventName, onEvent);
-              video.removeEventListener('error', onError);
-            };
-            const finish = (callback) => {
-              if (settled) return;
-              settled = true;
-              cleanup();
-              callback();
-            };
-            const onEvent = () => finish(() => {
-              if (onEventAction) onEventAction();
-              resolve();
-            });
-            const onError = () => finish(() => reject(
-              new Error(`video decode failed (${video.error?.code || 'unknown'})`)
-            ));
-            const timer = setTimeout(() => finish(() => reject(
-              new Error(`video ${eventName} timed out`)
-            )), timeoutMs);
-            video.addEventListener(eventName, onEvent, { once:true });
-            video.addEventListener('error', onError, { once:true });
-            if (video.error) onError();
-          });
-          const assertState = (snapshot, targetSeconds, phase) => {
-            if (snapshot.error !== null
-              || snapshot.paused !== true
-              || snapshot.seeking !== false
-              || snapshot.readyState < HTMLMediaElement.HAVE_CURRENT_DATA
-              || (snapshot.networkState !== HTMLMediaElement.NETWORK_IDLE
-                && snapshot.networkState !== HTMLMediaElement.NETWORK_LOADING)
-              || snapshot.isConnected !== true
-              || Math.abs(snapshot.rect.x) > 0.01
-              || Math.abs(snapshot.rect.y) > 0.01
-              || Math.abs(snapshot.rect.width - expectedWidth) > 0.01
-              || Math.abs(snapshot.rect.height - expectedHeight) > 0.01
-              || !Number.isFinite(snapshot.duration)
-              || snapshot.duration <= 0
-              || snapshot.videoWidth !== expectedWidth
-              || snapshot.videoHeight !== expectedHeight
-              || !Number.isFinite(snapshot.currentTime)
-              || Math.abs(snapshot.currentTime - targetSeconds) > 0.25) {
-              throw new Error(`${phase} state is not screenshot-ready: ${JSON.stringify(snapshot)}`);
-            }
-          };
-
-          if (video.readyState < HTMLMediaElement.HAVE_METADATA) {
-            const metadataReady = waitFor('loadedmetadata', 10000);
-            video.load();
-            await metadataReady;
-          }
-          if (!Number.isFinite(video.duration) || video.duration <= 0
-            || !video.videoWidth || !video.videoHeight) {
-            throw new Error('decoded WebM metadata is incomplete');
-          }
-          if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
-            await waitFor('loadeddata', 10000);
-          }
-          if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
-            throw new Error('decoded WebM has no current frame data');
+          const video = audit?.video;
+          if (!(video instanceof HTMLVideoElement) || !audit?.url
+            || typeof audit.readState !== 'function'
+            || typeof audit.waitFor !== 'function'
+            || typeof audit.assertState !== 'function'
+            || typeof audit.assertRunningState !== 'function'
+            || typeof audit.activateAtTarget !== 'function') {
+            throw new Error('WebKit singleton audit video is unavailable');
           }
           const targetSeconds = Math.min(
             Math.max(0.05, video.duration * sampleFraction),
             Math.max(0.05, video.duration - 0.05)
           );
           video.pause();
-          if (Math.abs(video.currentTime - targetSeconds) > 0.01) {
-            const seeked = waitFor('seeked', 10000);
-            video.currentTime = targetSeconds;
-            await seeked;
-          }
-          const postSeekState = state();
-          assertState(postSeekState, targetSeconds, 'post-seek');
-          const preScreenshotState = state();
-          assertState(preScreenshotState, targetSeconds, 'pre-screenshot');
+          const seeked = audit.waitFor('seeked', 10000);
+          video.currentTime = targetSeconds;
+          await seeked;
+          const postSeekState = audit.readState();
+          audit.assertState(postSeekState, targetSeconds, `${samplePhaseLabel}:post-seek`);
+          const activation = await audit.activateAtTarget(
+            targetSeconds, samplePhaseLabel, 10000
+          );
+          audit.assertRunningState(
+            activation.runningState,
+            targetSeconds,
+            `${samplePhaseLabel}:playing-before-screenshot`
+          );
           return {
             canPlayType:audit.canPlayType,
-            activationPolicy:'paused-seek-only',
             fraction:sampleFraction,
             targetSeconds,
             durationSeconds:video.duration,
             width:video.videoWidth,
             height:video.videoHeight,
-            postSeekState,
-            preScreenshotState
+            elementIdentity:audit.elementIdentity,
+            activation,
+            postSeekState
           };
-        }, {
-          fraction,
-          expectedWidth:expectedVideoSize.width,
-          expectedHeight:expectedVideoSize.height
-        }), attemptDeadline, `WebKit video sample ${sampleIndex + 1} preparation`);
+        }, { fraction, phaseLabel }), attemptDeadline,
+        `WebKit video ${phaseLabel} seek and running activation`);
 
         if (!validWebKitScreenshotState(
-          prepared.preScreenshotState, prepared.targetSeconds, expectedVideoSize
+          prepared.postSeekState, prepared.targetSeconds, expectedVideoSize
+        ) || !validWebKitRunningState(
+          prepared.activation?.runningState, prepared.targetSeconds, expectedVideoSize
         )) {
-          throw new Error(`WebKit pre-screenshot state failed Node verification at ${fraction}`);
+          throw new Error(`WebKit seek/activation state failed Node verification at ${fraction}`);
+        }
+        if (prepared.activation?.playingObserved !== true
+          || !Number.isFinite(prepared.activation.playingTime)
+          || Math.abs(prepared.activation.playingTime - prepared.targetSeconds) > 0.25) {
+          throw new Error(`WebKit activation timing failed Node verification at ${fraction}`);
         }
         const screenshotTimeoutMs = Math.max(1, attemptDeadline - Date.now());
         const screenshotBuffer = await withDeadline(
@@ -3105,77 +3247,71 @@ async function inspectWebKitVideoElementScreenshots({
           attemptDeadline,
           `WebKit video sample ${sampleIndex + 1} locator screenshot`
         );
+        const postScreenshot = await withDeadline(auditPage.evaluate(({
+          targetSeconds, playingTime, phaseLabel:samplePhaseLabel
+        }) => {
+          const audit = window.__moguriaWebKitVideoAudit;
+          const video = audit?.video;
+          video?.pause();
+          if (!(video instanceof HTMLVideoElement)
+            || typeof audit.readState !== 'function'
+            || typeof audit.assertState !== 'function') {
+            throw new Error('WebKit singleton audit video disappeared after screenshot');
+          }
+          const postPauseTime = Number(video.currentTime);
+          const postScreenshotState = audit.readState();
+          audit.assertState(
+            postScreenshotState,
+            targetSeconds,
+            samplePhaseLabel + ':post-screenshot-pause'
+          );
+          const playingToPostPauseIntervalSeconds = postPauseTime - playingTime;
+          if (!Number.isFinite(playingTime) || !Number.isFinite(postPauseTime)
+            || Math.abs(playingTime - targetSeconds) > 0.25
+            || Math.abs(postPauseTime - targetSeconds) > 0.25
+            || postPauseTime + 0.01 < playingTime
+            || playingToPostPauseIntervalSeconds > 0.25
+            || Math.abs(postScreenshotState.currentTime - postPauseTime) > 0.01) {
+            throw new Error(
+              samplePhaseLabel + ': running screenshot interval escaped target tolerance'
+            );
+          }
+          return {
+            postPauseTime,
+            postScreenshotState,
+            playingToPostPauseIntervalSeconds
+          };
+        }, {
+          targetSeconds:prepared.targetSeconds,
+          playingTime:prepared.activation.playingTime,
+          phaseLabel
+        }), attemptDeadline,
+        `WebKit video ${phaseLabel} immediate post-screenshot pause`);
+        if (!validWebKitScreenshotState(
+          postScreenshot.postScreenshotState, prepared.targetSeconds, expectedVideoSize
+        )
+          || !Number.isFinite(postScreenshot.postPauseTime)
+          || Math.abs(postScreenshot.postPauseTime - prepared.targetSeconds) > 0.25
+          || postScreenshot.postPauseTime + 0.01 < prepared.activation.playingTime
+          || !Number.isFinite(postScreenshot.playingToPostPauseIntervalSeconds)
+          || postScreenshot.playingToPostPauseIntervalSeconds < -0.01
+          || postScreenshot.playingToPostPauseIntervalSeconds > 0.25
+          || Math.abs(
+            postScreenshot.postScreenshotState.currentTime - postScreenshot.postPauseTime
+          ) > 0.01) {
+          throw new Error(`WebKit running screenshot timing failed Node verification at ${fraction}`);
+        }
         const sampleName = `sample-${String(sampleIndex + 1).padStart(2, '0')}--${fraction.toFixed(2).replace('.', '_')}.png`;
         const samplePath = path.join(sampleDirectory, sampleName);
         fs.writeFileSync(samplePath, screenshotBuffer);
         const decodedPng = decodePngVisual(screenshotBuffer);
-        const postScreenshotState = await withDeadline(auditPage.evaluate(({
-          targetSeconds, preScreenshotTime, expectedWidth, expectedHeight
-        }) => {
-          const video = document.querySelector('#audit-video');
-          if (!(video instanceof HTMLVideoElement)) throw new Error('WebKit audit video disappeared after screenshot');
-          const rect = video.getBoundingClientRect();
-          const snapshot = {
-            currentTime:Number(video.currentTime),
-            duration:Number(video.duration),
-            videoWidth:Number(video.videoWidth),
-            videoHeight:Number(video.videoHeight),
-            readyState:Number(video.readyState),
-            networkState:Number(video.networkState),
-            seeking:Boolean(video.seeking),
-            paused:Boolean(video.paused),
-            isConnected:video.isConnected,
-            rect:{ x:rect.x, y:rect.y, width:rect.width, height:rect.height },
-            error:video.error ? {
-              code:Number(video.error.code),
-              message:String(video.error.message || '')
-            } : null
-          };
-          if (snapshot.error !== null
-            || snapshot.paused !== true
-            || snapshot.seeking !== false
-            || snapshot.readyState < HTMLMediaElement.HAVE_CURRENT_DATA
-            || (snapshot.networkState !== HTMLMediaElement.NETWORK_IDLE
-              && snapshot.networkState !== HTMLMediaElement.NETWORK_LOADING)
-            || snapshot.isConnected !== true
-            || Math.abs(snapshot.rect.x) > 0.01
-            || Math.abs(snapshot.rect.y) > 0.01
-            || Math.abs(snapshot.rect.width - expectedWidth) > 0.01
-            || Math.abs(snapshot.rect.height - expectedHeight) > 0.01
-            || !Number.isFinite(snapshot.duration)
-            || snapshot.duration <= 0
-            || snapshot.videoWidth !== expectedWidth
-            || snapshot.videoHeight !== expectedHeight
-            || !Number.isFinite(snapshot.currentTime)
-            || Math.abs(snapshot.currentTime - targetSeconds) > 0.25
-            || Math.abs(snapshot.currentTime - preScreenshotTime) > 0.01) {
-            throw new Error(`post-screenshot state is invalid: ${JSON.stringify(snapshot)}`);
-          }
-          return snapshot;
-        }, {
-          targetSeconds:prepared.targetSeconds,
-          preScreenshotTime:prepared.preScreenshotState.currentTime,
-          expectedWidth:expectedVideoSize.width,
-          expectedHeight:expectedVideoSize.height
-        }), attemptDeadline,
-        `WebKit video sample ${sampleIndex + 1} post-screenshot verification`);
-        if (!validWebKitScreenshotState(
-          postScreenshotState, prepared.targetSeconds, expectedVideoSize
-        )) {
-          throw new Error(`WebKit post-screenshot state failed Node verification at ${fraction}`);
-        }
-        if (Math.abs(
-          postScreenshotState.currentTime - prepared.preScreenshotState.currentTime
-        ) > 0.01) {
-          throw new Error(`WebKit screenshot time drift exceeded 0.01 seconds at ${fraction}`);
-        }
 
         durationSeconds ??= prepared.durationSeconds;
         width ??= prepared.width;
         height ??= prepared.height;
         if (Math.abs(durationSeconds - prepared.durationSeconds) > 0.01
           || width !== prepared.width || height !== prepared.height) {
-          throw new Error(`fresh WebKit video metadata changed at ${fraction}`);
+          throw new Error(`singleton WebKit video metadata changed at ${fraction}`);
         }
         const frameHash = sha256(decodedPng.luminanceVector);
         luminanceVectors.push(decodedPng.luminanceVector);
@@ -3190,15 +3326,15 @@ async function inspectWebKitVideoElementScreenshots({
             presentationStrategy,
             presentationMethod:'locator.screenshot',
             targetSeconds:prepared.targetSeconds,
-            currentTime:postScreenshotState.currentTime,
+            currentTime:postScreenshot.postScreenshotState.currentTime,
             mediaTime:null,
-            activationPolicy:prepared.activationPolicy,
+            activationTelemetry:prepared.activation,
             postSeekState:prepared.postSeekState,
-            preScreenshotState:prepared.preScreenshotState,
-            postScreenshotState,
-            screenshotTimeDriftSeconds:Math.abs(
-              postScreenshotState.currentTime - prepared.preScreenshotState.currentTime
-            )
+            runningState:prepared.activation.runningState,
+            postPauseTime:postScreenshot.postPauseTime,
+            postScreenshotState:postScreenshot.postScreenshotState,
+            playingToPostPauseIntervalSeconds:
+              postScreenshot.playingToPostPauseIntervalSeconds
           },
           frameHash,
           screenshot:path.relative(outputRoot, samplePath).split(path.sep).join('/'),
@@ -3209,27 +3345,10 @@ async function inspectWebKitVideoElementScreenshots({
           screenshotVisual:decodedPng.stats
         });
       } catch (error) {
-        sampleError = error;
-      } finally {
-        try {
-          await withDeadline(auditPage.evaluate(() => {
-            const video = document.querySelector('#audit-video');
-            if (video instanceof HTMLVideoElement) {
-              video.pause();
-              video.removeAttribute('src');
-              video.load();
-              video.remove();
-            }
-            if (document.querySelector('#audit-video')) {
-              throw new Error('WebKit audit video remained connected after removal');
-            }
-          }), attemptDeadline, `WebKit video sample ${sampleIndex + 1} removal`);
-        } catch (error) {
-          const cleanupMessage = `sample removal failed: ${error?.message || String(error)}`;
-          sampleError = new Error(sampleError
-            ? `${sampleError?.message || String(sampleError)}; ${cleanupMessage}`
-            : cleanupMessage);
-        }
+        const message = error?.message || String(error);
+        sampleError = new Error(message.startsWith(`${phaseLabel}:`)
+          ? message
+          : `${phaseLabel}: ${message}`);
       }
       if (sampleError) throw sampleError;
     }
@@ -3239,11 +3358,21 @@ async function inspectWebKitVideoElementScreenshots({
     try {
       await withDeadline(auditPage.evaluate(() => {
         const audit = window.__moguriaWebKitVideoAudit;
+        const video = audit?.video;
+        const lateActivationErrors = [...(audit?.lateActivationErrors || [])];
+        if (video instanceof HTMLVideoElement) {
+          video.pause();
+          video.removeAttribute('src');
+          video.remove();
+        }
         if (audit?.url) URL.revokeObjectURL(audit.url);
         delete window.__moguriaWebKitVideoAudit;
         document.body.replaceChildren();
-        if ('__moguriaWebKitVideoAudit' in window || document.body.childElementCount !== 0) {
-          throw new Error('WebKit audit page cleanup is incomplete');
+        if ('__moguriaWebKitVideoAudit' in window
+          || document.querySelectorAll('#audit-video').length !== 0
+          || document.body.childElementCount !== 0
+          || lateActivationErrors.length !== 0) {
+          throw new Error(`WebKit audit page cleanup is incomplete: ${JSON.stringify({ lateActivationErrors })}`);
         }
       }), attemptDeadline, 'WebKit video audit URL cleanup');
     } catch (error) {
@@ -3270,6 +3399,14 @@ async function inspectWebKitVideoElementScreenshots({
     durationSeconds,
     width,
     height,
+    singletonSetup:{
+      elementIdentity:initialize.elementIdentity,
+      setupState:initialize.setupState,
+      elementCreateCount:1,
+      blobUrlCreateCount:1,
+      sourceAssignmentCount:1,
+      loadCallCount:1
+    },
     samplePng:{ width:samples[0]?.screenshotWidth || 0, height:samples[0]?.screenshotHeight || 0 },
     samples,
     adjacentDifferences,
@@ -3660,9 +3797,21 @@ async function inspectStoryVideoArtifact(
         && decode.samples.every((sample) => (
           sample.frameReadiness?.presentationStrategy === presentationStrategy
         ));
+      const webkitSingletonEvidenceComplete = presentationStrategy !== 'webkit-element-screenshot-png'
+        || (decode.singletonSetup?.elementIdentity === 'webkit-video-audit-singleton'
+          && decode.singletonSetup.elementCreateCount === 1
+          && decode.singletonSetup.blobUrlCreateCount === 1
+          && decode.singletonSetup.sourceAssignmentCount === 1
+          && decode.singletonSetup.loadCallCount === 1
+          && validWebKitScreenshotState(
+            decode.singletonSetup.setupState,
+            decode.singletonSetup.setupState?.currentTime,
+            expectedVideoSize
+          ));
       const webkitScreenshotEvidenceComplete = presentationStrategy !== 'webkit-element-screenshot-png'
-        || decode.samples.every((sample) => {
+        || decode.samples.every((sample, sampleIndex) => {
           const readiness = sample.frameReadiness;
+          const activation = readiness?.activationTelemetry;
           const screenshotPath = typeof sample.screenshot === 'string'
             ? path.resolve(outputRoot, sample.screenshot)
             : '';
@@ -3671,18 +3820,32 @@ async function inspectStoryVideoArtifact(
             && fs.statSync(screenshotPath).isFile()
             && sha256(fs.readFileSync(screenshotPath)) === sample.screenshotSha256;
           return readiness?.presentationMethod === 'locator.screenshot'
-            && readiness.activationPolicy === 'paused-seek-only'
+            && activation?.method === 'per-sample-muted-play-running-locator-screenshot'
+            && activation.pixelPassSignal === false
+            && activation.phaseLabel
+              === `sample-${String(sampleIndex + 1).padStart(2, '0')}@${sample.fraction}`
+            && activation.activationSerial === sampleIndex + 1
+            && activation.playingObserved === true
+            && Number.isFinite(activation.playingTime)
+            && Math.abs(activation.playingTime - sample.targetSeconds) <= 0.25
             && validWebKitScreenshotState(
               readiness.postSeekState, sample.targetSeconds, expectedVideoSize
             )
-            && validWebKitScreenshotState(
-              readiness.preScreenshotState, sample.targetSeconds, expectedVideoSize
+            && validWebKitRunningState(
+              readiness.runningState, sample.targetSeconds, expectedVideoSize
             )
             && validWebKitScreenshotState(
               readiness.postScreenshotState, sample.targetSeconds, expectedVideoSize
             )
-            && Number.isFinite(readiness.screenshotTimeDriftSeconds)
-            && readiness.screenshotTimeDriftSeconds <= 0.01
+            && Number.isFinite(readiness.postPauseTime)
+            && Math.abs(readiness.postPauseTime - sample.targetSeconds) <= 0.25
+            && readiness.postPauseTime + 0.01 >= activation.playingTime
+            && Number.isFinite(readiness.playingToPostPauseIntervalSeconds)
+            && readiness.playingToPostPauseIntervalSeconds >= -0.01
+            && readiness.playingToPostPauseIntervalSeconds <= 0.25
+            && Math.abs(
+              readiness.postScreenshotState.currentTime - readiness.postPauseTime
+            ) <= 0.01
             && typeof sample.screenshot === 'string'
             && sample.screenshot.startsWith('video-samples/')
             && /^[a-f0-9]{64}$/.test(sample.screenshotSha256)
@@ -3698,6 +3861,7 @@ async function inspectStoryVideoArtifact(
         && decode.height === expectedVideoSize.height
         && samplingComplete
         && strategyEvidenceComplete
+        && webkitSingletonEvidenceComplete
         && webkitScreenshotEvidenceComplete
         && nonBlankSamples >= STORY_RUNTIME_VIDEO_CONTRACT.minimumDecodedNonBlankSamples
         && changedPairs >= STORY_RUNTIME_VIDEO_CONTRACT.minimumDecodedChangedPairs
@@ -3712,6 +3876,7 @@ async function inspectStoryVideoArtifact(
           launchMode,
           samplingComplete,
           strategyEvidenceComplete,
+          webkitSingletonEvidenceComplete,
           webkitScreenshotEvidenceComplete,
           nonBlankSamples,
           changedPairs

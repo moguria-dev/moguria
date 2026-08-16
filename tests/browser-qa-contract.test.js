@@ -658,6 +658,14 @@ test('Story runtime evidence records all four motions continuously and projects 
     source.indexOf('async function inspectWebKitVideoElementScreenshots'),
     source.indexOf('async function inspectStoryVideoArtifact')
   );
+  const webkitSetupSource = webkitScreenshotSource.slice(
+    0,
+    webkitScreenshotSource.indexOf('for (let sampleIndex = 0;')
+  );
+  const webkitSampleLoopSource = webkitScreenshotSource.slice(
+    webkitScreenshotSource.indexOf('for (let sampleIndex = 0;'),
+    webkitScreenshotSource.indexOf("} catch (error) {\n    auditError = error;")
+  );
   const webkitStateSource = source.slice(
     source.indexOf('function validWebKitScreenshotState'),
     source.indexOf('async function inspectWebKitVideoElementScreenshots')
@@ -820,16 +828,25 @@ test('Story runtime evidence records all four motions continuously and projects 
     'fs.mkdirSync(sampleDirectory, { recursive:true })',
     "document.createElement('video')",
     "video.id = 'audit-video'",
+    "elementIdentity = 'webkit-video-audit-singleton'",
     'video.controls = false',
     "video.removeAttribute('poster')",
     "background:'rgb(1, 2, 3)'",
     "objectFit:'fill'",
-    "waitFor('loadedmetadata', 10000)",
-    "waitFor('loadeddata', 10000)",
-    "waitFor('seeked', 10000)",
+    "audit.waitFor('loadedmetadata', 10000)",
+    "audit.waitFor('loadeddata', 10000)",
+    "audit.waitFor('seeked', 10000)",
     'HTMLMediaElement.HAVE_CURRENT_DATA',
-    'video.pause()',
-    "activationPolicy:'paused-seek-only'",
+    'audit.activateAtTarget',
+    "method:'per-sample-muted-play-running-locator-screenshot'",
+    "video.addEventListener('playing', onPlaying, { once:true })",
+    'const playingTime = Number(video.currentTime)',
+    'const runningState = audit.readState()',
+    'audit.assertRunningState(',
+    'video?.pause()',
+    'const postPauseTime = Number(video.currentTime)',
+    'pixelPassSignal:false',
+    "if (settled && playingObserved && error?.name === 'AbortError') return",
     "presentationMethod:'locator.screenshot'",
     "auditPage.locator('#audit-video').screenshot({",
     'timeout:screenshotTimeoutMs',
@@ -839,46 +856,103 @@ test('Story runtime evidence records all four motions continuously and projects 
     'screenshotWidth:decodedPng.stats.width',
     'screenshotHeight:decodedPng.stats.height',
     'screenshotVisual:decodedPng.stats',
+    'activationTelemetry:prepared.activation',
     'postSeekState',
-    'preScreenshotState',
+    'runningState',
+    'postPauseTime',
     'postScreenshotState',
-    'screenshotTimeDriftSeconds',
+    'playingToPostPauseIntervalSeconds',
+    'postPauseTime + 0.01 < playingTime',
+    'playingToPostPauseIntervalSeconds > 0.25',
     '> 0.01',
     'isConnected:video.isConnected',
+    'elementCount:document.querySelectorAll',
+    'sameElement:selected === video && audit.video === video',
     'networkState:Number(video.networkState)',
     'video.getBoundingClientRect()',
-    'Math.abs(snapshot.rect.width - expectedWidth) > 0.01',
-    'Math.abs(snapshot.rect.height - expectedHeight) > 0.01',
-    'sample removal failed:',
     'audit URL cleanup failed:',
     'decodedFrameDifference(',
     'uniqueFrameHashes:new Set(samples.map((sample) => sample.frameHash)).size'
   ]) assert.ok(webkitScreenshotSource.includes(webkitContract),
     `WebKit element screenshot audit must enforce ${webkitContract}`);
-  assert.equal((webkitScreenshotSource.match(/\.screenshot\(\{/g) || []).length, 1,
-    'each WebKit sample must use one public locator screenshot call');
-  assert.match(webkitScreenshotSource,
-    /for \(let sampleIndex = 0;[\s\S]*document\.querySelector\('#audit-video'\)\?\.remove\(\);[\s\S]*const video = document\.createElement\('video'\)/,
-    'every fraction must replace the prior element with a fresh visible video');
-  assert.match(webkitScreenshotSource,
-    /postSeekState = state\(\);[\s\S]*assertState\(postSeekState, targetSeconds, 'post-seek'\)[\s\S]*preScreenshotState = state\(\);[\s\S]*locator\('#audit-video'\)\.screenshot[\s\S]*post-screenshot state is invalid/,
-    'paused seek, screenshot pre-state, and screenshot post-state must bind pixels to the target time');
+  for (const [pattern, expected, label] of [
+    [/URL\.createObjectURL\(/g, 1, 'one Blob URL'],
+    [/document\.createElement\('video'\)/g, 1, 'one video element'],
+    [/video\.src = url/g, 1, 'one source assignment'],
+    [/video\.load\(\)/g, 1, 'one media load'],
+    [/video\.play\(\)/g, 1, 'one reusable activation play site'],
+    [/addEventListener\('playing'/g, 1, 'one reusable playing-listener site'],
+    [/\.screenshot\(\{/g, 1, 'one per-sample locator screenshot site'],
+    [/URL\.revokeObjectURL\(/g, 1, 'one Blob URL cleanup'],
+    [/video\.remove\(\)/g, 1, 'one final element cleanup']
+  ]) assert.equal((webkitScreenshotSource.match(pattern) || []).length, expected, label);
+  assert.ok(
+    webkitSetupSource.indexOf("document.createElement('video')")
+      < webkitSetupSource.indexOf('video.src = url')
+      && webkitSetupSource.indexOf('video.src = url') < webkitSetupSource.indexOf('video.load()'),
+    'the singleton element, source, and one load must be established before the sample loop'
+  );
+  assert.doesNotMatch(webkitSampleLoopSource,
+    /document\.createElement|URL\.createObjectURL|video\.src\s*=|video\.load\(\)|video\.remove\(\)|removeAttribute\('src'\)|video\.play\(\)/,
+    'the eight-sample loop must reuse one loaded element and call only the reusable activation helper');
+  assert.match(webkitSampleLoopSource,
+    /const seeked = audit\.waitFor\('seeked', 10000\);\s+video\.currentTime = targetSeconds;\s+await seeked;[\s\S]*postSeekState = audit\.readState\(\);[\s\S]*audit\.activateAtTarget\([\s\S]*activation\.runningState[\s\S]*locator\('#audit-video'\)\.screenshot[\s\S]*video\?\.pause\(\);[\s\S]*const postPauseTime = Number\(video\.currentTime\)/,
+    'every fraction must unconditionally seek, activate, screenshot while running, then immediately pause');
+  assert.equal((webkitSampleLoopSource.match(/video\.currentTime = targetSeconds/g) || []).length, 1,
+    'the loop must contain one unconditional seek site and no post-activation re-seek');
+  const webkitOnPlayingSource = webkitSetupSource.slice(
+    webkitSetupSource.indexOf('const onPlaying = () => {'),
+    webkitSetupSource.indexOf('const onError = () => fail(')
+  );
+  assert.match(webkitOnPlayingSource,
+    /const playingTime = Number\(video\.currentTime\);\s+const runningState = audit\.readState\(\);[\s\S]*audit\.assertRunningState\([\s\S]*settled = true;\s+cleanup\(\);\s+resolve\(/,
+    'the first playing handler must capture and validate running state without pausing');
+  assert.doesNotMatch(webkitOnPlayingSource, /video\.pause\(\)/,
+    'the first playing handler must leave playback running for the native locator screenshot');
+  const webkitRunningScreenshotSource = webkitSampleLoopSource.slice(
+    webkitSampleLoopSource.indexOf('const activation = await audit.activateAtTarget('),
+    webkitSampleLoopSource.indexOf('const postScreenshot = await withDeadline(')
+  );
+  assert.doesNotMatch(webkitRunningScreenshotSource, /video\??\.pause\(\)/,
+    'no browser-side pause may occur between activation and the locator screenshot');
+  assert.match(webkitSetupSource,
+    /setTimeout\(\(\) => fail\([\s\S]*addEventListener\('playing'[\s\S]*addEventListener\('error'[\s\S]*video\.play\(\)[\s\S]*settled && playingObserved && error\?\.name === 'AbortError'/,
+    'per-sample activation must be timeout/error bounded and ignore only a late settled AbortError');
+  assert.match(webkitSampleLoopSource,
+    /const postScreenshot = await withDeadline\(auditPage\.evaluate\([\s\S]*const video = audit\?\.video;\s+video\?\.pause\(\);[\s\S]*postPauseTime \+ 0\.01 < playingTime[\s\S]*playingToPostPauseIntervalSeconds > 0\.25/,
+    'the first post-screenshot browser action must pause and bound playback time in the page');
+  assert.ok(
+    webkitSampleLoopSource.indexOf("auditPage.locator('#audit-video').screenshot({")
+      < webkitSampleLoopSource.indexOf('const postScreenshot = await withDeadline(')
+      && webkitSampleLoopSource.indexOf('const postScreenshot = await withDeadline(')
+        < webkitSampleLoopSource.indexOf('fs.writeFileSync(samplePath, screenshotBuffer)'),
+    'the running screenshot must be paused and verified before any PNG write or decode work'
+  );
+  assert.match(webkitSampleLoopSource,
+    /const phaseLabel = `sample-\$\{String\(sampleIndex \+ 1\)\.padStart\(2, '0'\)\}@\$\{fraction\}`;[\s\S]*sampleError = new Error\(message\.startsWith\(`\$\{phaseLabel\}:`\)/,
+    'each sample error must retain its exact phase label');
   assert.match(webkitScreenshotSource,
     /screenshotTimeoutMs = Math\.max\(1, attemptDeadline - Date\.now\(\)\)[\s\S]*withDeadline\([\s\S]*locator\('#audit-video'\)\.screenshot\([\s\S]*attemptDeadline/,
     'each screenshot must be bounded by the remaining whole-attempt deadline');
   assert.doesNotMatch(webkitScreenshotSource,
-    /\.play\(\)|playing|getVideoPlaybackQuality|requestVideoFrameCallback|requestAnimationFrame|drawImage|ffmpeg|ffprobe|while\s*\(/,
-    'WebKit pass evidence must be a single paused native element screenshot without playback, counters, canvas, polling, or external decoders');
+    /getVideoPlaybackQuality|requestVideoFrameCallback|requestAnimationFrame|drawImage|ffmpeg|ffprobe|playbackRate|waitForTimeout|while\s*\(/,
+    'WebKit evidence must not use counters, rVFC, canvas, fixed waits, rate changes, polling, or external decoders');
   assert.doesNotMatch(webkitScreenshotSource, /\.catch\(\(\) => \{\}\)/,
-    'sample removal and Blob URL cleanup failures must fail the attempt instead of being swallowed');
+    'singleton/Blob cleanup failures must fail the attempt instead of being swallowed');
   for (const stateContract of [
     'state.readyState >= 2',
     'state.networkState === 1 || state.networkState === 2',
     'state.isConnected === true',
+    "state.elementIdentity === 'webkit-video-audit-singleton'",
+    'state.elementCount === 1',
+    'state.sameElement === true',
+    'state.lateActivationErrorCount === 0',
     'state.duration > 0',
     'state.videoWidth === expectedVideoSize.width',
     'state.videoHeight === expectedVideoSize.height',
-    'Math.abs(state.currentTime - targetSeconds) <= 0.25'
+    'Math.abs(state.currentTime - targetSeconds) <= 0.25',
+    'state?.paused === false',
+    'validWebKitScreenshotState({ ...state, paused:true }, targetSeconds, expectedVideoSize)'
   ]) assert.ok(webkitStateSource.includes(stateContract),
     `WebKit screenshot state must enforce ${stateContract}`);
   for (const pngContract of [
@@ -891,11 +965,24 @@ test('Story runtime evidence records all four motions continuously and projects 
     `Node PNG evidence decoder must preserve ${pngContract}`);
   for (const webkitGate of [
     "presentationMethod === 'locator.screenshot'",
-    "activationPolicy === 'paused-seek-only'",
+    "elementIdentity === 'webkit-video-audit-singleton'",
+    'elementCreateCount === 1',
+    'blobUrlCreateCount === 1',
+    'sourceAssignmentCount === 1',
+    'loadCallCount === 1',
+    "activation?.method === 'per-sample-muted-play-running-locator-screenshot'",
+    'activation.pixelPassSignal === false',
+    'activation.activationSerial === sampleIndex + 1',
+    'activation.playingObserved === true',
+    'Math.abs(activation.playingTime - sample.targetSeconds) <= 0.25',
     'readiness.postSeekState, sample.targetSeconds, expectedVideoSize',
-    'readiness.preScreenshotState, sample.targetSeconds, expectedVideoSize',
+    'readiness.runningState, sample.targetSeconds, expectedVideoSize',
     'readiness.postScreenshotState, sample.targetSeconds, expectedVideoSize',
-    'readiness.screenshotTimeDriftSeconds <= 0.01',
+    'Math.abs(readiness.postPauseTime - sample.targetSeconds) <= 0.25',
+    'readiness.postPauseTime + 0.01 >= activation.playingTime',
+    'readiness.playingToPostPauseIntervalSeconds >= -0.01',
+    'readiness.playingToPostPauseIntervalSeconds <= 0.25',
+    'readiness.postScreenshotState.currentTime - readiness.postPauseTime',
     "sample.screenshot.startsWith('video-samples/')",
     '/^[a-f0-9]{64}$/.test(sample.screenshotSha256)',
     'sample.screenshotWidth === expectedVideoSize.width',
@@ -904,6 +991,7 @@ test('Story runtime evidence records all four motions continuously and projects 
     'fs.statSync(screenshotPath).isFile()',
     'sha256(fs.readFileSync(screenshotPath)) === sample.screenshotSha256',
     '&& screenshotOnDisk',
+    '&& webkitSingletonEvidenceComplete',
     '&& webkitScreenshotEvidenceComplete'
   ]) assert.ok(decodeSource.includes(webkitGate),
     `all eight WebKit PNG files must enforce ${webkitGate}`);
