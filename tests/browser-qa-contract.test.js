@@ -406,6 +406,12 @@ test('runner contract covers both mobile viewports and every approved screen', a
 test('Story runtime evidence records all four motions continuously and projects fixed-cell pivots', async () => {
   const runner = await import('../scripts/run-browser-qa.mjs');
   const projection = json('assets/animations/story-ch01.json');
+  assert.deepStrictEqual(runner.BROWSER_QA_TIME_BUDGET, {
+    workflowTimeoutMs:20 * 60 * 1000,
+    maximumCaptureSetupMs:14 * 60 * 1000,
+    maximumDeferredVideoAuditMs:210000,
+    summaryUploadReserveMs:2 * 60 * 1000
+  });
   assert.deepStrictEqual(runner.STORY_RUNTIME_VIDEO_CONTRACT, {
     logicalTiming:'runtime-1x-no-seek',
     holdTimeoutMs:3000,
@@ -415,6 +421,10 @@ test('Story runtime evidence records all four motions continuously and projects 
     maximumVideoBytes:134217728,
     minimumVideoDurationSeconds:20,
     maximumDecodeAttempts:3,
+    decodeAttemptTimeoutMs:30000,
+    videoArtifactAuditTimeoutMs:85000,
+    totalVideoAuditTimeoutMs:210000,
+    browserCloseTimeoutMs:5000,
     lifecycleFreezeWallMs:600,
     lifecycleClockToleranceMs:34,
     lifecycleResumeAdvanceMs:120,
@@ -443,6 +453,29 @@ test('Story runtime evidence records all four motions continuously and projects 
   assert.deepStrictEqual(
     runner.STORY_RUNTIME_VIDEO_CONTRACT.motions.map((motion) => motion.motionId),
     Object.keys(projection.storyAnimations)
+  );
+  const workflow = read('.github/workflows/browser-qa.yml');
+  const workflowTimeoutMinutes = Number(workflow.match(/^    timeout-minutes: (\d+)$/m)?.[1]);
+  assert.equal(
+    runner.BROWSER_QA_TIME_BUDGET.workflowTimeoutMs,
+    workflowTimeoutMinutes * 60 * 1000,
+    'the runner wall budget must match the browser-QA workflow timeout'
+  );
+  assert.ok(runner.BROWSER_QA_TIME_BUDGET.summaryUploadReserveMs > 0,
+    'the workflow must reserve time to serialize and upload fail-closed evidence');
+  assert.equal(
+    runner.STORY_RUNTIME_VIDEO_CONTRACT.totalVideoAuditTimeoutMs,
+    runner.BROWSER_QA_TIME_BUDGET.maximumDeferredVideoAuditMs,
+    'the deferred audit ceiling must come from the workflow wall budget'
+  );
+  assert.ok(runner.STORY_RUNTIME_VIDEO_CONTRACT.totalVideoAuditTimeoutMs <= 240000,
+    'deferred video audits must not consume more than four minutes of the workflow');
+  assert.ok(
+    runner.BROWSER_QA_TIME_BUDGET.workflowTimeoutMs
+      - runner.BROWSER_QA_TIME_BUDGET.maximumCaptureSetupMs
+      - runner.STORY_RUNTIME_VIDEO_CONTRACT.totalVideoAuditTimeoutMs
+      >= runner.BROWSER_QA_TIME_BUDGET.summaryUploadReserveMs,
+    'the maximum capture/setup and deferred-audit budgets must preserve the summary/upload reserve'
   );
 
   const manifest = json('assets/manifest.json');
@@ -497,7 +530,9 @@ test('Story runtime evidence records all four motions continuously and projects 
     'await context.close()',
     'await video.saveAs(videoPath)',
     'await video.delete()',
-    'await inspectStoryVideoArtifact(browser, videoPath, videoSize)',
+    "status:'pending-capture'",
+    "captureStatus:'pending'",
+    "record.status = 'pending-audit'",
     "headerHex === '1a45dfa3'"
   ]) assert.ok(evidenceSource.includes(productionContract), `runtime evidence must preserve ${productionContract}`);
   assert.doesNotMatch(evidenceSource,
@@ -540,6 +575,14 @@ test('Story runtime evidence records all four motions continuously and projects 
     source.indexOf('async function runStoryRuntimeEvidence'),
     source.indexOf('function summaryMarkdown')
   );
+  const captureFunction = source.slice(
+    source.indexOf('async function runStoryRuntimeEvidence'),
+    source.indexOf('async function finalizeStoryRuntimeEvidence')
+  );
+  const finalizerSource = source.slice(
+    source.indexOf('async function finalizeStoryRuntimeEvidence'),
+    source.indexOf('function summaryMarkdown')
+  );
   assert.equal((runtimeFunction.match(/browser\.newContext\(/g) || []).length, 1);
   assert.equal((runtimeFunction.match(/context\.newPage\(\)/g) || []).length, 1);
   assert.doesNotMatch(runtimeFunction, /focusLossReturn|exerciseStoryFocusLossReturn|waitForActualPageFocus/,
@@ -547,6 +590,14 @@ test('Story runtime evidence records all four motions continuously and projects 
   assert.match(runtimeFunction,
     /mode\.exerciseLifecycle[\s\S]*record\.lifecycle = \{ pauseResume:await exerciseStoryPauseResume\(page\) \}/,
     'reduced/lifecycle evidence must still exercise the production UI pause/resume control');
+  assert.doesNotMatch(captureFunction, /inspectStoryVideoArtifact|record\.status = record\.failures/,
+    'video capture must remain pending until the producer browser is closed and deferred audit completes');
+  assert.match(captureFunction,
+    /record\.captureStatus = record\.failures\.length \? 'failed' : 'passed';\s+record\.status = 'pending-audit';/,
+    'capture finalization must expose a non-final pending-audit state');
+  assert.match(finalizerSource,
+    /record\.status !== 'pending-audit'[\s\S]*inspectStoryVideoArtifact\([\s\S]*record\.failures\.push\(`runtime Story video is missing or invalid[\s\S]*record\.status = record\.failures\.length \? 'failed' : 'passed'/,
+    'deferred audit must append to capture failures before setting final status');
   for (const holdContract of [
     "mode.holdTiming === 'delayed'",
     'page.waitForTimeout(STORY_RUNTIME_VIDEO_CONTRACT.delayedHoldWaitMs)',
@@ -563,6 +614,38 @@ test('Story runtime evidence records all four motions continuously and projects 
   assert.match(mainSource, /for \(const viewport of VIEWPORTS\)[\s\S]*for \(const mode of STORY_RUNTIME_EVIDENCE_MODES\)[\s\S]*runStoryRuntimeEvidence\([\s\S]*storyRuntimeEvidence\.push\(evidence\)/);
   assert.match(mainSource, /storyRuntimeEvidence\.every\(\(record\) => record\.status === 'passed'\)/,
     'missing video or pivot evidence must fail the summary');
+  for (const orchestrationContract of [
+    'const launchOptions = Object.freeze({ headless:!options.headed })',
+    'browser = await browserType.launch(launchOptions)',
+    'producerShutdown.contextsBeforeClose = browser.contexts().length',
+    "withDeadline(browser.close(), producerCloseDeadline, 'producer browser close')",
+    'producerShutdown.disconnected = !browser.isConnected()',
+    'browser = null',
+    'totalVideoAuditTimeoutMs',
+    'BROWSER_QA_TIME_BUDGET.workflowTimeoutMs',
+    'BROWSER_QA_TIME_BUDGET.summaryUploadReserveMs',
+    'for (const evidence of storyRuntimeEvidence)',
+    'await finalizeStoryRuntimeEvidence(',
+    'evidence, browserType, options.output, launchOptions, totalAuditDeadline',
+    'orchestrationFailures.length === 0'
+  ]) assert.ok(mainSource.includes(orchestrationContract),
+    `deferred audit orchestration must enforce ${orchestrationContract}`);
+  assert.ok(
+    mainSource.indexOf('storyRuntimeEvidence.push(evidence)')
+      < mainSource.indexOf('producerShutdown.contextsBeforeClose = browser.contexts().length')
+      && mainSource.indexOf('producerShutdown.disconnected = !browser.isConnected()')
+        < mainSource.indexOf('await finalizeStoryRuntimeEvidence('),
+    'all captures must finalize and the producer must disconnect before any artifact audit'
+  );
+  const deferredAuditLoop = mainSource.slice(
+    mainSource.indexOf('const totalAuditDeadline'),
+    mainSource.indexOf('const summary =')
+  );
+  assert.doesNotMatch(deferredAuditLoop, /Promise\.all/,
+    'the four artifacts and their dedicated audits must remain fully sequential');
+  assert.match(deferredAuditLoop,
+    /const totalAuditDeadline = Math\.min\([\s\S]*Date\.now\(\) \+ STORY_RUNTIME_VIDEO_CONTRACT\.totalVideoAuditTimeoutMs[\s\S]*Date\.parse\(startedAt\) \+ BROWSER_QA_TIME_BUDGET\.workflowTimeoutMs[\s\S]*- BROWSER_QA_TIME_BUDGET\.summaryUploadReserveMs/,
+    'the deferred audit must stop before the workflow-wide summary/upload reserve');
   assert.match(source, /Story continuous runtime evidence/);
   assert.match(source, /runtime Story video is missing or invalid/);
   assert.match(source, /runtime Story pivot overlay is missing or invalid/);
@@ -595,12 +678,28 @@ test('Story runtime evidence records all four motions continuously and projects 
     'decodeAttempts',
     'decodeErrors',
     'for (let attempt = 1; attempt <= STORY_RUNTIME_VIDEO_CONTRACT.maximumDecodeAttempts; attempt += 1)',
-    'const browserType = browser.browserType()',
-    "attempt === 1 ? 'existing-browser' : 'fresh-browser-process'",
-    "attempt === 1 ? 'producer-browser' : 'headless'",
-    'ownedRetryBrowser = await browserType.launch({ headless:true })',
-    'auditBrowser = ownedRetryBrowser',
-    'await ownedRetryBrowser.close()',
+    "launchOptions.headless ? 'headless' : 'headed'",
+    "processIsolation = 'dedicated-browser-process-after-producer-close'",
+    'auditBrowser = await browserType.launch({',
+    '...launchOptions',
+    'auditBrowser.contexts().length !== 0',
+    'auditBrowser.contexts().length !== 1',
+    'auditContext.pages().length !== 1',
+    'auditPage.bringToFront()',
+    'auditContext.close()',
+    'auditBrowser.close()',
+    'cleanupDeadline',
+    'auditBrowser.isConnected()',
+    'decodeAttemptTimeoutMs',
+    'videoArtifactAuditTimeoutMs',
+    'withDeadline(auditPage.evaluate',
+    'sourceSha256Before',
+    'sourceSha256After',
+    'video artifact bytes changed during audit attempt',
+    'startedAt',
+    'completedAt',
+    'auditCleanupFailed',
+    'browserCloseTimeoutMs',
     "status:attemptResult.passed ? 'passed' : 'invalid-content'",
     "let decodePhase = 'metadata'",
     "decodePhase = 'first-frame'",
@@ -633,20 +732,35 @@ test('Story runtime evidence records all four motions continuously and projects 
     'throw new Error(`${decodePhase}: ${error?.message || String(error)}`)',
     'retries are reserved for transient engine errors'
   ]) assert.ok(decodeSource.includes(decodeContract), `WebM decode audit must enforce ${decodeContract}`);
-  assert.equal((decodeSource.match(/ownedRetryBrowser = await browserType\.launch\(/g) || []).length, 1,
-    'retry attempts must launch exactly one owned browser process per retry');
+  assert.equal((decodeSource.match(/auditBrowser = await browserType\.launch\(/g) || []).length, 1,
+    'the per-attempt loop must contain exactly one dedicated browser launch site');
   assert.match(decodeSource,
-    /if \(attempt > 1\)[\s\S]*ownedRetryBrowser = await browserType\.launch\(\{ headless:true \}\)[\s\S]*auditContext = await auditBrowser\.newContext/,
-    'only retries may move the audit into a fresh browser process');
+    /for \(let attempt = 1; attempt <= STORY_RUNTIME_VIDEO_CONTRACT\.maximumDecodeAttempts; attempt \+= 1\)[\s\S]*auditBrowser = await browserType\.launch\(\{[\s\S]*\.\.\.launchOptions[\s\S]*auditContext = await withDeadline\(auditBrowser\.newContext/,
+    'every attempt must start its own same-mode browser process and one context');
   assert.match(decodeSource,
-    /finally \{[\s\S]*await auditContext\.close\(\)[\s\S]*await ownedRetryBrowser\.close\(\)/,
-    'every owned retry browser must close after its audit context');
+    /if \(!launchOptions\.headless\) \{[\s\S]*auditPage\.bringToFront\(\)/,
+    'headed audits must activate their sole page under the workflow display');
+  assert.match(decodeSource,
+    /finally \{[\s\S]*withDeadline\([\s\S]*auditContext\.close\(\), cleanupDeadline[\s\S]*withDeadline\([\s\S]*auditBrowser\.close\(\), cleanupDeadline[\s\S]*auditBrowser\.isConnected\(\)/,
+    'every dedicated browser must disconnect after its audit context closes');
   assert.match(decodeSource,
     /if \(attemptError\)[\s\S]*decodeAttempts\.push\(attemptRecord\)[\s\S]*continue;[\s\S]*status:attemptResult\.passed \? 'passed' : 'invalid-content'[\s\S]*return result;/,
     'engine errors may retry, but a completed invalid content audit must return immediately');
   assert.match(decodeSource,
-    /const processIsolation = attempt === 1 \? 'existing-browser' : 'fresh-browser-process';\s+const launchMode = attempt === 1 \? 'producer-browser' : 'headless';/,
-    'attempt evidence must distinguish producer-browser mode from headless retry processes');
+    /const launchMode = launchOptions\.headless \? 'headless' : 'headed';[\s\S]*const processIsolation = 'dedicated-browser-process-after-producer-close';/,
+    'every attempt must record dedicated-process isolation and the original launch mode');
+  assert.match(decodeSource,
+    /sourceSha256Before = sha256\(fs\.readFileSync\(filePath\)\)[\s\S]*sourceSha256After = sha256\(fs\.readFileSync\(filePath\)\)[\s\S]*sourceSha256After !== sourceSha256/,
+    'each attempt must hash-check the original artifact before and after browser inspection');
+  assert.match(decodeSource,
+    /dedicated audit browser close failed[\s\S]*stopRetries = true;[\s\S]*auditCleanupFailed = true;/,
+    'a failed dedicated-browser close must stop retries and fail orchestration closed');
+  assert.match(decodeSource,
+    /artifactDeadline = Math\.min\([\s\S]*videoArtifactAuditTimeoutMs[\s\S]*totalAuditDeadline[\s\S]*attemptDeadline = Math\.min\([\s\S]*decodeAttemptTimeoutMs[\s\S]*artifactDeadline/,
+    'artifact and attempt deadlines must be nested under the global audit deadline');
+  assert.match(decodeSource,
+    /withDeadline\(auditPage\.evaluate[\s\S]*attemptDeadline, 'dedicated video content audit'/,
+    'the complete eight-sample browser evaluation must have an outer attempt deadline');
   assert.match(decodeSource,
     /decodePhase = 'first-frame';[\s\S]*HTMLMediaElement\.HAVE_CURRENT_DATA[\s\S]*waitFor\('loadeddata', 10000\)[\s\S]*decodePhase = `seek@\$\{fraction\}`/,
     'the audit must wait for first-frame data before phase-labelled seeking');
@@ -694,6 +808,8 @@ test('Story runtime evidence records all four motions continuously and projects 
     'the decoder must not canvas-poll until content appears');
   assert.doesNotMatch(decodeSource, /ffprobe|child_process|newCDPSession|_channel/,
     'WebM audit must use public Playwright and web APIs only');
+  assert.doesNotMatch(decodeSource, /headless:true|producer-browser|existing-browser|fresh-browser-process/,
+    'deferred audits must preserve the producer launch mode and never reuse its process');
   assert.ok(
     runtimeFunction.indexOf('await context.close()')
       < runtimeFunction.indexOf('await video.saveAs(videoPath)'),
@@ -701,7 +817,7 @@ test('Story runtime evidence records all four motions continuously and projects 
   );
   assert.ok(
     runtimeFunction.indexOf('await video.saveAs(videoPath)')
-      < runtimeFunction.indexOf('await inspectStoryVideoArtifact(browser, videoPath, videoSize)'),
+      < runtimeFunction.indexOf('record.videoArtifact = await inspectStoryVideoArtifact('),
     'decode audit must run only after the finalized WebM is saved'
   );
 });

@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import { createHash } from 'node:crypto';
 import http from 'node:http';
 import path from 'node:path';
 import process from 'node:process';
@@ -188,6 +189,12 @@ export const STORY_PIVOT_ATLASES = Object.freeze(STORY_PIVOT_ATLAS_IDS.map((id) 
     pivot:Object.freeze({ x:atlas.pivot.x, y:atlas.pivot.y })
   });
 }));
+export const BROWSER_QA_TIME_BUDGET = Object.freeze({
+  workflowTimeoutMs:20 * 60 * 1000,
+  maximumCaptureSetupMs:14 * 60 * 1000,
+  maximumDeferredVideoAuditMs:210000,
+  summaryUploadReserveMs:2 * 60 * 1000
+});
 export const STORY_RUNTIME_VIDEO_CONTRACT = Object.freeze({
   logicalTiming:'runtime-1x-no-seek',
   holdTimeoutMs:3000,
@@ -197,6 +204,10 @@ export const STORY_RUNTIME_VIDEO_CONTRACT = Object.freeze({
   maximumVideoBytes:134217728,
   minimumVideoDurationSeconds:20,
   maximumDecodeAttempts:3,
+  decodeAttemptTimeoutMs:30000,
+  videoArtifactAuditTimeoutMs:85000,
+  totalVideoAuditTimeoutMs:BROWSER_QA_TIME_BUDGET.maximumDeferredVideoAuditMs,
+  browserCloseTimeoutMs:5000,
   lifecycleFreezeWallMs:600,
   lifecycleClockToleranceMs:34,
   lifecycleResumeAdvanceMs:120,
@@ -2815,13 +2826,39 @@ async function captureStoryPivotOverlay(page, viewport, output, mode) {
   };
 }
 
-async function inspectStoryVideoArtifact(browser, filePath, expectedVideoSize) {
+function sha256(buffer) {
+  return createHash('sha256').update(buffer).digest('hex');
+}
+
+async function withDeadline(promise, deadline, label) {
+  const remainingMs = deadline - Date.now();
+  if (remainingMs <= 0) {
+    Promise.resolve(promise).catch(() => {});
+    throw new Error(`${label} deadline elapsed`);
+  }
+  let timer = null;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`${label} timed out`)), remainingMs);
+      })
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function inspectStoryVideoArtifact(
+  browserType, filePath, expectedVideoSize, launchOptions, totalAuditDeadline
+) {
   if (!fs.existsSync(filePath)) return { passed:false, bytes:0, container:'missing', decode:null };
   const bytes = fs.statSync(filePath).size;
   if (bytes > STORY_RUNTIME_VIDEO_CONTRACT.maximumVideoBytes) {
     return { passed:false, bytes, container:'oversize', decode:null };
   }
   const buffer = fs.readFileSync(filePath);
+  const sourceSha256 = sha256(buffer);
   const headerHex = buffer.subarray(0, 4).toString('hex');
   const webm = headerHex === '1a45dfa3';
   const base = {
@@ -2830,36 +2867,70 @@ async function inspectStoryVideoArtifact(browser, filePath, expectedVideoSize) {
     container:webm ? 'webm' : headerHex || 'empty',
     expectedWidth:expectedVideoSize.width,
     expectedHeight:expectedVideoSize.height,
+    sourceSha256,
     decodeAttemptLimit:STORY_RUNTIME_VIDEO_CONTRACT.maximumDecodeAttempts,
     decodeAttemptCount:0,
+    auditCleanupFailed:false,
     decodeAttempts:[],
     decodeErrors:[],
     decode:null
   };
   if (!webm || bytes < STORY_RUNTIME_VIDEO_CONTRACT.minimumVideoBytes) return base;
 
-  const browserType = browser.browserType();
+  const launchMode = launchOptions.headless ? 'headless' : 'headed';
+  const artifactDeadline = Math.min(
+    Date.now() + STORY_RUNTIME_VIDEO_CONTRACT.videoArtifactAuditTimeoutMs,
+    totalAuditDeadline
+  );
   const decodeAttempts = [];
   const decodeErrors = [];
+  let auditCleanupFailed = false;
   for (let attempt = 1; attempt <= STORY_RUNTIME_VIDEO_CONTRACT.maximumDecodeAttempts; attempt += 1) {
-    const processIsolation = attempt === 1 ? 'existing-browser' : 'fresh-browser-process';
-    const launchMode = attempt === 1 ? 'producer-browser' : 'headless';
-    let auditBrowser = browser;
-    let ownedRetryBrowser = null;
+    const processIsolation = 'dedicated-browser-process-after-producer-close';
+    const startedAt = new Date().toISOString();
+    const attemptDeadline = Math.min(
+      Date.now() + STORY_RUNTIME_VIDEO_CONTRACT.decodeAttemptTimeoutMs,
+      artifactDeadline
+    );
+    let sourceSha256Before = null;
+    let sourceSha256After = null;
+    let stopRetries = false;
+    let auditBrowser = null;
     let auditContext = null;
     let attemptResult = null;
     let attemptError = '';
     try {
-      if (attempt > 1) {
-        ownedRetryBrowser = await browserType.launch({ headless:true });
-        auditBrowser = ownedRetryBrowser;
+      if (attemptDeadline <= Date.now()) throw new Error('video artifact audit deadline elapsed');
+      sourceSha256Before = sha256(fs.readFileSync(filePath));
+      if (sourceSha256Before !== sourceSha256) {
+        throw new Error(`video artifact bytes changed before audit attempt ${attempt}`);
       }
-      auditContext = await auditBrowser.newContext({
+      auditBrowser = await browserType.launch({
+        ...launchOptions,
+        timeout:Math.max(1, attemptDeadline - Date.now())
+      });
+      if (auditBrowser.contexts().length !== 0) {
+        throw new Error('dedicated audit browser did not start without contexts');
+      }
+      auditContext = await withDeadline(auditBrowser.newContext({
         viewport:{ width:expectedVideoSize.width, height:expectedVideoSize.height },
         serviceWorkers:'block'
-      });
-      const auditPage = await auditContext.newPage();
-      const decode = await auditPage.evaluate(async ({ base64, sampleFractions }) => {
+      }), attemptDeadline, 'dedicated audit context creation');
+      if (auditBrowser.contexts().length !== 1) {
+        throw new Error('dedicated audit browser must own exactly one context');
+      }
+      const auditPage = await withDeadline(
+        auditContext.newPage(), attemptDeadline, 'dedicated audit page creation'
+      );
+      if (auditContext.pages().length !== 1) {
+        throw new Error('dedicated audit context must own exactly one page');
+      }
+      if (!launchOptions.headless) {
+        await withDeadline(
+          auditPage.bringToFront(), attemptDeadline, 'headed audit page activation'
+        );
+      }
+      const decode = await withDeadline(auditPage.evaluate(async ({ base64, sampleFractions }) => {
       const binary = atob(base64);
       const bytes = new Uint8Array(binary.length);
       for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
@@ -3173,7 +3244,7 @@ async function inspectStoryVideoArtifact(browser, filePath, expectedVideoSize) {
     }, {
       base64:buffer.toString('base64'),
       sampleFractions:STORY_RUNTIME_VIDEO_CONTRACT.videoSampleFractions
-    });
+    }), attemptDeadline, 'dedicated video content audit');
       const samplingComplete = decode.samples.length === STORY_RUNTIME_VIDEO_CONTRACT.videoSampleFractions.length
         && decode.samples.every((sample, index) => (
           sample.fraction === STORY_RUNTIME_VIDEO_CONTRACT.videoSampleFractions[index]
@@ -3202,37 +3273,75 @@ async function inspectStoryVideoArtifact(browser, filePath, expectedVideoSize) {
     } catch (error) {
       attemptError = error?.message || String(error);
     } finally {
+      const cleanupDeadline = Date.now() + STORY_RUNTIME_VIDEO_CONTRACT.browserCloseTimeoutMs;
       if (auditContext) {
-        try { await auditContext.close(); }
+        try {
+          await withDeadline(
+            auditContext.close(), cleanupDeadline, 'dedicated audit context close'
+          );
+        }
         catch (error) {
           const closeError = `audit context close failed: ${error?.message || String(error)}`;
           attemptError = attemptError ? `${attemptError}; ${closeError}` : closeError;
         }
       }
-      if (ownedRetryBrowser) {
-        try { await ownedRetryBrowser.close(); }
-        catch (error) {
-          const closeError = `owned retry browser close failed: ${error?.message || String(error)}`;
-          attemptError = attemptError ? `${attemptError}; ${closeError}` : closeError;
+      if (auditBrowser) {
+        try {
+          await withDeadline(
+            auditBrowser.close(), cleanupDeadline, 'dedicated audit browser close'
+          );
+          if (auditBrowser.isConnected()) {
+            throw new Error('dedicated audit browser remained connected after close');
+          }
         }
+        catch (error) {
+          const closeError = `dedicated audit browser close failed: ${error?.message || String(error)}`;
+          attemptError = attemptError ? `${attemptError}; ${closeError}` : closeError;
+          stopRetries = true;
+          auditCleanupFailed = true;
+        }
+      }
+      try {
+        sourceSha256After = sha256(fs.readFileSync(filePath));
+        if (sourceSha256After !== sourceSha256) {
+          const hashError = `video artifact bytes changed during audit attempt ${attempt}`;
+          attemptError = attemptError ? `${attemptError}; ${hashError}` : hashError;
+          stopRetries = true;
+        }
+      } catch (error) {
+        const hashError = `video artifact post-audit hash failed: ${error?.message || String(error)}`;
+        attemptError = attemptError ? `${attemptError}; ${hashError}` : hashError;
+        stopRetries = true;
       }
     }
 
+    const completedAt = new Date().toISOString();
     if (attemptError) {
-      const attemptRecord = { attempt, processIsolation, launchMode, status:'error', error:attemptError };
+      const attemptRecord = {
+        attempt, processIsolation, launchMode, startedAt, completedAt,
+        sourceSha256Before, sourceSha256After, status:'error', error:attemptError
+      };
       decodeAttempts.push(attemptRecord);
-      decodeErrors.push({ attempt, processIsolation, launchMode, error:attemptError });
+      decodeErrors.push({
+        attempt, processIsolation, launchMode, startedAt, completedAt, error:attemptError
+      });
+      if (stopRetries || Date.now() >= artifactDeadline) break;
       continue;
     }
     decodeAttempts.push({
       attempt,
       processIsolation,
       launchMode,
+      startedAt,
+      completedAt,
+      sourceSha256Before,
+      sourceSha256After,
       status:attemptResult.passed ? 'passed' : 'invalid-content'
     });
     const result = {
       ...attemptResult,
       decodeAttemptCount:attempt,
+      auditCleanupFailed,
       decodeAttempts:[...decodeAttempts],
       decodeErrors:[...decodeErrors]
     };
@@ -3242,14 +3351,15 @@ async function inspectStoryVideoArtifact(browser, filePath, expectedVideoSize) {
   }
   return {
     ...base,
-    decodeAttemptCount:STORY_RUNTIME_VIDEO_CONTRACT.maximumDecodeAttempts,
+    decodeAttemptCount:decodeAttempts.length,
+    auditCleanupFailed,
     decodeAttempts,
     decodeErrors,
     decode:{
       passed:false,
-      attempt:STORY_RUNTIME_VIDEO_CONTRACT.maximumDecodeAttempts,
-      processIsolation:'fresh-browser-process',
-      launchMode:'headless',
+      attempt:decodeAttempts.length,
+      processIsolation:'dedicated-browser-process-after-producer-close',
+      launchMode,
       error:decodeErrors.at(-1)?.error || 'video decode failed without an error detail'
     }
   };
@@ -3263,7 +3373,8 @@ async function runStoryRuntimeEvidence(browser, baseUrl, browserName, viewport, 
     mode:mode.id,
     reducedMotion:mode.reducedMotion,
     holdTiming:mode.holdTiming,
-    status:'failed',
+    status:'pending-capture',
+    captureStatus:'pending',
     logicalTiming:STORY_RUNTIME_VIDEO_CONTRACT.logicalTiming,
     failures:[],
     ignoredDiagnostics:{ speculativeWarmAborts:[] },
@@ -3495,16 +3606,41 @@ async function runStoryRuntimeEvidence(browser, baseUrl, browserName, viewport, 
         record.failures.push(`video finalization failed: ${error?.message || error}`);
       }
     }
-    record.videoArtifact = await inspectStoryVideoArtifact(browser, videoPath, videoSize);
-    if (!record.videoArtifact.passed) {
-      record.failures.push(`runtime Story video is missing or invalid: ${JSON.stringify(record.videoArtifact)}`);
-    }
     if (!record.pivotOverlay?.passed
       || !fs.existsSync(path.join(output, record.pivotOverlay.screenshot || ''))) {
       record.failures.push('runtime Story pivot overlay is missing or invalid');
     }
-    record.status = record.failures.length ? 'failed' : 'passed';
+    record.captureStatus = record.failures.length ? 'failed' : 'passed';
+    record.status = 'pending-audit';
   }
+  return record;
+}
+
+async function finalizeStoryRuntimeEvidence(
+  record, browserType, output, launchOptions, totalAuditDeadline
+) {
+  if (record.status !== 'pending-audit') {
+    record.failures.push(`runtime Story evidence entered audit in an invalid state: ${record.status}`);
+  }
+  const dimensions = String(record.videoDimensions || '').split('x').map(Number);
+  const expectedVideoSize = { width:dimensions[0], height:dimensions[1] };
+  const videoPath = path.join(output, record.video || '');
+  try {
+    record.videoArtifact = await inspectStoryVideoArtifact(
+      browserType, videoPath, expectedVideoSize, launchOptions, totalAuditDeadline
+    );
+  } catch (error) {
+    record.videoArtifact = {
+      passed:false,
+      decode:null,
+      auditError:error?.message || String(error)
+    };
+    throw error;
+  }
+  if (!record.videoArtifact.passed) {
+    record.failures.push(`runtime Story video is missing or invalid: ${JSON.stringify(record.videoArtifact)}`);
+  }
+  record.status = record.failures.length ? 'failed' : 'passed';
   return record;
 }
 
@@ -3579,6 +3715,12 @@ function summaryMarkdown(summary) {
       lines.push('');
     }
   }
+  if (summary.orchestrationFailures?.length) {
+    lines.push('', '## QA orchestration failures', '');
+    for (const failure of summary.orchestrationFailures) {
+      lines.push(`- ${String(failure).replace(/\s+/g, ' ').trim()}`);
+    }
+  }
   lines.push('', '> Viewport emulation is not a real-device Safari pass.', '');
   return lines.join('\n');
 }
@@ -3604,12 +3746,20 @@ async function main() {
   }
   const playwright = await import('playwright');
   const browserType = playwright[options.browser];
+  const launchOptions = Object.freeze({ headless:!options.headed });
   let browser;
   let server;
   const startedAt = new Date().toISOString();
+  const orchestrationFailures = [];
+  const producerShutdown = {
+    contextsBeforeClose:null,
+    closeStartedAt:null,
+    closedAt:null,
+    disconnected:false
+  };
   try {
     ({ server, baseUrl: options.baseUrl } = await startStaticServer());
-    browser = await browserType.launch({ headless: !options.headed });
+    browser = await browserType.launch(launchOptions);
     const records = [];
     const storyRuntimeEvidence = [];
     for (const viewport of VIEWPORTS) {
@@ -3625,8 +3775,65 @@ async function main() {
           browser, options.baseUrl, options.browser, viewport, options.output, mode
         );
         storyRuntimeEvidence.push(evidence);
-        console.log(evidence.status.toUpperCase());
+        console.log(evidence.captureStatus === 'passed' ? 'CAPTURED' : 'CAPTURE-FAILED');
       }
+    }
+    producerShutdown.contextsBeforeClose = browser.contexts().length;
+    if (producerShutdown.contextsBeforeClose !== 0) {
+      orchestrationFailures.push(
+        `producer browser retained ${producerShutdown.contextsBeforeClose} context(s) after capture finalization`
+      );
+    }
+    producerShutdown.closeStartedAt = new Date().toISOString();
+    const producerCloseDeadline = Date.now() + STORY_RUNTIME_VIDEO_CONTRACT.browserCloseTimeoutMs;
+    try {
+      await withDeadline(browser.close(), producerCloseDeadline, 'producer browser close');
+    }
+    catch (error) {
+      orchestrationFailures.push(`producer browser close failed: ${error?.message || String(error)}`);
+    }
+    producerShutdown.closedAt = new Date().toISOString();
+    producerShutdown.disconnected = !browser.isConnected();
+    if (!producerShutdown.disconnected) {
+      orchestrationFailures.push('producer browser remained connected; deferred video audits were not started');
+    } else {
+      browser = null;
+    }
+
+    const totalAuditDeadline = Math.min(
+      Date.now() + STORY_RUNTIME_VIDEO_CONTRACT.totalVideoAuditTimeoutMs,
+      Date.parse(startedAt) + BROWSER_QA_TIME_BUDGET.workflowTimeoutMs
+        - BROWSER_QA_TIME_BUDGET.summaryUploadReserveMs
+    );
+    let auditOrchestrationBlocked = !producerShutdown.disconnected;
+    for (const evidence of storyRuntimeEvidence) {
+      if (auditOrchestrationBlocked || Date.now() >= totalAuditDeadline) {
+        const reason = auditOrchestrationBlocked
+          ? 'video audit orchestration stopped after browser cleanup failure'
+          : 'total deferred video audit deadline elapsed';
+        if (!orchestrationFailures.includes(reason)) orchestrationFailures.push(reason);
+        evidence.failures.push(reason);
+        evidence.status = 'failed';
+        continue;
+      }
+      process.stdout.write(`[${options.browser}] ${evidence.viewport} / Story video audit (${evidence.mode}) ... `);
+      try {
+        await finalizeStoryRuntimeEvidence(
+          evidence, browserType, options.output, launchOptions, totalAuditDeadline
+        );
+      } catch (error) {
+        const reason = `video audit orchestration failed: ${error?.message || String(error)}`;
+        orchestrationFailures.push(reason);
+        evidence.failures.push(reason);
+        evidence.status = 'failed';
+        auditOrchestrationBlocked = true;
+      }
+      if (evidence.videoArtifact?.auditCleanupFailed) {
+        const reason = 'video audit orchestration stopped after dedicated browser cleanup failure';
+        orchestrationFailures.push(reason);
+        auditOrchestrationBlocked = true;
+      }
+      console.log(evidence.status.toUpperCase());
     }
     const summary = {
       schemaVersion: 1,
@@ -3641,7 +3848,10 @@ async function main() {
       timezone: 'Asia/Tokyo',
       mobileEmulation: true,
       realDevice: false,
-      passed: records.every((record) => record.status === 'passed')
+      orchestrationFailures,
+      producerShutdown,
+      passed: orchestrationFailures.length === 0
+        && records.every((record) => record.status === 'passed')
         && storyRuntimeEvidence.every((record) => record.status === 'passed'),
       passedCount: records.filter((record) => record.status === 'passed').length,
       evidencePassedCount:storyRuntimeEvidence.filter((record) => record.status === 'passed').length,
@@ -3652,7 +3862,15 @@ async function main() {
     fs.writeFileSync(path.join(options.output, 'qa-summary.md'), summaryMarkdown(summary));
     if (!summary.passed) process.exitCode = 1;
   } finally {
-    if (browser) await browser.close();
+    if (browser) {
+      try {
+        await withDeadline(
+          browser.close(),
+          Date.now() + STORY_RUNTIME_VIDEO_CONTRACT.browserCloseTimeoutMs,
+          'final producer browser close'
+        );
+      } catch {}
+    }
     if (server) await closeServer(server);
   }
 }
