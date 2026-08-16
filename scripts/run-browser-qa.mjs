@@ -292,8 +292,11 @@ const MIME = Object.freeze({
   '.svg': 'image/svg+xml',
   '.txt': 'text/plain; charset=utf-8',
   '.wav': 'audio/wav',
+  '.webm': 'video/webm',
   '.webp': 'image/webp'
 });
+const VIDEO_ARTIFACT_SHA256_QUERY = 'moguria-sha256';
+const VIDEO_ARTIFACT_BYTES_QUERY = 'moguria-bytes';
 
 export function isExpectedSpeculativeWarmAbort(failure = {}, baseUrl = '') {
   if (failure.method !== 'GET'
@@ -325,31 +328,146 @@ function parseArgs(argv = process.argv.slice(2)) {
   return parsed;
 }
 
-function startStaticServer(root = ROOT) {
+function parseSingleByteRange(rangeHeader, size) {
+  if (rangeHeader === undefined) return { requested:false, valid:true, start:0, end:size - 1 };
+  if (typeof rangeHeader !== 'string' || !Number.isSafeInteger(size) || size <= 0) {
+    return { requested:true, valid:false };
+  }
+  const match = /^bytes=(\d*)-(\d*)$/.exec(rangeHeader.trim());
+  if (!match || (!match[1] && !match[2])) return { requested:true, valid:false };
+  if (!match[1]) {
+    const suffixLength = Number(match[2]);
+    if (!Number.isSafeInteger(suffixLength) || suffixLength <= 0) {
+      return { requested:true, valid:false };
+    }
+    return {
+      requested:true,
+      valid:true,
+      start:Math.max(0, size - suffixLength),
+      end:size - 1
+    };
+  }
+  const start = Number(match[1]);
+  const requestedEnd = match[2] ? Number(match[2]) : size - 1;
+  if (!Number.isSafeInteger(start) || !Number.isSafeInteger(requestedEnd)
+    || start < 0 || start >= size || requestedEnd < start) {
+    return { requested:true, valid:false };
+  }
+  return {
+    requested:true,
+    valid:true,
+    start,
+    end:Math.min(requestedEnd, size - 1)
+  };
+}
+
+function endTextResponse(request, response, status, message, headers = {}) {
+  const body = Buffer.from(message, 'utf8');
+  response.writeHead(status, {
+    'content-type':'text/plain; charset=utf-8',
+    'content-length':body.length,
+    ...headers
+  });
+  response.end(request.method === 'HEAD' ? undefined : body);
+}
+
+export function startStaticServer(root = ROOT) {
+  const resolvedRoot = fs.realpathSync(path.resolve(root));
+  if (!fs.statSync(resolvedRoot).isDirectory()) {
+    throw new Error(`Static server root is not a directory: ${resolvedRoot}`);
+  }
   const server = http.createServer((request, response) => {
     try {
+      const method = String(request.method || 'GET').toUpperCase();
+      if (method !== 'GET' && method !== 'HEAD') {
+        endTextResponse(request, response, 405, 'Method Not Allowed', { allow:'GET, HEAD' });
+        return;
+      }
       const requestUrl = new URL(request.url || '/', 'http://127.0.0.1');
       const relative = decodeURIComponent(requestUrl.pathname).replace(/^\/+/, '') || 'index.html';
-      const absolute = path.resolve(root, relative);
-      if (absolute !== root && !absolute.startsWith(root + path.sep)) {
-        response.writeHead(403).end('Forbidden');
+      const absolute = path.resolve(resolvedRoot, relative);
+      if (absolute !== resolvedRoot && !absolute.startsWith(resolvedRoot + path.sep)) {
+        endTextResponse(request, response, 403, 'Forbidden');
         return;
       }
       let target = absolute;
       if (fs.existsSync(target) && fs.statSync(target).isDirectory()) target = path.join(target, 'index.html');
       if (!fs.existsSync(target) || !fs.statSync(target).isFile()) {
-        response.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' }).end('Not found');
+        endTextResponse(request, response, 404, 'Not found');
+        return;
+      }
+      target = fs.realpathSync(target);
+      if (target !== resolvedRoot && !target.startsWith(resolvedRoot + path.sep)) {
+        endTextResponse(request, response, 403, 'Forbidden');
         return;
       }
       const stat = fs.statSync(target);
-      response.writeHead(200, {
-        'cache-control': 'no-store',
-        'content-length': stat.size,
-        'content-type': MIME[path.extname(target).toLowerCase()] || 'application/octet-stream'
-      });
-      fs.createReadStream(target).pipe(response);
+      const sha256Tokens = requestUrl.searchParams.getAll(VIDEO_ARTIFACT_SHA256_QUERY);
+      const byteTokens = requestUrl.searchParams.getAll(VIDEO_ARTIFACT_BYTES_QUERY);
+      const immutableTransportRequested = sha256Tokens.length > 0 || byteTokens.length > 0;
+      let immutableBuffer = null;
+      let immutableSha256 = '';
+      if (immutableTransportRequested) {
+        const expectedBytes = Number(byteTokens[0]);
+        if (path.extname(target).toLowerCase() !== '.webm'
+          || sha256Tokens.length !== 1
+          || byteTokens.length !== 1
+          || !/^[a-f0-9]{64}$/.test(sha256Tokens[0] || '')
+          || !/^\d+$/.test(byteTokens[0] || '')
+          || !Number.isSafeInteger(expectedBytes)
+          || expectedBytes <= 0) {
+          endTextResponse(request, response, 400, 'Invalid immutable video token');
+          return;
+        }
+        immutableBuffer = fs.readFileSync(target);
+        immutableSha256 = sha256(immutableBuffer);
+        if (immutableBuffer.length !== expectedBytes
+          || stat.size !== expectedBytes
+          || immutableSha256 !== sha256Tokens[0]) {
+          endTextResponse(request, response, 412, 'Video artifact precondition failed');
+          return;
+        }
+      }
+      const size = immutableBuffer?.length ?? stat.size;
+      const range = parseSingleByteRange(request.headers.range, size);
+      if (!range.valid) {
+        endTextResponse(request, response, 416, 'Range Not Satisfiable', {
+          'accept-ranges':'bytes',
+          'content-range':`bytes */${size}`
+        });
+        return;
+      }
+      const responseHeaders = {
+        'accept-ranges':'bytes',
+        'cache-control':'no-store',
+        'content-type':MIME[path.extname(target).toLowerCase()] || 'application/octet-stream'
+      };
+      if (immutableTransportRequested) {
+        Object.assign(responseHeaders, {
+          etag:`"sha256-${immutableSha256}"`,
+          'x-moguria-content-bytes':String(size),
+          'x-moguria-content-sha256':immutableSha256
+        });
+      }
+      if (range.requested) {
+        const contentLength = range.end - range.start + 1;
+        response.writeHead(206, {
+          ...responseHeaders,
+          'content-length':contentLength,
+          'content-range':`bytes ${range.start}-${range.end}/${size}`
+        });
+        if (method === 'HEAD') response.end();
+        else if (immutableBuffer) response.end(immutableBuffer.subarray(range.start, range.end + 1));
+        else fs.createReadStream(target, { start:range.start, end:range.end }).pipe(response);
+        return;
+      }
+      response.writeHead(200, { ...responseHeaders, 'content-length':size });
+      if (method === 'HEAD') response.end();
+      else if (immutableBuffer) response.end(immutableBuffer);
+      else fs.createReadStream(target).pipe(response);
     } catch (error) {
-      response.writeHead(500, { 'content-type': 'text/plain; charset=utf-8' }).end(error.message);
+      const status = error instanceof URIError ? 400 : 500;
+      endTextResponse(request, response, status, status === 400 ? 'Bad Request' : error.message);
     }
   });
   return new Promise((resolve, reject) => {
@@ -2933,6 +3051,88 @@ async function withDeadline(promise, deadline, label) {
   }
 }
 
+function createVideoArtifactTransport(baseUrl, filePath, bytes, sourceSha256) {
+  const base = new URL(baseUrl);
+  if (base.protocol !== 'http:'
+    || base.hostname !== '127.0.0.1'
+    || !base.port
+    || base.pathname !== '/'
+    || base.username
+    || base.password
+    || base.search
+    || base.hash) {
+    throw new Error(`video artifact transport base URL is unsafe: ${baseUrl}`);
+  }
+  if (!Number.isSafeInteger(bytes) || bytes <= 0 || !/^[a-f0-9]{64}$/.test(sourceSha256)) {
+    throw new Error('video artifact transport identity is invalid');
+  }
+  const root = fs.realpathSync(ROOT);
+  const resolvedFile = fs.realpathSync(filePath);
+  const relative = path.relative(root, resolvedFile);
+  if (!relative
+    || relative.startsWith(`..${path.sep}`)
+    || path.isAbsolute(relative)
+    || path.extname(resolvedFile).toLowerCase() !== '.webm'
+    || fs.statSync(resolvedFile).size !== bytes) {
+    throw new Error('video artifact transport path escaped the repository root');
+  }
+  const encodedRelative = relative.split(path.sep).map(encodeURIComponent).join('/');
+  const url = new URL(encodedRelative, base);
+  url.searchParams.set(VIDEO_ARTIFACT_SHA256_QUERY, sourceSha256);
+  url.searchParams.set(VIDEO_ARTIFACT_BYTES_QUERY, String(bytes));
+  return Object.freeze({
+    url:url.href,
+    mime:MIME['.webm'],
+    bytes,
+    sha256:sourceSha256,
+    immutableSha256Token:sourceSha256
+  });
+}
+
+async function probeVideoArtifactTransport(transport, deadline) {
+  const response = await withDeadline(fetch(transport.url, {
+    method:'GET',
+    headers:{ range:'bytes=0-3', accept:transport.mime },
+    cache:'no-store',
+    redirect:'error'
+  }), deadline, 'immutable WebM transport probe response');
+  const body = Buffer.from(await withDeadline(
+    response.arrayBuffer(), deadline, 'immutable WebM transport probe body'
+  ));
+  const evidence = {
+    passed:false,
+    requestUrl:transport.url,
+    responseUrl:response.url,
+    status:response.status,
+    mime:response.headers.get('content-type') || '',
+    acceptRanges:response.headers.get('accept-ranges') || '',
+    contentRange:response.headers.get('content-range') || '',
+    contentLength:Number(response.headers.get('content-length')),
+    artifactBytes:Number(response.headers.get('x-moguria-content-bytes')),
+    artifactSha256:response.headers.get('x-moguria-content-sha256') || '',
+    etag:response.headers.get('etag') || '',
+    probeBytes:body.length,
+    probeHeaderHex:body.toString('hex'),
+    immutableSha256Token:transport.immutableSha256Token
+  };
+  evidence.passed = response.status === 206
+    && response.url === transport.url
+    && evidence.mime === transport.mime
+    && evidence.acceptRanges === 'bytes'
+    && evidence.contentRange === `bytes 0-3/${transport.bytes}`
+    && evidence.contentLength === 4
+    && evidence.artifactBytes === transport.bytes
+    && evidence.artifactSha256 === transport.sha256
+    && evidence.etag === `"sha256-${transport.sha256}"`
+    && evidence.probeBytes === 4
+    && evidence.probeHeaderHex === '1a45dfa3'
+    && evidence.immutableSha256Token === transport.sha256;
+  if (!evidence.passed) {
+    throw new Error(`immutable WebM transport probe failed: ${JSON.stringify(evidence)}`);
+  }
+  return evidence;
+}
+
 function decodedFrameDifference(previous, current, fromFraction, toFraction) {
   if (!Buffer.isBuffer(previous) || !Buffer.isBuffer(current) || previous.length !== current.length) {
     throw new Error('decoded PNG luminance vectors are not comparable');
@@ -2974,8 +3174,33 @@ function validWebKitPlayedRanges(state, coverThroughSeconds, requireComplete = f
     && last.end + STORY_RUNTIME_VIDEO_CONTRACT.webkitMonotonicToleranceSeconds >= requiredEnd;
 }
 
-function validWebKitBaseState(state, expectedVideoSize, expectedPaused, expectedEnded) {
+function validWebKitTransportState(state, expectedTransport) {
+  if (!state || !expectedTransport) return false;
+  try {
+    const current = new URL(state.currentSrc);
+    const expected = new URL(expectedTransport.url);
+    return state.currentSrc === expectedTransport.url
+      && state.declaredSrc === expectedTransport.url
+      && state.transportUrl === expectedTransport.url
+      && state.transportMime === expectedTransport.mime
+      && state.transportBytes === expectedTransport.bytes
+      && state.transportSha256 === expectedTransport.sha256
+      && state.immutableSha256Token === expectedTransport.immutableSha256Token
+      && current.href === expected.href
+      && current.searchParams.getAll(VIDEO_ARTIFACT_SHA256_QUERY).length === 1
+      && current.searchParams.get(VIDEO_ARTIFACT_SHA256_QUERY) === expectedTransport.sha256
+      && current.searchParams.getAll(VIDEO_ARTIFACT_BYTES_QUERY).length === 1
+      && current.searchParams.get(VIDEO_ARTIFACT_BYTES_QUERY) === String(expectedTransport.bytes);
+  } catch {
+    return false;
+  }
+}
+
+function validWebKitBaseState(
+  state, expectedVideoSize, expectedPaused, expectedEnded, expectedTransport
+) {
   return state
+    && validWebKitTransportState(state, expectedTransport)
     && state.error === null
     && state.paused === expectedPaused
     && state.ended === expectedEnded
@@ -3021,8 +3246,8 @@ function validWebKitBaseState(state, expectedVideoSize, expectedPaused, expected
     && Number.isFinite(state.currentTime);
 }
 
-function validWebKitSetupState(state, expectedVideoSize) {
-  return validWebKitBaseState(state, expectedVideoSize, true, false)
+function validWebKitSetupState(state, expectedVideoSize, expectedTransport) {
+  return validWebKitBaseState(state, expectedVideoSize, true, false, expectedTransport)
     && state.currentTime >= 0
     && state.currentTime <= STORY_RUNTIME_VIDEO_CONTRACT.webkitInitialTimeMaximumSeconds
     && state.endedEventCount === 0
@@ -3030,8 +3255,10 @@ function validWebKitSetupState(state, expectedVideoSize) {
     && state.playedRanges.length === 0;
 }
 
-function validWebKitPausedSampleState(state, targetSeconds, expectedVideoSize) {
-  return validWebKitBaseState(state, expectedVideoSize, true, false)
+function validWebKitPausedSampleState(
+  state, targetSeconds, expectedVideoSize, expectedTransport
+) {
+  return validWebKitBaseState(state, expectedVideoSize, true, false, expectedTransport)
     && state.currentTime >= targetSeconds
     && state.currentTime <= targetSeconds
       + STORY_RUNTIME_VIDEO_CONTRACT.webkitMonotonicToleranceSeconds
@@ -3039,8 +3266,8 @@ function validWebKitPausedSampleState(state, targetSeconds, expectedVideoSize) {
     && validWebKitPlayedRanges(state, state.currentTime);
 }
 
-function validWebKitEndedState(state, expectedVideoSize) {
-  return validWebKitBaseState(state, expectedVideoSize, true, true)
+function validWebKitEndedState(state, expectedVideoSize, expectedTransport) {
+  return validWebKitBaseState(state, expectedVideoSize, true, true, expectedTransport)
     && state.endedEventCount === 1
     && state.currentTime >= state.duration
       - STORY_RUNTIME_VIDEO_CONTRACT.webkitMonotonicToleranceSeconds
@@ -3050,7 +3277,8 @@ function validWebKitEndedState(state, expectedVideoSize) {
 }
 
 async function inspectWebKitVideoMonotonicPageClipScreenshots({
-  auditPage, buffer, filePath, expectedVideoSize, attempt, attemptDeadline, presentationStrategy
+  auditPage, filePath, expectedVideoSize, attempt, attemptDeadline, presentationStrategy,
+  transport, transportProbe
 }) {
   const outputRoot = path.dirname(path.dirname(filePath));
   const sampleDirectory = path.join(
@@ -3070,9 +3298,26 @@ async function inspectWebKitVideoMonotonicPageClipScreenshots({
   let auditError = null;
   try {
     initialize = await withDeadline(auditPage.evaluate(async ({
-      base64, expectedWidth, expectedHeight, initialTimeMaximumSeconds,
+      transportUrl, transportMime, transportBytes, transportSha256,
+      immutableSha256Token, sha256QueryName, bytesQueryName,
+      expectedWidth, expectedHeight, initialTimeMaximumSeconds,
       monotonicToleranceSeconds, playedGapToleranceSeconds
     }) => {
+      const parsedTransportUrl = new URL(transportUrl);
+      if (parsedTransportUrl.protocol !== 'http:'
+        || parsedTransportUrl.hostname !== '127.0.0.1'
+        || !parsedTransportUrl.port
+        || parsedTransportUrl.searchParams.getAll(sha256QueryName).length !== 1
+        || parsedTransportUrl.searchParams.get(sha256QueryName) !== transportSha256
+        || parsedTransportUrl.searchParams.getAll(bytesQueryName).length !== 1
+        || parsedTransportUrl.searchParams.get(bytesQueryName) !== String(transportBytes)
+        || transportMime !== 'video/webm'
+        || !Number.isSafeInteger(transportBytes)
+        || transportBytes <= 0
+        || !/^[a-f0-9]{64}$/.test(transportSha256)
+        || immutableSha256Token !== transportSha256) {
+        throw new Error('WebKit immutable WebM transport identity is invalid');
+      }
       document.body.replaceChildren();
       Object.assign(document.documentElement.style, {
         margin:'0',
@@ -3085,10 +3330,6 @@ async function inspectWebKitVideoMonotonicPageClipScreenshots({
         overflow:'hidden',
         background:'rgb(1, 2, 3)'
       });
-      const binary = atob(base64);
-      const bytes = new Uint8Array(binary.length);
-      for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
-      const url = URL.createObjectURL(new Blob([bytes], { type:'video/webm' }));
       const video = document.createElement('video');
       const canPlayType = video.canPlayType('video/webm; codecs="vp8"');
       const elementIdentity = 'webkit-video-audit-singleton';
@@ -3113,10 +3354,14 @@ async function inspectWebKitVideoMonotonicPageClipScreenshots({
         objectFit:'fill',
         background:'rgb(1, 2, 3)'
       });
-      video.src = url;
+      video.src = transportUrl;
       document.body.append(video);
       const audit = {
-        url,
+        transportUrl,
+        transportMime,
+        transportBytes,
+        transportSha256,
+        immutableSha256Token,
         canPlayType,
         elementIdentity,
         video,
@@ -3152,6 +3397,13 @@ async function inspectWebKitVideoMonotonicPageClipScreenshots({
           rect.y + rect.height / 2
         );
         return {
+          currentSrc:String(video.currentSrc || ''),
+          declaredSrc:String(video.src || ''),
+          transportUrl:audit.transportUrl,
+          transportMime:audit.transportMime,
+          transportBytes:audit.transportBytes,
+          transportSha256:audit.transportSha256,
+          immutableSha256Token:audit.immutableSha256Token,
           currentTime:Number(video.currentTime),
           duration:Number(video.duration),
           videoWidth:Number(video.videoWidth),
@@ -3221,7 +3473,14 @@ async function inspectWebKitVideoMonotonicPageClipScreenshots({
         if (video.error) onError();
       });
       audit.assertBaseState = (snapshot, phase, expectedPaused, expectedEnded) => {
-        if (snapshot.error !== null
+        if (snapshot.currentSrc !== transportUrl
+          || snapshot.declaredSrc !== transportUrl
+          || snapshot.transportUrl !== transportUrl
+          || snapshot.transportMime !== transportMime
+          || snapshot.transportBytes !== transportBytes
+          || snapshot.transportSha256 !== transportSha256
+          || snapshot.immutableSha256Token !== immutableSha256Token
+          || snapshot.error !== null
           || snapshot.paused !== expectedPaused
           || snapshot.ended !== expectedEnded
           || snapshot.seeking !== false
@@ -3366,13 +3625,46 @@ async function inspectWebKitVideoMonotonicPageClipScreenshots({
             const activeWallDeltaSeconds = (performance.now() - activeStartedAt) / 1000;
             const mediaDeltaSeconds = pausedAt - previousPauseTime;
             const pausedState = audit.readState();
+            const timingTelemetry = {
+              phaseLabel,
+              scheduler,
+              targetSeconds,
+              observedTime,
+              previousPauseTime,
+              pausedAt,
+              mediaDeltaSeconds,
+              activeWallDeltaSeconds,
+              monotonicToleranceSeconds,
+              ended:pausedState.ended,
+              endedEventCount:pausedState.endedEventCount,
+              currentSrc:pausedState.currentSrc
+            };
+            if (pausedState.ended === true || pausedState.endedEventCount !== 0) {
+              reject(new Error(
+                `${phaseLabel} premature ended before sample: ${JSON.stringify(timingTelemetry)}`
+              ));
+              return;
+            }
+            if (Number.isFinite(pausedAt)
+              && pausedAt > targetSeconds + monotonicToleranceSeconds) {
+              reject(new Error(
+                `${phaseLabel} target overshoot exceeded tolerance: ${JSON.stringify(timingTelemetry)}`
+              ));
+              return;
+            }
+            if (Number.isFinite(mediaDeltaSeconds)
+              && Number.isFinite(activeWallDeltaSeconds)
+              && mediaDeltaSeconds > activeWallDeltaSeconds + monotonicToleranceSeconds) {
+              reject(new Error(
+                `${phaseLabel} media advanced beyond wall time: ${JSON.stringify(timingTelemetry)}`
+              ));
+              return;
+            }
             try {
               audit.assertPausedSampleState(pausedState, targetSeconds, `${phaseLabel}:paused`);
               if (!Number.isFinite(pausedAt)
                 || pausedAt < targetSeconds
-                || pausedAt > targetSeconds + monotonicToleranceSeconds
-                || mediaDeltaSeconds <= 0
-                || mediaDeltaSeconds > activeWallDeltaSeconds + monotonicToleranceSeconds) {
+                || mediaDeltaSeconds <= 0) {
                 throw new Error(`${phaseLabel} media/wall monotonicity failed`);
               }
             } catch (error) {
@@ -3581,6 +3873,12 @@ async function inspectWebKitVideoMonotonicPageClipScreenshots({
       audit.lastPausedTime = setupState.currentTime;
       return {
         canPlayType,
+        transportUrl,
+        currentSrc:String(video.currentSrc || ''),
+        transportMime,
+        transportBytes,
+        transportSha256,
+        immutableSha256Token,
         durationSeconds:video.duration,
         width:video.videoWidth,
         height:video.videoHeight,
@@ -3588,7 +3886,13 @@ async function inspectWebKitVideoMonotonicPageClipScreenshots({
         setupState
       };
     }, {
-      base64:buffer.toString('base64'),
+      transportUrl:transport.url,
+      transportMime:transport.mime,
+      transportBytes:transport.bytes,
+      transportSha256:transport.sha256,
+      immutableSha256Token:transport.immutableSha256Token,
+      sha256QueryName:VIDEO_ARTIFACT_SHA256_QUERY,
+      bytesQueryName:VIDEO_ARTIFACT_BYTES_QUERY,
       expectedWidth:expectedVideoSize.width,
       expectedHeight:expectedVideoSize.height,
       initialTimeMaximumSeconds:STORY_RUNTIME_VIDEO_CONTRACT.webkitInitialTimeMaximumSeconds,
@@ -3596,7 +3900,13 @@ async function inspectWebKitVideoMonotonicPageClipScreenshots({
       playedGapToleranceSeconds:STORY_RUNTIME_VIDEO_CONTRACT.webkitPlayedGapToleranceSeconds
     }), attemptDeadline, 'WebKit singleton video load setup');
 
-    if (!validWebKitSetupState(initialize.setupState, expectedVideoSize)) {
+    if (!validWebKitSetupState(initialize.setupState, expectedVideoSize, transport)
+      || initialize.transportUrl !== transport.url
+      || initialize.currentSrc !== transport.url
+      || initialize.transportMime !== transport.mime
+      || initialize.transportBytes !== transport.bytes
+      || initialize.transportSha256 !== transport.sha256
+      || initialize.immutableSha256Token !== transport.immutableSha256Token) {
       throw new Error('WebKit singleton setup failed Node verification');
     }
 
@@ -3630,7 +3940,7 @@ async function inspectWebKitVideoMonotonicPageClipScreenshots({
         }) => {
           const audit = window.__moguriaWebKitVideoAudit;
           const video = audit?.video;
-          if (!(video instanceof HTMLVideoElement) || !audit?.url
+          if (!(video instanceof HTMLVideoElement) || !audit?.transportUrl
             || typeof audit.readState !== 'function'
             || typeof audit.assertPausedSampleState !== 'function'
             || typeof audit.playMonotonicallyTo !== 'function') {
@@ -3662,7 +3972,7 @@ async function inspectWebKitVideoMonotonicPageClipScreenshots({
         `WebKit video ${phaseLabel} monotonic playback and pause`);
 
         if (!validWebKitPausedSampleState(
-          prepared.activation?.pausedState, prepared.targetSeconds, expectedVideoSize
+          prepared.activation?.pausedState, prepared.targetSeconds, expectedVideoSize, transport
         )) throw new Error(`WebKit monotonic pause failed Node verification at ${fraction}`);
         if (prepared.activation?.playingObserved !== true
           || prepared.activation.activationSerial !== sampleIndex + 1
@@ -3737,7 +4047,7 @@ async function inspectWebKitVideoMonotonicPageClipScreenshots({
         }), attemptDeadline,
         `WebKit video ${phaseLabel} immediate post-screenshot paused state`);
         if (!validWebKitPausedSampleState(
-          postScreenshot.postScreenshotState, prepared.targetSeconds, expectedVideoSize
+          postScreenshot.postScreenshotState, prepared.targetSeconds, expectedVideoSize, transport
         )
           || !Number.isFinite(postScreenshot.pausedScreenshotDriftSeconds)
           || postScreenshot.pausedScreenshotDriftSeconds
@@ -3821,7 +4131,7 @@ async function inspectWebKitVideoMonotonicPageClipScreenshots({
       || endEvidence.mediaDeltaSeconds
         > endEvidence.activeWallDeltaSeconds
           + STORY_RUNTIME_VIDEO_CONTRACT.webkitMonotonicToleranceSeconds
-      || !validWebKitEndedState(endEvidence.endedState, expectedVideoSize)) {
+      || !validWebKitEndedState(endEvidence.endedState, expectedVideoSize, transport)) {
       throw new Error(`WebKit monotonic final drain failed Node verification: ${JSON.stringify(endEvidence)}`);
     }
   } catch (error) {
@@ -3838,7 +4148,6 @@ async function inspectWebKitVideoMonotonicPageClipScreenshots({
           video.removeAttribute('src');
           video.remove();
         }
-        if (audit?.url) URL.revokeObjectURL(audit.url);
         delete window.__moguriaWebKitVideoAudit;
         document.body.replaceChildren();
         if ('__moguriaWebKitVideoAudit' in window
@@ -3847,9 +4156,9 @@ async function inspectWebKitVideoMonotonicPageClipScreenshots({
           || lateActivationErrors.length !== 0) {
           throw new Error(`WebKit audit page cleanup is incomplete: ${JSON.stringify({ lateActivationErrors })}`);
         }
-      }), attemptDeadline, 'WebKit video audit URL cleanup');
+      }), attemptDeadline, 'WebKit video audit transport cleanup');
     } catch (error) {
-      const cleanupMessage = `audit URL cleanup failed: ${error?.message || String(error)}`;
+      const cleanupMessage = `audit transport cleanup failed: ${error?.message || String(error)}`;
       auditError = new Error(auditError
         ? `${auditError?.message || String(auditError)}; ${cleanupMessage}`
         : cleanupMessage);
@@ -3876,9 +4185,18 @@ async function inspectWebKitVideoMonotonicPageClipScreenshots({
       elementIdentity:initialize.elementIdentity,
       setupState:initialize.setupState,
       elementCreateCount:1,
-      blobUrlCreateCount:1,
+      httpTransportCount:1,
       sourceAssignmentCount:1,
       loadCallCount:1
+    },
+    transport:{
+      url:initialize.transportUrl,
+      currentSrc:initialize.currentSrc,
+      mime:initialize.transportMime,
+      bytes:initialize.transportBytes,
+      sha256:initialize.transportSha256,
+      immutableSha256Token:initialize.immutableSha256Token,
+      probe:transportProbe
     },
     samplePng:{ width:samples[0]?.screenshotWidth || 0, height:samples[0]?.screenshotHeight || 0 },
     samples,
@@ -3889,7 +4207,7 @@ async function inspectWebKitVideoMonotonicPageClipScreenshots({
 }
 
 async function inspectStoryVideoArtifact(
-  browserType, filePath, expectedVideoSize, launchOptions, totalAuditDeadline
+  browserType, filePath, expectedVideoSize, launchOptions, baseUrl, totalAuditDeadline
 ) {
   const browserName = browserType.name();
   const presentationStrategy = browserName === 'webkit'
@@ -3923,6 +4241,8 @@ async function inspectStoryVideoArtifact(
     auditCleanupFailed:false,
     decodeAttempts:[],
     decodeErrors:[],
+    transport:null,
+    transportProbe:null,
     decode:null
   };
   if (!webm || bytes < STORY_RUNTIME_VIDEO_CONTRACT.minimumVideoBytes) return base;
@@ -3932,6 +4252,11 @@ async function inspectStoryVideoArtifact(
     Date.now() + STORY_RUNTIME_VIDEO_CONTRACT.videoArtifactAuditTimeoutMs,
     totalAuditDeadline
   );
+
+  if (presentationStrategy === 'webkit-monotonic-page-clip-png') {
+    base.transport = createVideoArtifactTransport(baseUrl, filePath, bytes, sourceSha256);
+    base.transportProbe = await probeVideoArtifactTransport(base.transport, artifactDeadline);
+  }
   const decodeAttempts = [];
   const decodeErrors = [];
   let auditCleanupFailed = false;
@@ -3983,12 +4308,13 @@ async function inspectStoryVideoArtifact(
       const decode = presentationStrategy === 'webkit-monotonic-page-clip-png'
         ? await withDeadline(inspectWebKitVideoMonotonicPageClipScreenshots({
           auditPage,
-          buffer,
           filePath,
           expectedVideoSize,
           attempt,
           attemptDeadline,
-          presentationStrategy
+          presentationStrategy,
+          transport:base.transport,
+          transportProbe:base.transportProbe
         }), attemptDeadline, 'dedicated WebKit page clip screenshot audit')
         : await withDeadline(auditPage.evaluate(async ({
         base64, sampleFractions, presentationStrategy
@@ -4281,13 +4607,25 @@ async function inspectStoryVideoArtifact(
         && decode.samples.every((sample) => (
           sample.frameReadiness?.presentationStrategy === presentationStrategy
         ));
+      const webkitTransportEvidenceComplete = !webkitMonotonicAudit
+        || (base.transportProbe?.passed === true
+          && decode.transport?.probe?.passed === true
+          && decode.transport.url === base.transport?.url
+          && decode.transport.currentSrc === base.transport?.url
+          && decode.transport.mime === base.transport?.mime
+          && decode.transport.bytes === base.transport?.bytes
+          && decode.transport.sha256 === base.transport?.sha256
+          && decode.transport.immutableSha256Token
+            === base.transport?.immutableSha256Token);
       const webkitSingletonEvidenceComplete = !webkitMonotonicAudit
         || (decode.singletonSetup?.elementIdentity === 'webkit-video-audit-singleton'
           && decode.singletonSetup.elementCreateCount === 1
-          && decode.singletonSetup.blobUrlCreateCount === 1
+          && decode.singletonSetup.httpTransportCount === 1
           && decode.singletonSetup.sourceAssignmentCount === 1
           && decode.singletonSetup.loadCallCount === 1
-          && validWebKitSetupState(decode.singletonSetup.setupState, expectedVideoSize));
+          && validWebKitSetupState(
+            decode.singletonSetup.setupState, expectedVideoSize, base.transport
+          ));
       const webkitScreenshotEvidenceComplete = !webkitMonotonicAudit
         || decode.samples.every((sample, sampleIndex) => {
           const readiness = sample.frameReadiness;
@@ -4329,10 +4667,10 @@ async function inspectStoryVideoArtifact(
             && Number.isFinite(activation.totalActiveWallSeconds)
             && activation.totalActiveWallSeconds >= activation.activeWallDeltaSeconds
             && validWebKitPausedSampleState(
-              readiness.pausedState, sample.targetSeconds, expectedVideoSize
+              readiness.pausedState, sample.targetSeconds, expectedVideoSize, base.transport
             )
             && validWebKitPausedSampleState(
-              readiness.postScreenshotState, sample.targetSeconds, expectedVideoSize
+              readiness.postScreenshotState, sample.targetSeconds, expectedVideoSize, base.transport
             )
             && readiness.targetSeconds === sample.targetSeconds
             && readiness.currentTime === readiness.postScreenshotState.currentTime
@@ -4378,12 +4716,15 @@ async function inspectStoryVideoArtifact(
           && decode.endEvidence.endedAt - decode.singletonSetup.setupState.currentTime
             <= decode.endEvidence.totalActiveWallSeconds
               + STORY_RUNTIME_VIDEO_CONTRACT.webkitMonotonicToleranceSeconds
-          && validWebKitEndedState(decode.endEvidence.endedState, expectedVideoSize));
+          && validWebKitEndedState(
+            decode.endEvidence.endedState, expectedVideoSize, base.transport
+          ));
       const passed = decode.durationSeconds >= STORY_RUNTIME_VIDEO_CONTRACT.minimumVideoDurationSeconds
         && decode.width === expectedVideoSize.width
         && decode.height === expectedVideoSize.height
         && samplingComplete
         && strategyEvidenceComplete
+        && webkitTransportEvidenceComplete
         && webkitSingletonEvidenceComplete
         && webkitScreenshotEvidenceComplete
         && webkitEndEvidenceComplete
@@ -4400,6 +4741,7 @@ async function inspectStoryVideoArtifact(
           launchMode,
           samplingComplete,
           strategyEvidenceComplete,
+          webkitTransportEvidenceComplete,
           webkitSingletonEvidenceComplete,
           webkitScreenshotEvidenceComplete,
           webkitEndEvidenceComplete,
@@ -4781,7 +5123,7 @@ async function runStoryRuntimeEvidence(browser, baseUrl, browserName, viewport, 
 }
 
 async function finalizeStoryRuntimeEvidence(
-  record, browserType, output, launchOptions, totalAuditDeadline
+  record, browserType, output, launchOptions, baseUrl, totalAuditDeadline
 ) {
   if (record.status !== 'pending-audit') {
     record.failures.push(`runtime Story evidence entered audit in an invalid state: ${record.status}`);
@@ -4791,7 +5133,7 @@ async function finalizeStoryRuntimeEvidence(
   const videoPath = path.join(output, record.video || '');
   try {
     record.videoArtifact = await inspectStoryVideoArtifact(
-      browserType, videoPath, expectedVideoSize, launchOptions, totalAuditDeadline
+      browserType, videoPath, expectedVideoSize, launchOptions, baseUrl, totalAuditDeadline
     );
   } catch (error) {
     record.videoArtifact = {
@@ -4983,7 +5325,7 @@ async function main() {
       process.stdout.write(`[${options.browser}] ${evidence.viewport} / Story video audit (${evidence.mode}) ... `);
       try {
         await finalizeStoryRuntimeEvidence(
-          evidence, browserType, options.output, launchOptions, totalAuditDeadline
+          evidence, browserType, options.output, launchOptions, options.baseUrl, totalAuditDeadline
         );
       } catch (error) {
         const reason = `video audit orchestration failed: ${error?.message || String(error)}`;

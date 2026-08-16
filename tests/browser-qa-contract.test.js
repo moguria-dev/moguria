@@ -1,7 +1,9 @@
 'use strict';
 
 const assert = require('node:assert/strict');
+const crypto = require('node:crypto');
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 const test = require('node:test');
 
@@ -47,6 +49,96 @@ test('browser QA workflow is isolated, least-privilege, pinned, bounded and uplo
 
 test('runner contract covers both mobile viewports and every approved screen', async () => {
   const runner = await import('../scripts/run-browser-qa.mjs');
+  const serverRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'moguria-browser-qa-server-'));
+  const outsideRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'moguria-browser-qa-outside-'));
+  const webmBytes = Buffer.concat([
+    Buffer.from('1a45dfa3', 'hex'),
+    Buffer.from('immutable-webm-transport-contract', 'utf8')
+  ]);
+  const webmPath = path.join(serverRoot, 'audit artifact.webm');
+  const outsidePath = path.join(outsideRoot, 'outside.webm');
+  fs.writeFileSync(webmPath, webmBytes);
+  fs.writeFileSync(outsidePath, webmBytes);
+  fs.writeFileSync(path.join(serverRoot, 'not-video.txt'), 'not video');
+  fs.symlinkSync(outsidePath, path.join(serverRoot, 'escape.webm'));
+  const artifactSha256 = crypto.createHash('sha256').update(webmBytes).digest('hex');
+  let transportServer = null;
+  try {
+    const started = await runner.startStaticServer(serverRoot);
+    transportServer = started.server;
+    const transportUrl = new URL('audit%20artifact.webm', started.baseUrl);
+    transportUrl.searchParams.set('moguria-sha256', artifactSha256);
+    transportUrl.searchParams.set('moguria-bytes', String(webmBytes.length));
+
+    const full = await fetch(transportUrl);
+    assert.equal(full.status, 200);
+    assert.equal(full.url, transportUrl.href);
+    assert.equal(full.headers.get('content-type'), 'video/webm');
+    assert.equal(full.headers.get('accept-ranges'), 'bytes');
+    assert.equal(full.headers.get('content-length'), String(webmBytes.length));
+    assert.equal(full.headers.get('x-moguria-content-bytes'), String(webmBytes.length));
+    assert.equal(full.headers.get('x-moguria-content-sha256'), artifactSha256);
+    assert.equal(full.headers.get('etag'), `"sha256-${artifactSha256}"`);
+    assert.deepStrictEqual(Buffer.from(await full.arrayBuffer()), webmBytes);
+
+    const head = await fetch(transportUrl, { method:'HEAD' });
+    assert.equal(head.status, 200);
+    assert.equal(head.headers.get('content-length'), String(webmBytes.length));
+    assert.equal((await head.arrayBuffer()).byteLength, 0);
+
+    for (const [range, start, end] of [
+      ['bytes=0-3', 0, 3],
+      ['bytes=4-', 4, webmBytes.length - 1],
+      ['bytes=-4', webmBytes.length - 4, webmBytes.length - 1],
+      ['bytes=2-999999', 2, webmBytes.length - 1]
+    ]) {
+      const partial = await fetch(transportUrl, { headers:{ range } });
+      const expected = webmBytes.subarray(start, end + 1);
+      assert.equal(partial.status, 206, `${range} must be a single partial response`);
+      assert.equal(partial.headers.get('content-type'), 'video/webm');
+      assert.equal(partial.headers.get('content-range'), `bytes ${start}-${end}/${webmBytes.length}`);
+      assert.equal(partial.headers.get('content-length'), String(expected.length));
+      assert.deepStrictEqual(Buffer.from(await partial.arrayBuffer()), expected);
+    }
+
+    for (const range of [
+      'bytes=4-2',
+      'bytes=999999-',
+      'bytes=-0',
+      'bytes=0-1,4-5',
+      'items=0-3'
+    ]) {
+      const invalid = await fetch(transportUrl, { headers:{ range } });
+      assert.equal(invalid.status, 416, `${range} must fail closed`);
+      assert.equal(invalid.headers.get('content-range'), `bytes */${webmBytes.length}`);
+    }
+
+    const staleSha = new URL(transportUrl);
+    staleSha.searchParams.set('moguria-sha256', '0'.repeat(64));
+    assert.equal((await fetch(staleSha)).status, 412);
+    const staleBytes = new URL(transportUrl);
+    staleBytes.searchParams.set('moguria-bytes', String(webmBytes.length + 1));
+    assert.equal((await fetch(staleBytes)).status, 412);
+    const duplicateSha = new URL(transportUrl);
+    duplicateSha.searchParams.append('moguria-sha256', artifactSha256);
+    assert.equal((await fetch(duplicateSha)).status, 400);
+    const textWithVideoToken = new URL('not-video.txt', started.baseUrl);
+    textWithVideoToken.searchParams.set('moguria-sha256', artifactSha256);
+    textWithVideoToken.searchParams.set('moguria-bytes', String(webmBytes.length));
+    assert.equal((await fetch(textWithVideoToken)).status, 400);
+    assert.equal((await fetch(new URL('escape.webm', started.baseUrl))).status, 403);
+    const methodRejected = await fetch(transportUrl, { method:'POST', body:'forbidden' });
+    assert.equal(methodRejected.status, 405);
+    assert.equal(methodRejected.headers.get('allow'), 'GET, HEAD');
+  } finally {
+    if (transportServer) {
+      await new Promise((resolve, reject) => transportServer.close((error) => (
+        error ? reject(error) : resolve()
+      )));
+    }
+    fs.rmSync(serverRoot, { recursive:true, force:true });
+    fs.rmSync(outsideRoot, { recursive:true, force:true });
+  }
   assert.equal(runner.PLAYWRIGHT_VERSION, '1.62.0');
   assert.equal(runner.FIXED_SEED, 20260814);
   assert.deepStrictEqual(
@@ -444,7 +536,25 @@ test('runner contract covers both mobile viewports and every approved screen', a
     "sampleFrameTimings", "averageDeltaMs", "state.mode = 'pause'"
   ]) assert.ok(source.includes(fixture), `runner must preserve skill VFX evidence fixture ${fixture}`);
   assert.match(source, /fit: \['\[data-dex-tab\]'\]/);
-  assert.match(source, /'cache-control': 'no-store'/);
+  assert.match(source, /'cache-control':\s*'no-store'/);
+  for (const transportServerContract of [
+    "'.webm': 'video/webm'",
+    'export function startStaticServer(root = ROOT)',
+    'fs.realpathSync(path.resolve(root))',
+    "method !== 'GET' && method !== 'HEAD'",
+    'parseSingleByteRange(request.headers.range, size)',
+    "response.writeHead(206",
+    "endTextResponse(request, response, 416",
+    "'content-range':`bytes */${size}`",
+    "'content-range':`bytes ${range.start}-${range.end}/${size}`",
+    "requestUrl.searchParams.getAll(VIDEO_ARTIFACT_SHA256_QUERY)",
+    "requestUrl.searchParams.getAll(VIDEO_ARTIFACT_BYTES_QUERY)",
+    'immutableBuffer.length !== expectedBytes',
+    'immutableSha256 !== sha256Tokens[0]',
+    "'x-moguria-content-sha256':immutableSha256",
+    "'x-moguria-content-bytes':String(size)"
+  ]) assert.ok(source.includes(transportServerContract),
+    `root-bounded immutable WebM server must enforce ${transportServerContract}`);
   const probeSource = source.slice(
     source.indexOf('async function verifyBattleCanvas'),
     source.indexOf('async function auditDom')
@@ -687,7 +797,7 @@ test('Story runtime evidence records all four motions continuously and projects 
     'BROWSER_QA_TIME_BUDGET.summaryUploadReserveMs',
     'for (const evidence of storyRuntimeEvidence)',
     'await finalizeStoryRuntimeEvidence(',
-    'evidence, browserType, options.output, launchOptions, totalAuditDeadline',
+    'evidence, browserType, options.output, launchOptions, options.baseUrl, totalAuditDeadline',
     'orchestrationFailures.length === 0'
   ]) assert.ok(mainSource.includes(orchestrationContract),
     `deferred audit orchestration must enforce ${orchestrationContract}`);
@@ -731,6 +841,10 @@ test('Story runtime evidence records all four motions continuously and projects 
     source.indexOf('function validWebKitPlayedRanges'),
     source.indexOf('async function inspectWebKitVideoMonotonicPageClipScreenshots')
   );
+  const transportSource = source.slice(
+    source.indexOf('function createVideoArtifactTransport'),
+    source.indexOf('function decodedFrameDifference')
+  );
   const webkitPlayToTargetSource = webkitSetupSource.slice(
     webkitSetupSource.indexOf('audit.playMonotonicallyTo ='),
     webkitSetupSource.indexOf('audit.playMonotonicallyToEnd =')
@@ -748,8 +862,29 @@ test('Story runtime evidence records all four motions continuously and projects 
     source.indexOf('export function pngVisualStats')
   );
   assert.ok(webkitScreenshotSource.length > 0 && webkitSetupSource.length > 0
-    && webkitSampleLoopSource.length > 0 && webkitStateSource.length > 0,
+    && webkitSampleLoopSource.length > 0 && webkitStateSource.length > 0
+    && transportSource.length > 0,
   'the WebKit monotonic same-engine page-clip implementation must be present');
+  for (const transportContract of [
+    "base.protocol !== 'http:'",
+    "base.hostname !== '127.0.0.1'",
+    "base.pathname !== '/'",
+    'fs.realpathSync(ROOT)',
+    'fs.realpathSync(filePath)',
+    'relative.startsWith(`..${path.sep}`)',
+    "path.extname(resolvedFile).toLowerCase() !== '.webm'",
+    'url.searchParams.set(VIDEO_ARTIFACT_SHA256_QUERY, sourceSha256)',
+    'url.searchParams.set(VIDEO_ARTIFACT_BYTES_QUERY, String(bytes))',
+    'immutableSha256Token:sourceSha256',
+    "headers:{ range:'bytes=0-3', accept:transport.mime }",
+    "response.status === 206",
+    "evidence.mime === transport.mime",
+    "evidence.contentRange === `bytes 0-3/${transport.bytes}`",
+    'evidence.artifactBytes === transport.bytes',
+    'evidence.artifactSha256 === transport.sha256',
+    "evidence.probeHeaderHex === '1a45dfa3'"
+  ]) assert.ok(transportSource.includes(transportContract),
+    `WebKit immutable HTTP transport must enforce ${transportContract}`);
   for (const decodeContract of [
     'maximumVideoBytes',
     "new Blob([bytes], { type:'video/webm' })",
@@ -831,6 +966,7 @@ test('Story runtime evidence records all four motions continuously and projects 
     'mediaTime',
     'frameReadiness',
     'strategyEvidenceComplete',
+    'webkitTransportEvidenceComplete',
     'webkitScreenshotEvidenceComplete',
     'webkitEndEvidenceComplete',
     'decodePhase = `seek@${fraction}`',
@@ -876,8 +1012,8 @@ test('Story runtime evidence records all four motions continuously and projects 
     /const browserName = browserType\.name\(\);\s+const presentationStrategy = browserName === 'webkit'\s+\? 'webkit-monotonic-page-clip-png'\s+: 'request-video-frame-callback';/,
     'the public Playwright browser name must select the presentation strategy on the Node side');
   assert.match(decodeSource,
-    /presentationStrategy === 'webkit-monotonic-page-clip-png'[\s\S]*inspectWebKitVideoMonotonicPageClipScreenshots\(\{[\s\S]*presentationStrategy[\s\S]*auditPage\.evaluate\(async \(\{[\s\S]*base64:buffer\.toString\('base64'\)/,
-    'the Node-side strategy must dispatch WebKit to monotonic page clips before the Chromium audit');
+    /presentationStrategy === 'webkit-monotonic-page-clip-png'[\s\S]*inspectWebKitVideoMonotonicPageClipScreenshots\(\{[\s\S]*transport:base\.transport,[\s\S]*transportProbe:base\.transportProbe[\s\S]*auditPage\.evaluate\(async \(\{[\s\S]*base64:buffer\.toString\('base64'\)/,
+    'the Node-side strategy must dispatch WebKit to immutable HTTP page clips before the unchanged Chromium audit');
   const strategyDispatchSource = decodeSource.slice(
     decodeSource.indexOf('const capturePresentedFrame'),
     decodeSource.indexOf("let decodePhase = 'metadata'")
@@ -916,6 +1052,18 @@ test('Story runtime evidence records all four motions continuously and projects 
     "video.removeAttribute('poster')",
     "background:'rgb(1, 2, 3)'",
     "objectFit:'fill'",
+    "transportMime !== 'video/webm'",
+    "parsedTransportUrl.hostname !== '127.0.0.1'",
+    'parsedTransportUrl.searchParams.getAll(sha256QueryName).length !== 1',
+    'parsedTransportUrl.searchParams.getAll(bytesQueryName).length !== 1',
+    'immutableSha256Token !== transportSha256',
+    'video.src = transportUrl',
+    "currentSrc:String(video.currentSrc || '')",
+    "declaredSrc:String(video.src || '')",
+    'transportMime:audit.transportMime',
+    'transportBytes:audit.transportBytes',
+    'transportSha256:audit.transportSha256',
+    'immutableSha256Token:audit.immutableSha256Token',
     "audit.waitFor('loadedmetadata', 10000)",
     "audit.waitFor('loadeddata', 10000)",
     'HTMLMediaElement.HAVE_CURRENT_DATA',
@@ -977,21 +1125,21 @@ test('Story runtime evidence records all four motions continuously and projects 
     'document.body.firstChild === video',
     "bodyChildTagName:bodyChildren.length === 1 ? bodyChildren[0].tagName : ''",
     'centerHitIsVideo:centerHit === video',
-    'audit URL cleanup failed:',
+    'audit transport cleanup failed:',
     'decodedFrameDifference(',
     'uniqueFrameHashes:new Set(samples.map((sample) => sample.frameHash)).size',
     'endEvidence'
   ]) assert.ok(webkitScreenshotSource.includes(webkitContract),
     `WebKit monotonic page clip audit must enforce ${webkitContract}`);
   for (const [pattern, expected, label] of [
-    [/new Blob\(/g, 1, 'one Blob'],
-    [/URL\.createObjectURL\(/g, 1, 'one Blob URL'],
+    [/new Blob\(/g, 0, 'no WebKit Blob'],
+    [/URL\.createObjectURL\(/g, 0, 'no WebKit Blob URL'],
     [/document\.createElement\('video'\)/g, 1, 'one video element'],
-    [/video\.src = url/g, 1, 'one source assignment'],
+    [/video\.src = transportUrl/g, 1, 'one HTTP source assignment'],
     [/video\.load\(\)/g, 1, 'one media load'],
     [/video\.play\(\)/g, 1, 'one reusable activation play site'],
     [/\.screenshot\(\{/g, 1, 'one per-sample page screenshot site'],
-    [/URL\.revokeObjectURL\(/g, 1, 'one Blob URL cleanup'],
+    [/URL\.revokeObjectURL\(/g, 0, 'no Blob URL cleanup'],
     [/video\.remove\(\)/g, 1, 'one final element cleanup']
   ]) assert.equal((webkitScreenshotSource.match(pattern) || []).length, expected, label);
   const failedAttemptCleanupSource = decodeSource.slice(
@@ -1006,8 +1154,9 @@ test('Story runtime evidence records all four motions continuously and projects 
     'failed partial-PNG cleanup must fail closed and stop further attempts');
   assert.ok(
     webkitSetupSource.indexOf("document.createElement('video')")
-      < webkitSetupSource.indexOf('video.src = url')
-      && webkitSetupSource.indexOf('video.src = url') < webkitSetupSource.indexOf('video.load()'),
+      < webkitSetupSource.indexOf('video.src = transportUrl')
+      && webkitSetupSource.indexOf('video.src = transportUrl')
+        < webkitSetupSource.indexOf('video.load()'),
     'the singleton element, source, and one load must be established before the sample loop'
   );
   assert.doesNotMatch(webkitSampleLoopSource,
@@ -1035,9 +1184,26 @@ test('Story runtime evidence records all four motions continuously and projects 
   assert.match(webkitPlayToTargetSource,
     /if \(observedTime < targetSeconds\) return;\s+activation\.settled = true;\s+cleanup\(\);\s+video\.pause\(\);\s+const pausedAt = Number\(video\.currentTime\)/,
     'the first scheduler observation at or beyond an ascending target must pause synchronously');
+  for (const explicitTimingFailure of [
+    /pausedState\.ended === true \|\| pausedState\.endedEventCount !== 0[\s\S]*premature ended before sample:[\s\S]*JSON\.stringify\(timingTelemetry\)/,
+    /pausedAt > targetSeconds \+ monotonicToleranceSeconds[\s\S]*target overshoot exceeded tolerance:[\s\S]*JSON\.stringify\(timingTelemetry\)/,
+    /mediaDeltaSeconds > activeWallDeltaSeconds \+ monotonicToleranceSeconds[\s\S]*media advanced beyond wall time:[\s\S]*JSON\.stringify\(timingTelemetry\)/
+  ]) assert.match(webkitPlayToTargetSource, explicitTimingFailure,
+    'premature end, target overshoot, and media/wall violations must fail with telemetry');
+  const timingTelemetryIndex = webkitPlayToTargetSource.indexOf('const timingTelemetry =');
+  const prematureEndedIndex = webkitPlayToTargetSource.indexOf('premature ended before sample:');
+  const targetOvershootIndex = webkitPlayToTargetSource.indexOf('target overshoot exceeded tolerance:');
+  const mediaWallIndex = webkitPlayToTargetSource.indexOf('media advanced beyond wall time:');
+  const genericStateIndex = webkitPlayToTargetSource.indexOf('audit.assertPausedSampleState(');
+  assert.ok(timingTelemetryIndex > 0
+    && prematureEndedIndex > timingTelemetryIndex
+    && targetOvershootIndex > prematureEndedIndex
+    && mediaWallIndex > targetOvershootIndex
+    && genericStateIndex > mediaWallIndex,
+  'explicit phase-labelled timing failures must precede the generic paused-state assertion');
   assert.match(webkitPlayToTargetSource,
-    /pausedAt < targetSeconds[\s\S]*pausedAt > targetSeconds \+ monotonicToleranceSeconds[\s\S]*mediaDeltaSeconds <= 0[\s\S]*mediaDeltaSeconds > activeWallDeltaSeconds \+ monotonicToleranceSeconds/,
-    'every paused sample must stay inside target..target+0.25 and a 1x wall/media envelope');
+    /audit\.assertPausedSampleState[\s\S]*pausedAt < targetSeconds[\s\S]*mediaDeltaSeconds <= 0/,
+    'the generic paused-state assertion must retain lower-bound and positive-progress checks');
   assert.match(webkitSampleLoopSource,
     /prepared\.activation\.pausedAt < prepared\.targetSeconds[\s\S]*prepared\.activation\.pausedAt > prepared\.targetSeconds[\s\S]*webkitMonotonicToleranceSeconds[\s\S]*prepared\.activation\.pausedAt <= prepared\.activation\.previousPauseTime[\s\S]*prepared\.activation\.mediaDeltaSeconds[\s\S]*prepared\.activation\.activeWallDeltaSeconds/,
     'Node must independently verify each strictly ascending paused timestamp and wall/media delta');
@@ -1076,11 +1242,21 @@ test('Story runtime evidence records all four motions continuously and projects 
     /video\.currentTime\s*=|audit\.video\.currentTime\s*=|audit\.waitFor\(['"]seeked|waitFor\(['"]seeked|playbackRate\s*=|defaultPlaybackRate\s*=/,
     'WebKit evidence must never write media time/rates or wait on a seek completion');
   assert.doesNotMatch(webkitScreenshotSource, /\.catch\(\(\) => \{\}\)/,
-    'singleton/Blob cleanup failures must fail the attempt instead of being swallowed');
+    'singleton/HTTP transport cleanup failures must fail the attempt instead of being swallowed');
   for (const stateContract of [
     'ranges.length === 0',
     'range.start - previousEnd > STORY_RUNTIME_VIDEO_CONTRACT.webkitPlayedGapToleranceSeconds',
     'first.start <= STORY_RUNTIME_VIDEO_CONTRACT.webkitInitialTimeMaximumSeconds',
+    'validWebKitTransportState(state, expectedTransport)',
+    'state.currentSrc === expectedTransport.url',
+    'state.declaredSrc === expectedTransport.url',
+    'state.transportUrl === expectedTransport.url',
+    'state.transportMime === expectedTransport.mime',
+    'state.transportBytes === expectedTransport.bytes',
+    'state.transportSha256 === expectedTransport.sha256',
+    'state.immutableSha256Token === expectedTransport.immutableSha256Token',
+    'current.searchParams.getAll(VIDEO_ARTIFACT_SHA256_QUERY).length === 1',
+    'current.searchParams.getAll(VIDEO_ARTIFACT_BYTES_QUERY).length === 1',
     'state.error === null',
     'state.paused === expectedPaused',
     'state.ended === expectedEnded',
@@ -1137,9 +1313,16 @@ test('Story runtime evidence records all four motions continuously and projects 
     `Node PNG evidence decoder must preserve ${pngContract}`);
   for (const webkitGate of [
     "presentationMethod === 'page.screenshot.clip'",
+    'base.transportProbe?.passed === true',
+    'decode.transport?.probe?.passed === true',
+    'decode.transport.currentSrc === base.transport?.url',
+    'decode.transport.mime === base.transport?.mime',
+    'decode.transport.bytes === base.transport?.bytes',
+    'decode.transport.sha256 === base.transport?.sha256',
+    'decode.transport.immutableSha256Token',
     "elementIdentity === 'webkit-video-audit-singleton'",
     'elementCreateCount === 1',
-    'blobUrlCreateCount === 1',
+    'httpTransportCount === 1',
     'sourceAssignmentCount === 1',
     'loadCallCount === 1',
     "activation?.method === 'monotonic-playback-paused-page-clip-screenshot'",
@@ -1164,6 +1347,7 @@ test('Story runtime evidence records all four motions continuously and projects 
     'fs.statSync(screenshotPath).isFile()',
     'sha256(fs.readFileSync(screenshotPath)) === sample.screenshotSha256',
     '&& screenshotOnDisk',
+    '&& webkitTransportEvidenceComplete',
     '&& webkitSingletonEvidenceComplete',
     '&& webkitScreenshotEvidenceComplete',
     '&& webkitEndEvidenceComplete',
@@ -1182,7 +1366,7 @@ test('Story runtime evidence records all four motions continuously and projects 
     'endedAt > endedState.duration + monotonicToleranceSeconds',
     'mediaDeltaSeconds > activeWallDeltaSeconds + monotonicToleranceSeconds',
     'audit.assertPlayedContinuity(endedState, endedState.duration',
-    'validWebKitEndedState(endEvidence.endedState, expectedVideoSize)'
+    'validWebKitEndedState(endEvidence.endedState, expectedVideoSize, transport)'
   ]) assert.ok(webkitEndDrainSource.includes(endContract)
       || webkitPlayToEndSource.includes(endContract),
   `WebKit final monotonic drain must enforce ${endContract}`);
