@@ -212,14 +212,16 @@ test('runner contract covers both mobile viewports and every approved screen', a
   assert.deepStrictEqual(runner.SPECULATIVE_BATTLE_PACK_URLS, battlePackUrls);
   const baseUrl = 'http://127.0.0.1:4173/';
   for (const url of battlePackUrls) {
-    assert.equal(runner.isExpectedSpeculativeWarmAbort({
-      method: 'GET',
-      resourceType: 'fetch',
-      isNavigationRequest: false,
-      headers: { 'x-moguria-purpose': 'warm-pack:battle-v3' },
-      url: new URL(url, baseUrl).href,
-      errorText: 'net::ERR_ABORTED'
-    }, baseUrl), true, `expected warm abort must be ignored for ${url}`);
+    for (const errorText of ['net::ERR_ABORTED', 'Load request cancelled']) {
+      assert.equal(runner.isExpectedSpeculativeWarmAbort({
+        method: 'GET',
+        resourceType: 'fetch',
+        isNavigationRequest: false,
+        headers: { 'x-moguria-purpose': 'warm-pack:battle-v3' },
+        url: new URL(url, baseUrl).href,
+        errorText
+      }, baseUrl), true, `expected warm abort (${errorText}) must be ignored for ${url}`);
+    }
   }
   const exactWarmAbort = {
     method: 'GET',
@@ -231,6 +233,7 @@ test('runner contract covers both mobile viewports and every approved screen', a
   };
   for (const [label, failure] of [
     ['real network failure', { ...exactWarmAbort, errorText: 'net::ERR_CONNECTION_RESET' }],
+    ['near-match cancellation wording', { ...exactWarmAbort, errorText: 'Load request canceled' }],
     ['foreground image request', { ...exactWarmAbort, resourceType: 'image' }],
     ['unmarked fetch', { ...exactWarmAbort, headers: {} }],
     ['different warm purpose', { ...exactWarmAbort, headers: { 'x-moguria-purpose': 'warm-pack:other' } }],
@@ -248,7 +251,7 @@ test('runner contract covers both mobile viewports and every approved screen', a
     'ja-JP', 'Asia/Tokyo', 'hasTouch: true', 'isMobile: true',
     'consoleErrors', 'pageErrors', 'requestFailures', 'responseErrors',
     'ignoredDiagnostics', 'speculativeWarmAborts', 'isExpectedSpeculativeWarmAbort(failure, baseUrl)',
-    "failure.resourceType !== 'fetch'", "failure.errorText !== 'net::ERR_ABORTED'",
+    "failure.resourceType !== 'fetch'", 'SPECULATIVE_WARM_ABORT_ERROR_TEXTS.has(failure.errorText)',
     "failure.headers?.['x-moguria-purpose'] !== 'warm-pack:battle-v3'",
     'naturalWidth', 'rootOverflow', '43.5', 'nearBlank', 'qa-summary.json', 'qa-summary.md',
     'visual scroll roots did not return to origin', 'full-viewport surface is displaced',
@@ -280,6 +283,7 @@ test('runner contract covers both mobile viewports and every approved screen', a
     'loadingChildFlight',
     'child Mogu plateau motion differs',
     'data-loading-tip-text',
+    'textVisible: visible(tipText)',
     'data-tip-id',
     'loading tip session is not five unique entries from a large pool',
     'loading tip presentation differs',
@@ -382,6 +386,7 @@ test('Story runtime evidence records all four motions continuously and projects 
     minimumVideoBytes:65536,
     maximumVideoBytes:134217728,
     minimumVideoDurationSeconds:20,
+    maximumDecodeAttempts:3,
     lifecycleFreezeWallMs:600,
     lifecycleClockToleranceMs:34,
     lifecycleResumeAdvanceMs:120,
@@ -483,12 +488,17 @@ test('Story runtime evidence records all four motions continuously and projects 
     'context.newPage()',
     "coverPage.goto('about:blank')",
     'coverPage.bringToFront()',
-    'waitForActualPageVisibility(page, true)',
+    'waitForActualPageFocus(page, false)',
     'page.bringToFront()',
-    'waitForActualPageVisibility(page, false)',
-    "document.addEventListener('visibilitychange', evidence.handler)",
-    "event.hidden === true && event.visibilityState === 'hidden'",
-    "event.hidden === false && event.visibilityState === 'visible'"
+    'waitForActualPageFocus(page, true)',
+    "window.addEventListener('blur', evidence.blurHandler)",
+    "window.addEventListener('focus', evidence.focusHandler)",
+    "event.type === 'blur'",
+    "event.type === 'focus'",
+    "mechanism:'real-tab-focus-loss-return'",
+    'browserReportedHidden',
+    "focusLostAt.domPaused !== 'false'",
+    "whileUnfocused.domPaused !== 'false'"
   ]) assert.ok(lifecycleSource.includes(lifecycleContract), `runtime lifecycle evidence must use ${lifecycleContract}`);
   assert.doesNotMatch(lifecycleSource,
     /dispatchEvent|Object\.defineProperty|emulateMedia|newCDPSession|_channel|player\.(?:pause|resume)\(/,
@@ -518,6 +528,8 @@ test('Story runtime evidence records all four motions continuously and projects 
   for (const holdContract of [
     "mode.holdTiming === 'delayed'",
     'page.waitForTimeout(STORY_RUNTIME_VIDEO_CONTRACT.delayedHoldWaitMs)',
+    'const holdReadyAt = Date.now()',
+    'holdStartedAt - holdReadyAt',
     'holdStartDelayMs > STORY_RUNTIME_VIDEO_CONTRACT.earlyHoldMaximumDelayMs',
     'holdStartDelayMs < STORY_RUNTIME_VIDEO_CONTRACT.delayedHoldWaitMs',
     "activeHold.domHolding !== 'true'",
@@ -555,7 +567,12 @@ test('Story runtime evidence records all four motions continuously and projects 
     'uniqueFrameHashes',
     'minimumDecodedNonBlankSamples',
     'minimumDecodedChangedPairs',
-    'minimumDecodedUniqueFrames'
+    'minimumDecodedUniqueFrames',
+    'maximumDecodeAttempts',
+    'decodeAttemptCount',
+    'decodeErrors',
+    'for (let attempt = 1; attempt <= STORY_RUNTIME_VIDEO_CONTRACT.maximumDecodeAttempts; attempt += 1)',
+    'retries are reserved for transient engine errors'
   ]) assert.ok(decodeSource.includes(decodeContract), `WebM decode audit must enforce ${decodeContract}`);
   assert.doesNotMatch(decodeSource, /ffprobe|child_process|newCDPSession|_channel/,
     'WebM audit must use the generated browser and public web APIs only');

@@ -196,6 +196,7 @@ export const STORY_RUNTIME_VIDEO_CONTRACT = Object.freeze({
   minimumVideoBytes:65536,
   maximumVideoBytes:134217728,
   minimumVideoDurationSeconds:20,
+  maximumDecodeAttempts:3,
   lifecycleFreezeWallMs:600,
   lifecycleClockToleranceMs:34,
   lifecycleResumeAdvanceMs:120,
@@ -251,6 +252,10 @@ export const SPECULATIVE_BATTLE_PACK_URLS = Object.freeze(
     .filter(Boolean) || []
 );
 const SPECULATIVE_BATTLE_PACK_URL_SET = new Set(SPECULATIVE_BATTLE_PACK_URLS);
+const SPECULATIVE_WARM_ABORT_ERROR_TEXTS = new Set([
+  'net::ERR_ABORTED',
+  'Load request cancelled'
+]);
 const MIME = Object.freeze({
   '.css': 'text/css; charset=utf-8',
   '.html': 'text/html; charset=utf-8',
@@ -274,7 +279,7 @@ export function isExpectedSpeculativeWarmAbort(failure = {}, baseUrl = '') {
     || failure.resourceType !== 'fetch'
     || failure.isNavigationRequest !== false
     || failure.headers?.['x-moguria-purpose'] !== 'warm-pack:battle-v3'
-    || failure.errorText !== 'net::ERR_ABORTED') return false;
+    || !SPECULATIVE_WARM_ABORT_ERROR_TEXTS.has(failure.errorText)) return false;
   try {
     const requested = new URL(failure.url);
     const base = new URL(baseUrl);
@@ -531,9 +536,15 @@ async function inspectLoadingState(page, kind) {
     const visible = (element) => {
       if (!element) return false;
       const rect = element.getBoundingClientRect();
-      const style = getComputedStyle(element);
-      return rect.width > 0 && rect.height > 0 && style.display !== 'none'
-        && style.visibility !== 'hidden' && Number(style.opacity) !== 0;
+      if (rect.width <= 0 || rect.height <= 0) return false;
+      for (let current = element; current; current = current.parentElement) {
+        const style = getComputedStyle(current);
+        if (style.display === 'none'
+          || style.visibility === 'hidden'
+          || style.visibility === 'collapse'
+          || Number(style.opacity) === 0) return false;
+      }
+      return true;
     };
     const rect = (element) => {
       if (!element) return null;
@@ -645,7 +656,9 @@ async function inspectLoadingState(page, kind) {
         insideBusyRegion: Boolean(phase.closest('[aria-busy="true"]'))
       } : null,
       tips: tips ? {
-        visible: visible(tips),
+        visible: visible(tipText),
+        containerVisible: visible(tips),
+        textVisible: visible(tipText),
         dataVisible: tips.getAttribute('data-visible'),
         quiet: tips.getAttribute('data-quiet'),
         ariaHidden: tips.getAttribute('aria-hidden'),
@@ -1064,7 +1077,7 @@ async function prepareLoadingFixture(page, kind, percent) {
     failures.push(`loading tip session is not five unique entries from a large pool: ${JSON.stringify({ sessionTipIds, tips:fixture.plateau?.tips })}`);
   }
   const displayedTips = fixture.tipsAfterReveal?.tips;
-  if (!displayedTips?.visible || displayedTips.dataVisible !== 'true' || displayedTips.ariaHidden !== 'false'
+  if (!displayedTips?.textVisible || displayedTips.dataVisible !== 'true' || displayedTips.ariaHidden !== 'false'
     || displayedTips.inert || !displayedTips.oneTextNode || !displayedTips.tipId
     || displayedTips.announcementRole !== 'status' || displayedTips.announcementLive !== 'polite'
     || displayedTips.counterNodeCount !== 0 || displayedTips.hasCounterCopy || displayedTips.renderedLines > 2) {
@@ -2595,28 +2608,30 @@ async function exerciseStoryPauseResume(page) {
   };
 }
 
-async function waitForActualPageVisibility(page, expectedHidden, timeoutMs = 5000) {
+async function waitForActualPageFocus(page, expectedFocused, timeoutMs = 5000) {
   const deadline = Date.now() + timeoutMs;
   let latest = null;
   while (Date.now() < deadline) {
     latest = await page.evaluate(() => ({
+      focused:document.hasFocus(),
       hidden:document.hidden,
       visibilityState:document.visibilityState
     }));
-    if (latest.hidden === expectedHidden
-      && latest.visibilityState === (expectedHidden ? 'hidden' : 'visible')) return latest;
+    if (latest.focused === expectedFocused) return latest;
     await page.waitForTimeout(100);
   }
-  throw new Error(`real page visibility transition was not observed: ${JSON.stringify({ expectedHidden, latest })}`);
+  throw new Error(`real page focus transition was not observed: ${JSON.stringify({ expectedFocused, latest })}`);
 }
 
-async function exerciseStoryVisibilityResume(context, page) {
+async function exerciseStoryFocusLossReturn(context, page) {
   await page.waitForFunction((minimumSceneTimeMs) => {
     const health = window.MoguriaStoryChapter01?.getHealth?.();
     return health?.sceneIndex === 1
       && health.completed === false
       && health.sceneTimeMs >= minimumSceneTimeMs;
   }, 1000, { timeout:10000 });
+  await page.bringToFront();
+  await waitForActualPageFocus(page, true);
   let coverPage = null;
   let coverVideo = null;
   let restored = false;
@@ -2624,17 +2639,24 @@ async function exerciseStoryVisibilityResume(context, page) {
     const before = await page.evaluate(() => {
       const health = window.MoguriaStoryChapter01.getHealth();
       const section = document.getElementById('storyChapter01');
-      const prior = document.__moguriaQaVisibilityEvidence;
-      if (prior?.handler) document.removeEventListener('visibilitychange', prior.handler);
-      const evidence = { events:[], handler:null };
-      evidence.handler = () => evidence.events.push({
+      const prior = document.__moguriaQaFocusEvidence;
+      if (prior?.blurHandler) window.removeEventListener('blur', prior.blurHandler);
+      if (prior?.focusHandler) window.removeEventListener('focus', prior.focusHandler);
+      const evidence = { events:[], blurHandler:null, focusHandler:null };
+      const record = type => evidence.events.push({
+        type,
+        focused:document.hasFocus(),
         hidden:document.hidden,
         visibilityState:document.visibilityState,
         sceneTimeMs:window.MoguriaStoryChapter01.getHealth().sceneTimeMs
       });
-      document.__moguriaQaVisibilityEvidence = evidence;
-      document.addEventListener('visibilitychange', evidence.handler);
+      evidence.blurHandler = () => record('blur');
+      evidence.focusHandler = () => record('focus');
+      document.__moguriaQaFocusEvidence = evidence;
+      window.addEventListener('blur', evidence.blurHandler);
+      window.addEventListener('focus', evidence.focusHandler);
       return {
+        focused:document.hasFocus(),
         hidden:document.hidden,
         visibilityState:document.visibilityState,
         sceneId:health.sceneId,
@@ -2643,95 +2665,105 @@ async function exerciseStoryVisibilityResume(context, page) {
         domPaused:section?.dataset?.storyPaused
       };
     });
-    if (before.hidden
+    if (!before.focused
+      || before.hidden
       || before.visibilityState !== 'visible'
       || before.sceneId !== 'reverse-rescue'
       || before.completed
       || before.domPaused !== 'false') {
-      throw new Error(`Story visibility precondition failed: ${JSON.stringify(before)}`);
+      throw new Error(`Story focus precondition failed: ${JSON.stringify(before)}`);
     }
     coverPage = await context.newPage();
     coverVideo = coverPage.video();
     await coverPage.goto('about:blank');
     await coverPage.bringToFront();
-    await waitForActualPageVisibility(page, true);
-    const hiddenAt = await page.evaluate(() => ({
+    await waitForActualPageFocus(page, false);
+    const focusLostAt = await page.evaluate(() => ({
+      focused:document.hasFocus(),
       hidden:document.hidden,
       visibilityState:document.visibilityState,
       sceneId:window.MoguriaStoryChapter01.getHealth().sceneId,
       sceneTimeMs:window.MoguriaStoryChapter01.getHealth().sceneTimeMs,
-      completed:window.MoguriaStoryChapter01.getHealth().completed
+      completed:window.MoguriaStoryChapter01.getHealth().completed,
+      domPaused:document.getElementById('storyChapter01')?.dataset?.storyPaused
     }));
     await page.waitForTimeout(STORY_RUNTIME_VIDEO_CONTRACT.lifecycleFreezeWallMs);
-    const frozenAt = await page.evaluate(() => ({
+    const whileUnfocused = await page.evaluate(() => ({
+      focused:document.hasFocus(),
       hidden:document.hidden,
       visibilityState:document.visibilityState,
       sceneId:window.MoguriaStoryChapter01.getHealth().sceneId,
       sceneTimeMs:window.MoguriaStoryChapter01.getHealth().sceneTimeMs,
-      completed:window.MoguriaStoryChapter01.getHealth().completed
+      completed:window.MoguriaStoryChapter01.getHealth().completed,
+      domPaused:document.getElementById('storyChapter01')?.dataset?.storyPaused
     }));
-    const frozenDeltaMs = Math.abs(frozenAt.sceneTimeMs - hiddenAt.sceneTimeMs);
-    if (!hiddenAt.hidden
-      || hiddenAt.visibilityState !== 'hidden'
-      || hiddenAt.sceneId !== 'reverse-rescue'
-      || hiddenAt.completed
-      || !frozenAt.hidden
-      || frozenAt.visibilityState !== 'hidden'
-      || frozenAt.sceneId !== 'reverse-rescue'
-      || frozenAt.completed
-      || frozenDeltaMs > STORY_RUNTIME_VIDEO_CONTRACT.lifecycleClockToleranceMs) {
-      throw new Error(`Story visibility hide did not freeze the production clock: ${JSON.stringify({ hiddenAt, frozenAt, frozenDeltaMs })}`);
+    const unfocusedClockDeltaMs = Math.abs(whileUnfocused.sceneTimeMs - focusLostAt.sceneTimeMs);
+    const browserReportedHidden = focusLostAt.hidden || whileUnfocused.hidden;
+    const hiddenClockConsistent = !browserReportedHidden
+      || unfocusedClockDeltaMs <= STORY_RUNTIME_VIDEO_CONTRACT.lifecycleClockToleranceMs;
+    if (focusLostAt.focused
+      || focusLostAt.sceneId !== 'reverse-rescue'
+      || focusLostAt.completed
+      || focusLostAt.domPaused !== 'false'
+      || whileUnfocused.focused
+      || whileUnfocused.sceneId !== 'reverse-rescue'
+      || whileUnfocused.completed
+      || whileUnfocused.domPaused !== 'false'
+      || !hiddenClockConsistent) {
+      throw new Error(`Story focus-loss behavior is invalid: ${JSON.stringify({ focusLostAt, whileUnfocused, browserReportedHidden, unfocusedClockDeltaMs })}`);
     }
 
     await page.bringToFront();
-    await waitForActualPageVisibility(page, false);
+    await waitForActualPageFocus(page, true);
     await page.waitForFunction(({ baseline, advance }) => (
       window.MoguriaStoryChapter01?.getHealth?.()?.sceneTimeMs >= baseline + advance
     ), {
-      baseline:frozenAt.sceneTimeMs,
+      baseline:whileUnfocused.sceneTimeMs,
       advance:STORY_RUNTIME_VIDEO_CONTRACT.lifecycleResumeAdvanceMs
     }, { timeout:3000 });
     restored = true;
-    const resumedAt = await page.evaluate(() => ({
+    const focusRestoredAt = await page.evaluate(() => ({
+      focused:document.hasFocus(),
       hidden:document.hidden,
       visibilityState:document.visibilityState,
       sceneId:window.MoguriaStoryChapter01.getHealth().sceneId,
       sceneTimeMs:window.MoguriaStoryChapter01.getHealth().sceneTimeMs,
       completed:window.MoguriaStoryChapter01.getHealth().completed
     }));
-    if (resumedAt.hidden
-      || resumedAt.visibilityState !== 'visible'
-      || resumedAt.sceneId !== 'reverse-rescue'
-      || resumedAt.completed) {
-      throw new Error(`Story visibility resume did not restore the same motion: ${JSON.stringify(resumedAt)}`);
+    if (!focusRestoredAt.focused
+      || focusRestoredAt.hidden
+      || focusRestoredAt.visibilityState !== 'visible'
+      || focusRestoredAt.sceneId !== 'reverse-rescue'
+      || focusRestoredAt.completed) {
+      throw new Error(`Story focus return did not restore the same motion: ${JSON.stringify(focusRestoredAt)}`);
     }
-    const visibilityEvents = await page.evaluate(() => {
-      const evidence = document.__moguriaQaVisibilityEvidence;
+    const focusEvents = await page.evaluate(() => {
+      const evidence = document.__moguriaQaFocusEvidence;
       const events = Array.from(evidence?.events || []);
-      if (evidence?.handler) document.removeEventListener('visibilitychange', evidence.handler);
-      delete document.__moguriaQaVisibilityEvidence;
+      if (evidence?.blurHandler) window.removeEventListener('blur', evidence.blurHandler);
+      if (evidence?.focusHandler) window.removeEventListener('focus', evidence.focusHandler);
+      delete document.__moguriaQaFocusEvidence;
       return events;
     });
-    const hiddenEventIndex = visibilityEvents.findIndex((event) => (
-      event.hidden === true && event.visibilityState === 'hidden'
+    const blurEventIndex = focusEvents.findIndex((event) => event.type === 'blur');
+    const focusEventIndex = focusEvents.findIndex((event, index) => (
+      index > blurEventIndex && event.type === 'focus'
     ));
-    const visibleEventIndex = visibilityEvents.findIndex((event, index) => (
-      index > hiddenEventIndex && event.hidden === false && event.visibilityState === 'visible'
-    ));
-    if (hiddenEventIndex < 0 || visibleEventIndex < 0) {
-      throw new Error(`ordered visibilitychange events were not observed: ${JSON.stringify(visibilityEvents)}`);
+    if (blurEventIndex < 0 || focusEventIndex < 0) {
+      throw new Error(`ordered blur/focus events were not observed: ${JSON.stringify(focusEvents)}`);
     }
     return {
       passed:true,
-      mechanism:'real-tab-visibility',
+      mechanism:'real-tab-focus-loss-return',
       before,
-      hiddenAt,
-      frozenAt,
-      frozenWallMs:STORY_RUNTIME_VIDEO_CONTRACT.lifecycleFreezeWallMs,
-      frozenDeltaMs,
-      resumedAt,
-      resumedAdvanceMs:resumedAt.sceneTimeMs - frozenAt.sceneTimeMs,
-      visibilityEvents
+      focusLostAt,
+      whileUnfocused,
+      unfocusedWallMs:STORY_RUNTIME_VIDEO_CONTRACT.lifecycleFreezeWallMs,
+      unfocusedClockDeltaMs,
+      browserReportedHidden,
+      focusRestoredAt,
+      restoredAdvanceMs:focusRestoredAt.sceneTimeMs - whileUnfocused.sceneTimeMs,
+      focusEvents
     };
   } finally {
     if (!restored) {
@@ -2745,9 +2777,10 @@ async function exerciseStoryVisibilityResume(context, page) {
     }
     try {
       await page.evaluate(() => {
-        const evidence = document.__moguriaQaVisibilityEvidence;
-        if (evidence?.handler) document.removeEventListener('visibilitychange', evidence.handler);
-        delete document.__moguriaQaVisibilityEvidence;
+        const evidence = document.__moguriaQaFocusEvidence;
+        if (evidence?.blurHandler) window.removeEventListener('blur', evidence.blurHandler);
+        if (evidence?.focusHandler) window.removeEventListener('focus', evidence.focusHandler);
+        delete document.__moguriaQaFocusEvidence;
       });
     } catch {}
   }
@@ -2934,19 +2967,25 @@ async function inspectStoryVideoArtifact(browser, filePath, expectedVideoSize) {
     container:webm ? 'webm' : headerHex || 'empty',
     expectedWidth:expectedVideoSize.width,
     expectedHeight:expectedVideoSize.height,
+    decodeAttemptLimit:STORY_RUNTIME_VIDEO_CONTRACT.maximumDecodeAttempts,
+    decodeAttemptCount:0,
+    decodeErrors:[],
     decode:null
   };
   if (!webm || bytes < STORY_RUNTIME_VIDEO_CONTRACT.minimumVideoBytes) return base;
 
-  let auditContext = null;
-  let result = base;
-  try {
-    auditContext = await browser.newContext({
+  const decodeErrors = [];
+  for (let attempt = 1; attempt <= STORY_RUNTIME_VIDEO_CONTRACT.maximumDecodeAttempts; attempt += 1) {
+    let auditContext = null;
+    let attemptResult = null;
+    let attemptError = '';
+    try {
+      auditContext = await browser.newContext({
       viewport:{ width:expectedVideoSize.width, height:expectedVideoSize.height },
       serviceWorkers:'block'
-    });
-    const auditPage = await auditContext.newPage();
-    const decode = await auditPage.evaluate(async ({ base64, sampleFractions }) => {
+      });
+      const auditPage = await auditContext.newPage();
+      const decode = await auditPage.evaluate(async ({ base64, sampleFractions }) => {
       const binary = atob(base64);
       const bytes = new Uint8Array(binary.length);
       for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
@@ -3089,46 +3128,66 @@ async function inspectStoryVideoArtifact(browser, filePath, expectedVideoSize) {
       base64:buffer.toString('base64'),
       sampleFractions:STORY_RUNTIME_VIDEO_CONTRACT.videoSampleFractions
     });
-    const samplingComplete = decode.samples.length === STORY_RUNTIME_VIDEO_CONTRACT.videoSampleFractions.length
-      && decode.samples.every((sample, index) => (
-        sample.fraction === STORY_RUNTIME_VIDEO_CONTRACT.videoSampleFractions[index]
-      ));
-    const nonBlankSamples = decode.samples.filter((sample) => (
-      sample.standardDeviation >= STORY_RUNTIME_VIDEO_CONTRACT.minimumDecodedStandardDeviation
-        && sample.colorBuckets >= STORY_RUNTIME_VIDEO_CONTRACT.minimumDecodedColorBuckets
-        && !((sample.darkRatio > 0.998 || sample.lightRatio > 0.998) && sample.standardDeviation < 7)
-    )).length;
-    const changedPairs = decode.adjacentDifferences.filter((difference) => (
-      difference.meanAbsoluteDifference >= STORY_RUNTIME_VIDEO_CONTRACT.minimumDecodedMeanDifference
-        && difference.changedPixelRatio >= STORY_RUNTIME_VIDEO_CONTRACT.minimumDecodedChangedPixelRatio
-    )).length;
-    const passed = decode.durationSeconds >= STORY_RUNTIME_VIDEO_CONTRACT.minimumVideoDurationSeconds
-      && decode.width === expectedVideoSize.width
-      && decode.height === expectedVideoSize.height
-      && samplingComplete
-      && nonBlankSamples >= STORY_RUNTIME_VIDEO_CONTRACT.minimumDecodedNonBlankSamples
-      && changedPairs >= STORY_RUNTIME_VIDEO_CONTRACT.minimumDecodedChangedPairs
-      && decode.uniqueFrameHashes >= STORY_RUNTIME_VIDEO_CONTRACT.minimumDecodedUniqueFrames;
-    result = {
-      ...base,
-      passed,
-      decode:{ ...decode, samplingComplete, nonBlankSamples, changedPairs }
-    };
-  } catch (error) {
-    result = { ...base, decode:{ passed:false, error:error?.message || String(error) } };
-  } finally {
-    if (auditContext) {
-      try { await auditContext.close(); }
-      catch (error) {
-        result = {
-          ...result,
-          passed:false,
-          decode:{ ...result.decode, closeError:error?.message || String(error) }
-        };
+      const samplingComplete = decode.samples.length === STORY_RUNTIME_VIDEO_CONTRACT.videoSampleFractions.length
+        && decode.samples.every((sample, index) => (
+          sample.fraction === STORY_RUNTIME_VIDEO_CONTRACT.videoSampleFractions[index]
+        ));
+      const nonBlankSamples = decode.samples.filter((sample) => (
+        sample.standardDeviation >= STORY_RUNTIME_VIDEO_CONTRACT.minimumDecodedStandardDeviation
+          && sample.colorBuckets >= STORY_RUNTIME_VIDEO_CONTRACT.minimumDecodedColorBuckets
+          && !((sample.darkRatio > 0.998 || sample.lightRatio > 0.998) && sample.standardDeviation < 7)
+      )).length;
+      const changedPairs = decode.adjacentDifferences.filter((difference) => (
+        difference.meanAbsoluteDifference >= STORY_RUNTIME_VIDEO_CONTRACT.minimumDecodedMeanDifference
+          && difference.changedPixelRatio >= STORY_RUNTIME_VIDEO_CONTRACT.minimumDecodedChangedPixelRatio
+      )).length;
+      const passed = decode.durationSeconds >= STORY_RUNTIME_VIDEO_CONTRACT.minimumVideoDurationSeconds
+        && decode.width === expectedVideoSize.width
+        && decode.height === expectedVideoSize.height
+        && samplingComplete
+        && nonBlankSamples >= STORY_RUNTIME_VIDEO_CONTRACT.minimumDecodedNonBlankSamples
+        && changedPairs >= STORY_RUNTIME_VIDEO_CONTRACT.minimumDecodedChangedPairs
+        && decode.uniqueFrameHashes >= STORY_RUNTIME_VIDEO_CONTRACT.minimumDecodedUniqueFrames;
+      attemptResult = {
+        ...base,
+        passed,
+        decode:{ ...decode, attempt, samplingComplete, nonBlankSamples, changedPairs }
+      };
+    } catch (error) {
+      attemptError = error?.message || String(error);
+    } finally {
+      if (auditContext) {
+        try { await auditContext.close(); }
+        catch (error) {
+          const closeError = `audit context close failed: ${error?.message || String(error)}`;
+          attemptError = attemptError ? `${attemptError}; ${closeError}` : closeError;
+        }
       }
     }
+
+    if (attemptError) {
+      decodeErrors.push({ attempt, error:attemptError });
+      continue;
+    }
+    const result = {
+      ...attemptResult,
+      decodeAttemptCount:attempt,
+      decodeErrors:[...decodeErrors]
+    };
+    // A complete decode that fails content/duration checks is deterministic and
+    // remains a hard failure; retries are reserved for transient engine errors.
+    return result;
   }
-  return result;
+  return {
+    ...base,
+    decodeAttemptCount:STORY_RUNTIME_VIDEO_CONTRACT.maximumDecodeAttempts,
+    decodeErrors,
+    decode:{
+      passed:false,
+      attempt:STORY_RUNTIME_VIDEO_CONTRACT.maximumDecodeAttempts,
+      error:decodeErrors.at(-1)?.error || 'video decode failed without an error detail'
+    }
+  };
 }
 
 async function runStoryRuntimeEvidence(browser, baseUrl, browserName, viewport, output, mode) {
@@ -3212,7 +3271,7 @@ async function runStoryRuntimeEvidence(browser, baseUrl, browserName, viewport, 
         record.lifecycle = { pauseResume:await exerciseStoryPauseResume(page) };
       }
       if (mode.exerciseLifecycle && motion.sceneIndex === 1) {
-        record.lifecycle.visibilityResume = await exerciseStoryVisibilityResume(context, page);
+        record.lifecycle.focusLossReturn = await exerciseStoryFocusLossReturn(context, page);
       }
       let holdWallDurationMs = null;
       if (motion.sceneIndex === 2) {
@@ -3248,6 +3307,7 @@ async function runStoryRuntimeEvidence(browser, baseUrl, browserName, viewport, 
           throw new Error(`Story fragment hold boundary is invalid: ${JSON.stringify(boundary)}`);
         }
         await hold.focus();
+        const holdReadyAt = Date.now();
         let delayedBoundary = null;
         if (mode.holdTiming === 'delayed') {
           await page.waitForTimeout(STORY_RUNTIME_VIDEO_CONTRACT.delayedHoldWaitMs);
@@ -3276,7 +3336,7 @@ async function runStoryRuntimeEvidence(browser, baseUrl, browserName, viewport, 
           }
         }
         const holdStartedAt = Date.now();
-        const holdStartDelayMs = holdStartedAt - boundaryReachedAt;
+        const holdStartDelayMs = holdStartedAt - holdReadyAt;
         if (mode.holdTiming === 'early'
           && holdStartDelayMs > STORY_RUNTIME_VIDEO_CONTRACT.earlyHoldMaximumDelayMs) {
           throw new Error(`Story early hold began too late: ${holdStartDelayMs} ms`);
@@ -3320,6 +3380,7 @@ async function runStoryRuntimeEvidence(browser, baseUrl, browserName, viewport, 
           timing:mode.holdTiming,
           boundarySceneTimeMs:boundary.sceneTimeMs,
           delayedBoundarySceneTimeMs:delayedBoundary?.sceneTimeMs ?? null,
+          boundaryPreparationWallMs:holdReadyAt - boundaryReachedAt,
           boundaryWaitMs:holdStartDelayMs,
           holdWallDurationMs
         };
@@ -3347,7 +3408,7 @@ async function runStoryRuntimeEvidence(browser, baseUrl, browserName, viewport, 
       || record.motions.length !== STORY_RUNTIME_VIDEO_CONTRACT.motions.length
       || (mode.exerciseLifecycle && (
         !record.lifecycle?.pauseResume?.passed
-          || !record.lifecycle?.visibilityResume?.passed
+          || !record.lifecycle?.focusLossReturn?.passed
       ))
       || !record.fragmentHold?.passed
       || record.fragmentHold.timing !== mode.holdTiming) {
