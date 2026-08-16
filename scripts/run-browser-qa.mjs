@@ -2956,10 +2956,27 @@ function validWebKitScreenshotState(state, targetSeconds, expectedVideoSize) {
     && state.elementCount === 1
     && state.sameElement === true
     && state.lateActivationErrorCount === 0
-    && Math.abs(state.rect?.x || 0) <= 0.01
-    && Math.abs(state.rect?.y || 0) <= 0.01
-    && Math.abs((state.rect?.width || 0) - expectedVideoSize.width) <= 0.01
-    && Math.abs((state.rect?.height || 0) - expectedVideoSize.height) <= 0.01
+    && Number.isFinite(state.rect?.x)
+    && Number.isFinite(state.rect?.y)
+    && Number.isFinite(state.rect?.width)
+    && Number.isFinite(state.rect?.height)
+    && Math.abs(state.rect.x) <= 0.01
+    && Math.abs(state.rect.y) <= 0.01
+    && Math.abs(state.rect.width - expectedVideoSize.width) <= 0.01
+    && Math.abs(state.rect.height - expectedVideoSize.height) <= 0.01
+    && Number.isFinite(state.viewportWidth)
+    && Number.isFinite(state.viewportHeight)
+    && state.viewportWidth === expectedVideoSize.width
+    && state.viewportHeight === expectedVideoSize.height
+    && Number.isFinite(state.scrollX)
+    && Number.isFinite(state.scrollY)
+    && Math.abs(state.scrollX) <= 0.01
+    && Math.abs(state.scrollY) <= 0.01
+    && state.bodyChildNodeCount === 1
+    && state.bodyElementChildCount === 1
+    && state.bodyOnlyVideo === true
+    && state.bodyChildTagName === 'VIDEO'
+    && state.centerHitIsVideo === true
     && Number.isFinite(state.duration)
     && state.duration > 0
     && state.videoWidth === expectedVideoSize.width
@@ -2973,7 +2990,7 @@ function validWebKitRunningState(state, targetSeconds, expectedVideoSize) {
     && validWebKitScreenshotState({ ...state, paused:true }, targetSeconds, expectedVideoSize);
 }
 
-async function inspectWebKitVideoElementScreenshots({
+async function inspectWebKitVideoPageClipScreenshots({
   auditPage, buffer, filePath, expectedVideoSize, attempt, attemptDeadline, presentationStrategy
 }) {
   const outputRoot = path.dirname(path.dirname(filePath));
@@ -3043,6 +3060,11 @@ async function inspectWebKitVideoElementScreenshots({
       audit.readState = () => {
         const rect = video.getBoundingClientRect();
         const selected = document.querySelector('#audit-video');
+        const bodyChildren = Array.from(document.body.children);
+        const centerHit = document.elementFromPoint(
+          rect.x + rect.width / 2,
+          rect.y + rect.height / 2
+        );
         return {
           currentTime:Number(video.currentTime),
           duration:Number(video.duration),
@@ -3058,6 +3080,17 @@ async function inspectWebKitVideoElementScreenshots({
           sameElement:selected === video && audit.video === video,
           lateActivationErrorCount:audit.lateActivationErrors?.length || 0,
           rect:{ x:rect.x, y:rect.y, width:rect.width, height:rect.height },
+          viewportWidth:Number(window.innerWidth),
+          viewportHeight:Number(window.innerHeight),
+          scrollX:Number(window.scrollX),
+          scrollY:Number(window.scrollY),
+          bodyChildNodeCount:document.body.childNodes.length,
+          bodyElementChildCount:bodyChildren.length,
+          bodyOnlyVideo:document.body.childNodes.length === 1
+            && document.body.firstChild === video
+            && bodyChildren[0] === video,
+          bodyChildTagName:bodyChildren.length === 1 ? bodyChildren[0].tagName : '',
+          centerHitIsVideo:centerHit === video,
           error:video.error ? {
             code:Number(video.error.code),
             message:String(video.error.message || '')
@@ -3101,10 +3134,27 @@ async function inspectWebKitVideoElementScreenshots({
           || snapshot.elementCount !== 1
           || snapshot.sameElement !== true
           || snapshot.lateActivationErrorCount !== 0
+          || !Number.isFinite(snapshot.rect.x)
+          || !Number.isFinite(snapshot.rect.y)
+          || !Number.isFinite(snapshot.rect.width)
+          || !Number.isFinite(snapshot.rect.height)
           || Math.abs(snapshot.rect.x) > 0.01
           || Math.abs(snapshot.rect.y) > 0.01
           || Math.abs(snapshot.rect.width - expectedWidth) > 0.01
           || Math.abs(snapshot.rect.height - expectedHeight) > 0.01
+          || !Number.isFinite(snapshot.viewportWidth)
+          || !Number.isFinite(snapshot.viewportHeight)
+          || snapshot.viewportWidth !== expectedWidth
+          || snapshot.viewportHeight !== expectedHeight
+          || !Number.isFinite(snapshot.scrollX)
+          || !Number.isFinite(snapshot.scrollY)
+          || Math.abs(snapshot.scrollX) > 0.01
+          || Math.abs(snapshot.scrollY) > 0.01
+          || snapshot.bodyChildNodeCount !== 1
+          || snapshot.bodyElementChildCount !== 1
+          || snapshot.bodyOnlyVideo !== true
+          || snapshot.bodyChildTagName !== 'VIDEO'
+          || snapshot.centerHitIsVideo !== true
           || !Number.isFinite(snapshot.duration)
           || snapshot.duration <= 0
           || snapshot.videoWidth !== expectedWidth
@@ -3176,7 +3226,7 @@ async function inspectWebKitVideoElementScreenshots({
             resolve({
               setupOnly:false,
               pixelPassSignal:false,
-              method:'per-sample-muted-play-running-locator-screenshot',
+              method:'per-sample-muted-play-running-page-clip-screenshot',
               phaseLabel,
               activationSerial,
               playingObserved,
@@ -3305,12 +3355,20 @@ async function inspectWebKitVideoElementScreenshots({
         }
         const screenshotTimeoutMs = Math.max(1, attemptDeadline - Date.now());
         const screenshotBuffer = await withDeadline(
-          auditPage.locator('#audit-video').screenshot({
+          auditPage.screenshot({
             type:'png',
+            clip:{
+              x:0,
+              y:0,
+              width:expectedVideoSize.width,
+              height:expectedVideoSize.height
+            },
+            scale:'css',
+            caret:'initial',
             timeout:screenshotTimeoutMs
           }),
           attemptDeadline,
-          `WebKit video sample ${sampleIndex + 1} locator screenshot`
+          `WebKit video sample ${sampleIndex + 1} page clip screenshot`
         );
         const postScreenshot = await withDeadline(auditPage.evaluate(({
           targetSeconds, playingTime, phaseLabel:samplePhaseLabel
@@ -3389,7 +3447,7 @@ async function inspectWebKitVideoElementScreenshots({
           lightRatio:decodedPng.stats.lightRatio,
           frameReadiness:{
             presentationStrategy,
-            presentationMethod:'locator.screenshot',
+            presentationMethod:'page.screenshot.clip',
             targetSeconds:prepared.targetSeconds,
             currentTime:postScreenshot.postScreenshotState.currentTime,
             mediaTime:null,
@@ -3484,7 +3542,7 @@ async function inspectStoryVideoArtifact(
 ) {
   const browserName = browserType.name();
   const presentationStrategy = browserName === 'webkit'
-    ? 'webkit-element-screenshot-png'
+    ? 'webkit-page-clip-screenshot-png'
     : 'request-video-frame-callback';
   if (!fs.existsSync(filePath)) {
     return {
@@ -3571,8 +3629,8 @@ async function inspectStoryVideoArtifact(
           auditPage.bringToFront(), attemptDeadline, 'headed audit page activation'
         );
       }
-      const decode = presentationStrategy === 'webkit-element-screenshot-png'
-        ? await withDeadline(inspectWebKitVideoElementScreenshots({
+      const decode = presentationStrategy === 'webkit-page-clip-screenshot-png'
+        ? await withDeadline(inspectWebKitVideoPageClipScreenshots({
           auditPage,
           buffer,
           filePath,
@@ -3580,7 +3638,7 @@ async function inspectStoryVideoArtifact(
           attempt,
           attemptDeadline,
           presentationStrategy
-        }), attemptDeadline, 'dedicated WebKit element screenshot audit')
+        }), attemptDeadline, 'dedicated WebKit page clip screenshot audit')
         : await withDeadline(auditPage.evaluate(async ({
         base64, sampleFractions, presentationStrategy
       }) => {
@@ -3862,7 +3920,7 @@ async function inspectStoryVideoArtifact(
         && decode.samples.every((sample) => (
           sample.frameReadiness?.presentationStrategy === presentationStrategy
         ));
-      const webkitSingletonEvidenceComplete = presentationStrategy !== 'webkit-element-screenshot-png'
+      const webkitSingletonEvidenceComplete = presentationStrategy !== 'webkit-page-clip-screenshot-png'
         || (decode.singletonSetup?.elementIdentity === 'webkit-video-audit-singleton'
           && decode.singletonSetup.elementCreateCount === 1
           && decode.singletonSetup.blobUrlCreateCount === 1
@@ -3873,7 +3931,7 @@ async function inspectStoryVideoArtifact(
             decode.singletonSetup.setupState?.currentTime,
             expectedVideoSize
           ));
-      const webkitScreenshotEvidenceComplete = presentationStrategy !== 'webkit-element-screenshot-png'
+      const webkitScreenshotEvidenceComplete = presentationStrategy !== 'webkit-page-clip-screenshot-png'
         || decode.samples.every((sample, sampleIndex) => {
           const readiness = sample.frameReadiness;
           const activation = readiness?.activationTelemetry;
@@ -3884,8 +3942,8 @@ async function inspectStoryVideoArtifact(
             && fs.existsSync(screenshotPath)
             && fs.statSync(screenshotPath).isFile()
             && sha256(fs.readFileSync(screenshotPath)) === sample.screenshotSha256;
-          return readiness?.presentationMethod === 'locator.screenshot'
-            && activation?.method === 'per-sample-muted-play-running-locator-screenshot'
+          return readiness?.presentationMethod === 'page.screenshot.clip'
+            && activation?.method === 'per-sample-muted-play-running-page-clip-screenshot'
             && activation.pixelPassSignal === false
             && activation.phaseLabel
               === `sample-${String(sampleIndex + 1).padStart(2, '0')}@${sample.fraction}`

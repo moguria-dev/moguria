@@ -708,7 +708,7 @@ test('Story runtime evidence records all four motions continuously and projects 
     source.indexOf('async function runStoryRuntimeEvidence')
   );
   const webkitScreenshotSource = source.slice(
-    source.indexOf('async function inspectWebKitVideoElementScreenshots'),
+    source.indexOf('async function inspectWebKitVideoPageClipScreenshots'),
     source.indexOf('async function inspectStoryVideoArtifact')
   );
   const webkitSetupSource = webkitScreenshotSource.slice(
@@ -721,7 +721,7 @@ test('Story runtime evidence records all four motions continuously and projects 
   );
   const webkitStateSource = source.slice(
     source.indexOf('function validWebKitScreenshotState'),
-    source.indexOf('async function inspectWebKitVideoElementScreenshots')
+    source.indexOf('async function inspectWebKitVideoPageClipScreenshots')
   );
   const pngDecoderSource = source.slice(
     source.indexOf('function decodePngVisual'),
@@ -768,7 +768,7 @@ test('Story runtime evidence records all four motions continuously and projects 
     'withDeadline(auditPage.evaluate',
     'browserType.name()',
     "browserName === 'webkit'",
-    "'webkit-element-screenshot-png'",
+    "'webkit-page-clip-screenshot-png'",
     "'request-video-frame-callback'",
     'presentationStrategy',
     'sourceSha256Before',
@@ -843,11 +843,11 @@ test('Story runtime evidence records all four motions continuously and projects 
     /decodePhase = 'first-frame';[\s\S]*HTMLMediaElement\.HAVE_CURRENT_DATA[\s\S]*waitFor\('loadeddata', 10000\)[\s\S]*decodePhase = `seek@\$\{fraction\}`/,
     'the audit must wait for first-frame data before phase-labelled seeking');
   assert.match(decodeSource,
-    /const browserName = browserType\.name\(\);\s+const presentationStrategy = browserName === 'webkit'\s+\? 'webkit-element-screenshot-png'\s+: 'request-video-frame-callback';/,
+    /const browserName = browserType\.name\(\);\s+const presentationStrategy = browserName === 'webkit'\s+\? 'webkit-page-clip-screenshot-png'\s+: 'request-video-frame-callback';/,
     'the public Playwright browser name must select the presentation strategy on the Node side');
   assert.match(decodeSource,
-    /presentationStrategy === 'webkit-element-screenshot-png'[\s\S]*inspectWebKitVideoElementScreenshots\(\{[\s\S]*presentationStrategy[\s\S]*auditPage\.evaluate\(async \(\{[\s\S]*base64:buffer\.toString\('base64'\)/,
-    'the Node-side strategy must dispatch WebKit to element screenshots before the Chromium audit');
+    /presentationStrategy === 'webkit-page-clip-screenshot-png'[\s\S]*inspectWebKitVideoPageClipScreenshots\(\{[\s\S]*presentationStrategy[\s\S]*auditPage\.evaluate\(async \(\{[\s\S]*base64:buffer\.toString\('base64'\)/,
+    'the Node-side strategy must dispatch WebKit to page clip screenshots before the Chromium audit');
   const strategyDispatchSource = decodeSource.slice(
     decodeSource.indexOf('const capturePresentedFrame'),
     decodeSource.indexOf("let decodePhase = 'metadata'")
@@ -891,7 +891,7 @@ test('Story runtime evidence records all four motions continuously and projects 
     "audit.waitFor('seeked', 10000)",
     'HTMLMediaElement.HAVE_CURRENT_DATA',
     'audit.activateAtTarget',
-    "method:'per-sample-muted-play-running-locator-screenshot'",
+    "method:'per-sample-muted-play-running-page-clip-screenshot'",
     "video.addEventListener('playing', onPlaying, { once:true })",
     'const playingTime = Number(video.currentTime)',
     'const runningState = audit.readState()',
@@ -900,8 +900,8 @@ test('Story runtime evidence records all four motions continuously and projects 
     'const postPauseTime = Number(video.currentTime)',
     'pixelPassSignal:false',
     "if (settled && playingObserved && error?.name === 'AbortError') return",
-    "presentationMethod:'locator.screenshot'",
-    "auditPage.locator('#audit-video').screenshot({",
+    "presentationMethod:'page.screenshot.clip'",
+    'auditPage.screenshot({',
     'timeout:screenshotTimeoutMs',
     'decodePngVisual(screenshotBuffer)',
     'fs.writeFileSync(samplePath, screenshotBuffer)',
@@ -923,11 +923,20 @@ test('Story runtime evidence records all four motions continuously and projects 
     'sameElement:selected === video && audit.video === video',
     'networkState:Number(video.networkState)',
     'video.getBoundingClientRect()',
+    'viewportWidth:Number(window.innerWidth)',
+    'viewportHeight:Number(window.innerHeight)',
+    'scrollX:Number(window.scrollX)',
+    'scrollY:Number(window.scrollY)',
+    'bodyChildNodeCount:document.body.childNodes.length',
+    'bodyElementChildCount:bodyChildren.length',
+    'document.body.firstChild === video',
+    "bodyChildTagName:bodyChildren.length === 1 ? bodyChildren[0].tagName : ''",
+    'centerHitIsVideo:centerHit === video',
     'audit URL cleanup failed:',
     'decodedFrameDifference(',
     'uniqueFrameHashes:new Set(samples.map((sample) => sample.frameHash)).size'
   ]) assert.ok(webkitScreenshotSource.includes(webkitContract),
-    `WebKit element screenshot audit must enforce ${webkitContract}`);
+    `WebKit page clip screenshot audit must enforce ${webkitContract}`);
   for (const [pattern, expected, label] of [
     [/URL\.createObjectURL\(/g, 1, 'one Blob URL'],
     [/document\.createElement\('video'\)/g, 1, 'one video element'],
@@ -935,7 +944,7 @@ test('Story runtime evidence records all four motions continuously and projects 
     [/video\.load\(\)/g, 1, 'one media load'],
     [/video\.play\(\)/g, 1, 'one reusable activation play site'],
     [/addEventListener\('playing'/g, 1, 'one reusable playing-listener site'],
-    [/\.screenshot\(\{/g, 1, 'one per-sample locator screenshot site'],
+    [/\.screenshot\(\{/g, 1, 'one per-sample page screenshot site'],
     [/URL\.revokeObjectURL\(/g, 1, 'one Blob URL cleanup'],
     [/video\.remove\(\)/g, 1, 'one final element cleanup']
   ]) assert.equal((webkitScreenshotSource.match(pattern) || []).length, expected, label);
@@ -949,7 +958,7 @@ test('Story runtime evidence records all four motions continuously and projects 
     /document\.createElement|URL\.createObjectURL|video\.src\s*=|video\.load\(\)|video\.remove\(\)|removeAttribute\('src'\)|video\.play\(\)/,
     'the eight-sample loop must reuse one loaded element and call only the reusable activation helper');
   assert.match(webkitSampleLoopSource,
-    /const seeked = audit\.waitFor\('seeked', 10000\);\s+video\.currentTime = targetSeconds;\s+await seeked;[\s\S]*postSeekState = audit\.readState\(\);[\s\S]*audit\.activateAtTarget\([\s\S]*activation\.runningState[\s\S]*locator\('#audit-video'\)\.screenshot[\s\S]*video\?\.pause\(\);[\s\S]*const postPauseTime = Number\(video\.currentTime\)/,
+    /const seeked = audit\.waitFor\('seeked', 10000\);\s+video\.currentTime = targetSeconds;\s+await seeked;[\s\S]*postSeekState = audit\.readState\(\);[\s\S]*audit\.activateAtTarget\([\s\S]*activation\.runningState[\s\S]*auditPage\.screenshot[\s\S]*video\?\.pause\(\);[\s\S]*const postPauseTime = Number\(video\.currentTime\)/,
     'every fraction must unconditionally seek, activate, screenshot while running, then immediately pause');
   assert.equal((webkitSampleLoopSource.match(/video\.currentTime = targetSeconds/g) || []).length, 1,
     'the loop must contain one unconditional seek site and no post-activation re-seek');
@@ -961,15 +970,25 @@ test('Story runtime evidence records all four motions continuously and projects 
     /const playingTime = Number\(video\.currentTime\);\s+const runningState = audit\.readState\(\);[\s\S]*audit\.assertRunningState\([\s\S]*settled = true;\s+cleanup\(\);\s+resolve\(/,
     'the first playing handler must capture and validate running state without pausing');
   assert.doesNotMatch(webkitOnPlayingSource, /video\.pause\(\)/,
-    'the first playing handler must leave playback running for the native locator screenshot');
+    'the first playing handler must leave playback running for the native page clip screenshot');
   const webkitRunningScreenshotSource = webkitSampleLoopSource.slice(
     webkitSampleLoopSource.indexOf('const activation = await audit.activateAtTarget('),
     webkitSampleLoopSource.indexOf('const postScreenshot = await withDeadline(')
   );
   assert.doesNotMatch(webkitRunningScreenshotSource, /video\??\.pause\(\)/,
-    'no browser-side pause may occur between activation and the locator screenshot');
-  assert.doesNotMatch(webkitRunningScreenshotSource, /animations\s*:/,
-    'the running WebKit screenshot must not fast-forward video through animation suppression');
+    'no browser-side pause may occur between activation and the page clip screenshot');
+  const webkitPageScreenshotSource = webkitSampleLoopSource.slice(
+    webkitSampleLoopSource.indexOf('const screenshotBuffer = await withDeadline('),
+    webkitSampleLoopSource.indexOf('const postScreenshot = await withDeadline(')
+  );
+  assert.match(webkitPageScreenshotSource,
+    /auditPage\.screenshot\(\{\s+type:'png',\s+clip:\{\s+x:0,\s+y:0,\s+width:expectedVideoSize\.width,\s+height:expectedVideoSize\.height\s+\},\s+scale:'css',\s+caret:'initial',\s+timeout:screenshotTimeoutMs\s+\}\)/,
+    'the WebKit compositor evidence must be one exact CSS-pixel viewport clip');
+  assert.doesNotMatch(webkitPageScreenshotSource,
+    /\.locator\(|ElementHandle|boundingBox|scrollIntoView|animations\s*:|style\s*:|mask\s*:|fullPage\s*:/,
+    'the WebKit page clip must not invoke element actionability or screenshot page mutation options');
+  assert.doesNotMatch(webkitScreenshotSource, /auditPage\.locator\(|ElementHandle\.screenshot/,
+    'the WebKit audit must not use locator or ElementHandle screenshot paths');
   assert.match(webkitSetupSource,
     /setTimeout\(\(\) => fail\([\s\S]*addEventListener\('playing'[\s\S]*addEventListener\('error'[\s\S]*video\.play\(\)[\s\S]*settled && playingObserved && error\?\.name === 'AbortError'/,
     'per-sample activation must be timeout/error bounded and ignore only a late settled AbortError');
@@ -977,7 +996,7 @@ test('Story runtime evidence records all four motions continuously and projects 
     /const postScreenshot = await withDeadline\(auditPage\.evaluate\([\s\S]*const video = audit\?\.video;\s+video\?\.pause\(\);[\s\S]*postPauseTime \+ 0\.01 < playingTime[\s\S]*playingToPostPauseIntervalSeconds > 0\.25/,
     'the first post-screenshot browser action must pause and bound playback time in the page');
   assert.ok(
-    webkitSampleLoopSource.indexOf("auditPage.locator('#audit-video').screenshot({")
+    webkitSampleLoopSource.indexOf('auditPage.screenshot({')
       < webkitSampleLoopSource.indexOf('const postScreenshot = await withDeadline(')
       && webkitSampleLoopSource.indexOf('const postScreenshot = await withDeadline(')
         < webkitSampleLoopSource.indexOf('fs.writeFileSync(samplePath, screenshotBuffer)'),
@@ -987,7 +1006,7 @@ test('Story runtime evidence records all four motions continuously and projects 
     /const phaseLabel = `sample-\$\{String\(sampleIndex \+ 1\)\.padStart\(2, '0'\)\}@\$\{fraction\}`;[\s\S]*sampleError = new Error\(message\.startsWith\(`\$\{phaseLabel\}:`\)/,
     'each sample error must retain its exact phase label');
   assert.match(webkitScreenshotSource,
-    /screenshotTimeoutMs = Math\.max\(1, attemptDeadline - Date\.now\(\)\)[\s\S]*withDeadline\([\s\S]*locator\('#audit-video'\)\.screenshot\([\s\S]*attemptDeadline/,
+    /screenshotTimeoutMs = Math\.max\(1, attemptDeadline - Date\.now\(\)\)[\s\S]*withDeadline\([\s\S]*auditPage\.screenshot\([\s\S]*attemptDeadline/,
     'each screenshot must be bounded by the remaining whole-attempt deadline');
   assert.doesNotMatch(webkitScreenshotSource,
     /getVideoPlaybackQuality|requestVideoFrameCallback|requestAnimationFrame|drawImage|ffmpeg|ffprobe|playbackRate|waitForTimeout|while\s*\(/,
@@ -1002,6 +1021,23 @@ test('Story runtime evidence records all four motions continuously and projects 
     'state.elementCount === 1',
     'state.sameElement === true',
     'state.lateActivationErrorCount === 0',
+    'Number.isFinite(state.rect?.x)',
+    'Number.isFinite(state.rect?.y)',
+    'Number.isFinite(state.rect?.width)',
+    'Number.isFinite(state.rect?.height)',
+    'Number.isFinite(state.viewportWidth)',
+    'Number.isFinite(state.viewportHeight)',
+    'state.viewportWidth === expectedVideoSize.width',
+    'state.viewportHeight === expectedVideoSize.height',
+    'Number.isFinite(state.scrollX)',
+    'Number.isFinite(state.scrollY)',
+    'Math.abs(state.scrollX) <= 0.01',
+    'Math.abs(state.scrollY) <= 0.01',
+    'state.bodyChildNodeCount === 1',
+    'state.bodyElementChildCount === 1',
+    'state.bodyOnlyVideo === true',
+    "state.bodyChildTagName === 'VIDEO'",
+    'state.centerHitIsVideo === true',
     'state.duration > 0',
     'state.videoWidth === expectedVideoSize.width',
     'state.videoHeight === expectedVideoSize.height',
@@ -1019,13 +1055,13 @@ test('Story runtime evidence records all four motions continuously and projects 
   ]) assert.ok(pngDecoderSource.includes(pngContract),
     `Node PNG evidence decoder must preserve ${pngContract}`);
   for (const webkitGate of [
-    "presentationMethod === 'locator.screenshot'",
+    "presentationMethod === 'page.screenshot.clip'",
     "elementIdentity === 'webkit-video-audit-singleton'",
     'elementCreateCount === 1',
     'blobUrlCreateCount === 1',
     'sourceAssignmentCount === 1',
     'loadCallCount === 1',
-    "activation?.method === 'per-sample-muted-play-running-locator-screenshot'",
+    "activation?.method === 'per-sample-muted-play-running-page-clip-screenshot'",
     'activation.pixelPassSignal === false',
     'activation.activationSerial === sampleIndex + 1',
     'activation.playingObserved === true',
