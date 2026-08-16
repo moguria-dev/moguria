@@ -528,6 +528,47 @@ async function setQaFreeze(page, frozen) {
   }, frozen);
 }
 
+async function waitForRenderedLoadingTip(page, kind) {
+  try {
+    await page.waitForFunction((loadingKind) => {
+      const root = document.querySelector(`[data-loading-surface="${loadingKind}"]`);
+      const tips = root?.querySelector('[data-loading-tips]');
+      const tipText = root?.querySelector('[data-loading-tip-text]');
+      if (!tips || !tipText
+        || tips.getAttribute('data-visible') !== 'true'
+        || tips.getAttribute('aria-hidden') !== 'false'
+        || tips.hasAttribute('inert')
+        || !tipText.textContent?.trim()
+        || !tipText.getAttribute('data-tip-id')) return false;
+      const rect = tipText.getBoundingClientRect();
+      const panelOpacity = Number(getComputedStyle(tips).opacity);
+      const textOpacity = Number(getComputedStyle(tipText).opacity);
+      if (rect.width <= 0 || rect.height <= 0
+        || !Number.isFinite(panelOpacity) || panelOpacity < 0.95
+        || !Number.isFinite(textOpacity) || textOpacity < 0.99) return false;
+      for (let current = tipText; current; current = current.parentElement) {
+        const style = getComputedStyle(current);
+        if (style.display === 'none'
+          || style.visibility === 'hidden'
+          || style.visibility === 'collapse'
+          || Number(style.opacity) === 0) return false;
+        if (current === root) break;
+      }
+      return true;
+    }, kind, { timeout:LOADING_QA_CONTRACT.tipTransitionMs + 1800 });
+  } catch (error) {
+    let diagnostic = null;
+    try { diagnostic = await inspectLoadingState(page, kind); }
+    catch (inspectError) { diagnostic = { inspectError:inspectError?.message || String(inspectError) }; }
+    throw new Error(`rendered loading tip did not become ready: ${JSON.stringify({
+      kind,
+      waitError:error?.message || String(error),
+      tips:diagnostic?.tips || null,
+      diagnostic
+    })}`);
+  }
+}
+
 async function inspectLoadingState(page, kind) {
   return page.evaluate((loadingKind) => {
     const root = document.querySelector(`[data-loading-surface="${loadingKind}"]`);
@@ -913,8 +954,8 @@ async function prepareLoadingFixture(page, kind, percent) {
         });
       }, kind);
       // Compact-view QA skips the full 1.2 s timing exercise, but it must still
-      // let the real Tips opacity transition settle before asserting visibility.
-      await page.waitForTimeout(LOADING_QA_CONTRACT.tipTransitionMs + 80);
+      // observe the real rendered Tips state before inspecting it.
+      await waitForRenderedLoadingTip(page, kind);
       fixture.tipsAfterReveal = await inspectLoadingState(page, kind);
     }
 
@@ -2853,9 +2894,166 @@ async function inspectStoryVideoArtifact(browser, filePath, expectedVideoSize) {
         video.addEventListener('error', onError, { once:true });
         if (video.error) onError();
       });
-      const afterPaint = () => new Promise((resolve) => {
-        requestAnimationFrame(() => requestAnimationFrame(resolve));
+      const frameToleranceSeconds = 0.25;
+      const playbackFrameCount = () => {
+        if (typeof video.getVideoPlaybackQuality !== 'function') return null;
+        const count = video.getVideoPlaybackQuality()?.totalVideoFrames;
+        return Number.isFinite(count) ? count : null;
+      };
+      const waitForAnimationFrameUntil = (deadline) => new Promise((resolve, reject) => {
+        const remainingMs = deadline - performance.now();
+        if (remainingMs <= 0) {
+          reject(new Error('playback fallback animation frame deadline elapsed'));
+          return;
+        }
+        let settled = false;
+        let frameId = null;
+        const cleanup = () => {
+          clearTimeout(timer);
+          if (frameId !== null) cancelAnimationFrame(frameId);
+        };
+        const timer = setTimeout(() => {
+          if (settled) return;
+          settled = true;
+          cleanup();
+          reject(new Error('playback fallback animation frame timed out'));
+        }, remainingMs);
+        frameId = requestAnimationFrame(() => {
+          if (settled) return;
+          settled = true;
+          cleanup();
+          resolve();
+        });
       });
+      const captureWithPlaybackFallback = async (targetSeconds, context, canvas, timeoutMs) => {
+        const startedAt = performance.now();
+        const deadline = startedAt + timeoutMs;
+        const initialTime = video.currentTime;
+        const initialFrameCount = playbackFrameCount();
+        const frameCountAvailable = initialFrameCount !== null;
+        try {
+          let playStartTimer = null;
+          try {
+            await Promise.race([
+              video.play(),
+              new Promise((_, reject) => {
+                playStartTimer = setTimeout(
+                  () => reject(new Error('video play start timed out')),
+                  Math.max(1, deadline - performance.now())
+                );
+              })
+            ]);
+          } finally {
+            clearTimeout(playStartTimer);
+          }
+          while (performance.now() < deadline) {
+            if (video.error) throw new Error(`video decode failed (${video.error.code || 'unknown'})`);
+            await waitForAnimationFrameUntil(deadline);
+            const currentFrameCount = playbackFrameCount();
+            const frameCountAdvanced = frameCountAvailable && currentFrameCount !== null
+              && currentFrameCount > initialFrameCount;
+            const timeAdvanced = !frameCountAvailable && video.currentTime >= initialTime + 1 / 120;
+            if (!frameCountAdvanced && !timeAdvanced) continue;
+            video.pause();
+            await waitForAnimationFrameUntil(deadline);
+            if (Math.abs(video.currentTime - targetSeconds) > frameToleranceSeconds) {
+              throw new Error(`playback fallback left requested frame tolerance (${video.currentTime})`);
+            }
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            return {
+              presentationMethod:'playback-quality-or-time-fallback',
+              targetSeconds,
+              currentTime:video.currentTime,
+              mediaTime:null,
+              initialFrameCount,
+              currentFrameCount,
+              frameCountAvailable,
+              frameCountAdvanced,
+              timeAdvanced
+            };
+          }
+          throw new Error('playback fallback timed out before a presented frame advanced');
+        } finally {
+          video.pause();
+        }
+      };
+      const capturePresentedFrame = (targetSeconds, context, canvas, timeoutMs) => {
+        if (typeof video.requestVideoFrameCallback !== 'function') {
+          return captureWithPlaybackFallback(targetSeconds, context, canvas, timeoutMs);
+        }
+        return new Promise((resolve, reject) => {
+          let settled = false;
+          let callbackId = 0;
+          const cleanup = () => {
+            clearTimeout(timer);
+            video.removeEventListener('error', onError);
+            if (callbackId && typeof video.cancelVideoFrameCallback === 'function') {
+              video.cancelVideoFrameCallback(callbackId);
+            }
+          };
+          const fail = (error) => {
+            if (settled) return;
+            settled = true;
+            video.pause();
+            cleanup();
+            reject(error instanceof Error ? error : new Error(String(error)));
+          };
+          const onError = () => {
+            fail(new Error(`video decode failed (${video.error?.code || 'unknown'})`));
+          };
+          const onFrame = (_now, metadata) => {
+            if (settled) return;
+            const mediaTime = Number(metadata?.mediaTime);
+            if (!Number.isFinite(mediaTime)) {
+              fail(new Error('requestVideoFrameCallback returned no finite mediaTime'));
+              return;
+            }
+            if (mediaTime < targetSeconds - frameToleranceSeconds) {
+              callbackId = video.requestVideoFrameCallback(onFrame);
+              return;
+            }
+            if (mediaTime > targetSeconds + frameToleranceSeconds) {
+              fail(new Error(`requestVideoFrameCallback overshot requested frame (${mediaTime})`));
+              return;
+            }
+            video.pause();
+            try {
+              context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            } catch (error) {
+              fail(error);
+              return;
+            }
+            settled = true;
+            const result = {
+              presentationMethod:'requestVideoFrameCallback',
+              targetSeconds,
+              currentTime:video.currentTime,
+              mediaTime,
+              presentedFrames:Number(metadata?.presentedFrames) || null
+            };
+            cleanup();
+            resolve(result);
+          };
+          const timer = setTimeout(() => {
+            fail(new Error('requestVideoFrameCallback timed out for the requested frame'));
+          }, timeoutMs);
+          video.addEventListener('error', onError, { once:true });
+          if (video.error) {
+            onError();
+            return;
+          }
+          callbackId = video.requestVideoFrameCallback(onFrame);
+          let playPromise;
+          try { playPromise = video.play(); }
+          catch (error) {
+            fail(new Error(`video play failed: ${error?.message || String(error)}`));
+            return;
+          }
+          Promise.resolve(playPromise).catch((error) => {
+            fail(new Error(`video play failed: ${error?.message || String(error)}`));
+          });
+        });
+      };
 
       let decodePhase = 'metadata';
       try {
@@ -2887,13 +3085,15 @@ async function inspectStoryVideoArtifact(browser, filePath, expectedVideoSize) {
             Math.max(0.05, video.duration * fraction),
             Math.max(0.05, video.duration - 0.05)
           );
+          video.pause();
           if (Math.abs(video.currentTime - targetSeconds) > 0.01) {
             const seeked = waitFor('seeked', 10000);
             video.currentTime = targetSeconds;
             await seeked;
           }
-          await afterPaint();
-          context.drawImage(video, 0, 0, canvas.width, canvas.height);
+          const frameReadiness = await capturePresentedFrame(
+            targetSeconds, context, canvas, 10000
+          );
           const rgba = context.getImageData(0, 0, canvas.width, canvas.height).data;
           const luminanceVector = new Uint8Array(canvas.width * canvas.height);
           const buckets = new Set();
@@ -2930,6 +3130,7 @@ async function inspectStoryVideoArtifact(browser, filePath, expectedVideoSize) {
             colorBuckets:buckets.size,
             darkRatio,
             lightRatio,
+            frameReadiness,
             frameHash:hash.toString(16).padStart(8, '0')
           });
         }

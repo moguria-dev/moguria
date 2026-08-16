@@ -333,6 +333,34 @@ test('runner contract covers both mobile viewports and every approved screen', a
     'insideBusyProgress',
     'insideBusyRegion'
   ]) assert.ok(source.includes(contract), `runner must preserve ${contract}`);
+  const loadingTipWaitSource = source.slice(
+    source.indexOf('async function waitForRenderedLoadingTip'),
+    source.indexOf('async function inspectLoadingState')
+  );
+  for (const loadingTipWaitContract of [
+    'page.waitForFunction',
+    "tips.getAttribute('data-visible') !== 'true'",
+    "tips.getAttribute('aria-hidden') !== 'false'",
+    "tips.hasAttribute('inert')",
+    'tipText.textContent?.trim()',
+    "tipText.getAttribute('data-tip-id')",
+    'tipText.getBoundingClientRect()',
+    'panelOpacity < 0.95',
+    'textOpacity < 0.99',
+    "style.display === 'none'",
+    "Number(style.opacity) === 0",
+    'timeout:LOADING_QA_CONTRACT.tipTransitionMs + 1800',
+    'diagnostic = await inspectLoadingState(page, kind)',
+    'rendered loading tip did not become ready'
+  ]) assert.ok(loadingTipWaitSource.includes(loadingTipWaitContract),
+    `compact loading readiness must require ${loadingTipWaitContract}`);
+  const loadingFixtureSource = source.slice(
+    source.indexOf('async function prepareLoadingFixture'),
+    source.indexOf('const alignmentFailures')
+  );
+  assert.match(loadingFixtureSource,
+    /revealMs: 0,[\s\S]*await waitForRenderedLoadingTip\(page, kind\);\s+fixture\.tipsAfterReveal = await inspectLoadingState\(page, kind\);/,
+    'compact loading QA must wait for actual rendered tip text before inspection');
   const lifecycleSource = source.slice(
     source.indexOf('async function openFreshStoryEntry'),
     source.indexOf('async function prepareStoryFixture')
@@ -579,6 +607,28 @@ test('Story runtime evidence records all four motions continuously and projects 
     "waitFor('loadeddata', 10000)",
     'HTMLMediaElement.HAVE_CURRENT_DATA',
     'if (video.error) onError()',
+    'capturePresentedFrame',
+    'captureWithPlaybackFallback',
+    'waitForAnimationFrameUntil',
+    'cancelAnimationFrame',
+    'deadline - performance.now()',
+    'video.getVideoPlaybackQuality',
+    'Number.isFinite(count) ? count : null',
+    'video play start timed out',
+    'frameCountAvailable = initialFrameCount !== null',
+    'const timeAdvanced = !frameCountAvailable',
+    'initialTime + 1 / 120',
+    'video.requestVideoFrameCallback',
+    'video.cancelVideoFrameCallback',
+    "presentationMethod:'requestVideoFrameCallback'",
+    "presentationMethod:'playback-quality-or-time-fallback'",
+    "fail(new Error('requestVideoFrameCallback timed out for the requested frame'))",
+    'await capturePresentedFrame(',
+    'targetSeconds, context, canvas, 10000',
+    'targetSeconds',
+    'currentTime:video.currentTime',
+    'mediaTime',
+    'frameReadiness',
     'decodePhase = `seek@${fraction}`',
     'throw new Error(`${decodePhase}: ${error?.message || String(error)}`)',
     'retries are reserved for transient engine errors'
@@ -600,6 +650,48 @@ test('Story runtime evidence records all four motions continuously and projects 
   assert.match(decodeSource,
     /decodePhase = 'first-frame';[\s\S]*HTMLMediaElement\.HAVE_CURRENT_DATA[\s\S]*waitFor\('loadeddata', 10000\)[\s\S]*decodePhase = `seek@\$\{fraction\}`/,
     'the audit must wait for first-frame data before phase-labelled seeking');
+  assert.match(decodeSource,
+    /const captureWithPlaybackFallback = async[\s\S]*await Promise\.race\(\[[\s\S]*video\.play\(\)[\s\S]*video play start timed out[\s\S]*await waitForAnimationFrameUntil\(deadline\)[\s\S]*currentFrameCount > initialFrameCount[\s\S]*!frameCountAvailable && video\.currentTime >= initialTime \+ 1 \/ 120[\s\S]*video\.pause\(\);[\s\S]*await waitForAnimationFrameUntil\(deadline\)[\s\S]*context\.drawImage\(video/,
+    'the bounded fallback must observe a real playback frame advance before pausing and drawing');
+  const fallbackSource = decodeSource.slice(
+    decodeSource.indexOf('const captureWithPlaybackFallback'),
+    decodeSource.indexOf('const capturePresentedFrame')
+  );
+  assert.equal((fallbackSource.match(/await waitForAnimationFrameUntil\(deadline\)/g) || []).length, 2,
+    'both fallback animation-frame waits must share the remaining hard deadline');
+  assert.doesNotMatch(fallbackSource, /new Promise\([^)]*requestAnimationFrame|frameCountAdvanced \|\| timeAdvanced/,
+    'the fallback must not contain an unbounded rAF or let currentTime override an available frame counter');
+  const boundedRafSource = decodeSource.slice(
+    decodeSource.indexOf('const waitForAnimationFrameUntil'),
+    decodeSource.indexOf('const captureWithPlaybackFallback')
+  );
+  assert.match(boundedRafSource,
+    /remainingMs = deadline - performance\.now\(\)[\s\S]*frameId !== null\) cancelAnimationFrame\(frameId\)[\s\S]*setTimeout[\s\S]*requestAnimationFrame/,
+    'each fallback rAF must be cancellable by its remaining deadline');
+  assert.match(fallbackSource,
+    /const frameCountAvailable = initialFrameCount !== null;[\s\S]*const frameCountAdvanced = frameCountAvailable && currentFrameCount !== null[\s\S]*const timeAdvanced = !frameCountAvailable/,
+    'finite playback-quality counters must take precedence over currentTime progress');
+  assert.match(decodeSource,
+    /callbackId = video\.requestVideoFrameCallback\(onFrame\);\s+let playPromise;[\s\S]*playPromise = video\.play\(\)/,
+    'the compositor callback must be armed synchronously before muted playback starts');
+  assert.match(decodeSource,
+    /const onFrame = \(_now, metadata\) =>[\s\S]*mediaTime < targetSeconds - frameToleranceSeconds[\s\S]*mediaTime > targetSeconds \+ frameToleranceSeconds[\s\S]*video\.pause\(\);\s+try \{\s+context\.drawImage\(video[\s\S]*presentationMethod:'requestVideoFrameCallback'/,
+    'only a near-target compositor frame may be drawn synchronously inside rVFC');
+  assert.match(decodeSource,
+    /if \(typeof video\.requestVideoFrameCallback !== 'function'\) \{\s+return captureWithPlaybackFallback/,
+    'playback polling is a bounded API-absence fallback, not an rVFC error bypass');
+  assert.match(decodeSource,
+    /const seeked = waitFor\('seeked', 10000\);\s+video\.currentTime = targetSeconds;\s+await seeked;[\s\S]*frameReadiness = await capturePresentedFrame/,
+    'each seek must finish before the compositor-frame capture is armed');
+  assert.ok(
+    decodeSource.indexOf("presentationMethod:'requestVideoFrameCallback'")
+      > decodeSource.indexOf('context.drawImage(video'),
+    'the rVFC path must draw synchronously inside its accepted frame callback'
+  );
+  assert.doesNotMatch(decodeSource, /setTimeout\(resolve, 50\)|paint-ready-fallback/,
+    'post-seek readiness must not reuse the WebKit double-paint timing heuristic');
+  assert.doesNotMatch(decodeSource, /getImageData\([\s\S]*while \(/,
+    'the decoder must not canvas-poll until content appears');
   assert.doesNotMatch(decodeSource, /ffprobe|child_process|newCDPSession|_channel/,
     'WebM audit must use public Playwright and web APIs only');
   assert.ok(
